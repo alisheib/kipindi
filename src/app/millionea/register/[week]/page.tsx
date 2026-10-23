@@ -56,9 +56,9 @@ import { MAIN_COUNT } from "@/lib/maswali-score";
 import { fill, formatNumber, formatTzs } from "@/lib/utils";
 import type { WeekState } from "@/lib/maswali-week-label";
 import type { Dict, Locale } from "@/lib/i18n-dict";
-import { MILLIONEA_HREF, MillioneaPreviewMark, MillioneaReadingLinks } from "../../millionea-parts";
+import { MILLIONEA_HREF, MillioneaReadingLinks } from "../../millionea-parts";
 import { bySlot, millioneaWeekPhase, msOf, ordinalOf, textIn, type MillioneaWeekPhase } from "../../millionea-view";
-import { liveWeekFacts, registerLedgerRows, registerWhen, WeekCommitments, weekFacts, WeekStateChip, weekTimes } from "../register-parts";
+import { liveWeekFacts, registerEventAt, registerLedgerRows, registerWhen, WeekCommitments, weekFacts, WeekStateChip, weekTimes } from "../register-parts";
 import { ROOT_OPEN_GRAPH } from "@/app/layout";
 import { weekStore } from "@/lib/server/maswali-dal";
 import { loadPublishedOgWeek } from "@/lib/server/millionea-og-week";
@@ -310,10 +310,8 @@ function Questions({ t, locale, v, nowMs }: { t: Dict; locale: Locale; v: View; 
   const qs = bySlot(v.questions);
   const mains = qs.filter((q) => q.role === "MAIN"), reserves = qs.filter((q) => q.role === "RESERVE");
   const heading = fill(t.millionea.regWeekQuestions, { week: weekNumberOf(v.code) });
-  const event = (q: Q) => {
-    const w = registerWhen(t, locale, q.eventStartsAt, nowMs);
-    return w === null ? null : keepFact(locale, fill(t.millionea.eventAt, { when: w }), [w]);
-  };
+  // The event's line, its Chinese edge set by the date that meets it ("事件 2026年11月27日 09:00", `registerEventAt`).
+  const event = (q: Q) => registerEventAt(t, locale, q.eventStartsAt, nowMs);
   const card = (q: Q) => (
     <li key={q.slot} className="grid grid-cols-[32px_minmax(0,1fr)] gap-x-2 border-t border-border px-1 py-3" style={q.role === "RESERVE" ? RESERVE_WASH : undefined}>
       <Place q={q} />
@@ -435,7 +433,8 @@ function ReserveMap({ t, locale, v }: { t: Dict; locale: Locale; v: View }) {
 }
 
 export default async function MillioneaRegisterWeekPage({ params }: { params: Promise<{ week: string }> }) {
-  const gate = await millioneaGate();
+  // The staff preview is marked once, above the page, by the shell's bar (PLATFORM D12) — never in the page's column.
+  await millioneaGate();
   const { week: code } = await params;
   const { t, locale } = await getServerT();
   const rec = await millioneaRegisterRecord(code);
@@ -457,7 +456,6 @@ export default async function MillioneaRegisterWeekPage({ params }: { params: Pr
           {v.facts.length > 0 && <p className="text-body text-text" data-testid="millionea-week-head-facts"><MaswaliFacts facts={v.facts} /></p>}
           {v.times.length > 0 && <p className="text-body-sm text-text-muted"><MaswaliFacts facts={v.times} /></p>}
         </div>
-        {gate.preview && <MillioneaPreviewMark t={t} />}
         {/* The week's money: the ONE Millionea ledger once the week is final (H5), at the receipt's measure, no right lane
             (M4, M5); until then its place says when it comes — never a figure before it is final (H2). */}
         {/* Titled as every section of the page is — its heading over its card, as the commitments' (one rhythm). */}
@@ -469,7 +467,8 @@ export default async function MillioneaRegisterWeekPage({ params }: { params: Pr
               : <p className="text-body-sm text-text-muted text-pretty">{t.millionea.regLedgerLater}</p>}
           </div>
         </section>
-        <WeekCommitments t={t} locale={locale} nowMs={nowMs} hash={v.hash} publishedAt={v.publishedAt} root={v.root} closedAt={v.closedAt} tickets={v.tickets} />
+        {/* At the receipt's measure, under the ledger's card (M4) — the commitments fill their column elsewhere (the hub). */}
+        <WeekCommitments className="max-w-receipt" t={t} locale={locale} nowMs={nowMs} hash={v.hash} publishedAt={v.publishedAt} root={v.root} closedAt={v.closedAt} tickets={v.tickets} />
         <Questions t={t} locale={locale} v={v} nowMs={nowMs} />
         <ReserveMap t={t} locale={locale} v={v} />
         {rec.kind === "final" && rec.week.standing && rec.week.standing.length > 0 && (

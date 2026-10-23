@@ -1075,7 +1075,8 @@ const CHECKS: Check[] = [
   // A desktop link's ring is drawn inside the link (the links stand edge to edge); on the current link it sits on the pill.
   { name: "W3 · a current desktop link's focus ring, inside its pill (--brand-300 on --nav-pill, non-text 3.0)", fg: token("brand-300"), bg: token("nav-pill"), min: 3.0 },
   { name: "W3 · any other desktop link's focus ring, inside it (--brand-500 on --panel, non-text 3.0)", fg: token("brand-500"), bg: T.panel, min: 3.0 },
-  { name: "W3 · the Up & Down gilt dot on a current tab's pill (--gilt on --nav-pill, non-text 3.0)", fg: T.gilt, bg: token("nav-pill"), min: 3.0 },
+  // ⛔ "the Up & Down gilt dot on a current tab's pill" (--gilt on --nav-pill) left with the dot: Ali's ruling of 2026-10-23
+  // deleted it (DESIGN_AUTHORITY §K 3, "Every nav tab alike") — nothing paints that pair any more.
   // ── PHOSPHOR-MIGRATION release 2 (W5): every IconPlate variant's ink on its own fill (INTAKE §4c: a new pair is scored in
   // the change that paints it). The fill is read from its rule (`plateFill`), over the surface that reads worst.
   ...plateChecks(),

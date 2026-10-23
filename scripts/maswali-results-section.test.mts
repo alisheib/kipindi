@@ -135,7 +135,10 @@ function viewChecks() {
     const emptyText = textOf(empty), fullText = textOf(full), markedText = textOf(marked);
     // ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-REGISTER): the one week row's facts each open with a capital — a fact is a
     // line of its own on a phone ("Fee 0", "Ada 0"); the hub's mid-line words stay as they are.
-    const facts = [t.millionea.regWonOne, t.millionea.regRefundsPending, t.millionea.feeZero.charAt(0).toLocaleUpperCase() + t.millionea.feeZero.slice(1)];
+    // ⚠️ RE-PINNED IN THE OPEN 2026-10-22 (S5-R2-REGISTER, the lead's ruling — one wording with the hub): the fee says its
+    // currency as every amount does, `feeZero` filled with formatTzs(0): "Fee TZS 0", "Ada TZS 0", "费用 TZS 0".
+    const fee = t.millionea.feeZero.replace("{fee}", "TZS 0");
+    const facts = [t.millionea.regWonOne, t.millionea.regRefundsPending, fee.charAt(0).toLocaleUpperCase() + fee.slice(1)];
     if (!emptyText.includes(t.millionea.productTitle) || !emptyText.includes(t.millionea.regEmpty) || emptyText.includes("MLN-2026")) failures.push(`${locale}: empty`);
     if (!fullText.includes(t.millionea.productTitle) || !full.includes('href="/millionea/register/MLN-2026-W45"')
       || !fullText.includes("MLN-2026-W44") || !fullText.includes("MLN-2026-W43")

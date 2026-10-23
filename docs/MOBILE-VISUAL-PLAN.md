@@ -1223,8 +1223,8 @@ Until then the status line stays 🟠 and `§0 NEXT` names real work.
   questions (§0 items 6–9), D29 reached independently by all six lenses, D1/D2/D3/D8 re-confirmed live in the default language, about thirty
   evidence and taste notes filed inside the units that own them, and E-420 for market copy the generator writes.
   - The completeness critic's findings had no verifier, so each was checked in the code before routing: two are deliberate designs (the
-    rail's product-line dot; Markets lit on home), one is a deliberate compliance hedge (the two-officer clause, now owner item 8), and one is
-    a real form defect (D48).
+    rail's product-line dot — removed by Ali's ruling of 2026-10-23, U33; Markets lit on home), one is a deliberate compliance hedge (the
+    two-officer clause, now owner item 8), and one is a real form defect (D48).
   - **Two instruments corrected.** The completeness critic showed the pinned-chrome figure could not see the chat bubble (it counted bars
     wider than 60% only), so the capture now reports floating overlays and U1 must. And the panel's two-value verdict filed three real,
     known defects (D1, D2, D3) as "refuted", so the stored workflow has a third verdict, `known`.
@@ -2702,6 +2702,10 @@ by U1's driver at the §11 matrix unless a unit says otherwise.
 - ⚖️ **For the phase sign-off, not defects** (critics panel; both deliberate in the code). The gilt dot on the Juu/Chini rail item is the
   product-line mark (`bottom-nav.tsx:147`), but a player reads it as an unread badge that never clears, in the money colour; and "Masoko" is
   lit on the home page because home counts as Markets (`:103`), with no Home item. Show Ali both before Phase C closes.
+  ✅ **The dot: RULED 2026-10-23 — removed.** Ali, on hearing players read it as a notification: *"please remove the
+  golden dot, make it like other tabs please"*; he chose *"Remove Up & Down's dot"*. Up & Down is drawn exactly as its
+  siblings on the rail and the desktop bar, no dot and no ink of its own (DESIGN_AUTHORITY §K 3, "Every nav tab alike";
+  `docs/COMPLIANCE-DECISIONS.md`, "2026-10-23 · Up & Down loses its golden dot"). "Masoko" lit on home stays open.
 - 📐 (critics panel) The live ticker is cut hard at the screen edge with no fade, so whatever word is passing the edge is sliced through the
   letter, and nothing says the line continues; a marquee fades at both ends. And the language control reads the ISO code "SW" — clear to a
   developer, less so to a player; decide with the native reader whether it says "Kiswahili" at phone width or keeps the code.

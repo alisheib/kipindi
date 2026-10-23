@@ -117,11 +117,13 @@ export function LegalNav({ items, ariaLabel }: { items: LegalNavItem[]; ariaLabe
               active ? "border-l-2 border-l-brand-500 pl-[12px]" : "hover:bg-bg-overlay"
             }`}
           >
-            {/* ⭐ DG-P-11 — THE ACTIVE INK WAS `--brand-300`, WHICH NAVIGATION ALREADY SPENT ON
-                A DIFFERENT MEANING. `.kp-navlink[data-accent]` paints the PRODUCT LINE (Up &
-                Down) with exactly that token, per `top-app-bar.tsx`'s note that "shape now has
-                exactly one meaning… its distinction moves to a 5px gilt dot plus `--brand-300`
-                ink". One ink, two meanings, on two navs a player can see on one screen (§0a).
+            {/* ⭐ DG-P-11 — THE ACTIVE INK WAS `--brand-300`, AND A NAV INK NEVER NAMES ONE DESTINATION.
+                The rule in force: every nav tab alike — no product-line dot and no destination's own
+                ink (DESIGN_AUTHORITY §K 3, Ali's ruling of 2026-10-23: "please remove the golden dot,
+                make it like other tabs please"). When this note was written, Up & Down's link wore
+                `--brand-300` beside a 5px gilt dot (`.kp-navlink[data-accent]`), so this rail's
+                active rows in that ink gave one ink two meanings on two navs a player can see on one
+                screen (§0a); that dot and ink were superseded on 2026-10-23 and are deleted.
                 Every sibling states "current" with `--text`: `.kp-navlink[aria-current="page"]`,
                 `admin-sidebar-nav.tsx`, `admin-mobile-nav.tsx`, `nav-more.tsx`.
                 ⛔ The INACTIVE ink is deliberately left at `--text` and not dimmed to

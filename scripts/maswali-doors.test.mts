@@ -381,7 +381,7 @@ const skeleton = (m: string) => [...m.replace(/(class="[^"]*kp-mln-door__plate[^
   ok("2.1 · H1 · the ghost sets the common card's own words in the reader's language — its title, the R-HEADLINE's three facts and the state's two lines, character for character — so they wrap where the card's wrap",
     words.length === 0, words.slice(0, 1).join(" | "));
   const shapes = LOCALES.flatMap((l) => HOSTS.flatMap((h) => {
-    const g = skeleton(FX.ghost[l][h].replace(/ kp-mln-ghost__\w+| kp-mln-ghost\b| kp-shimmer-track| kp-jhome-ghost__plate/g, "")), c = skeleton(twin(l, h));
+    const g = skeleton(FX.ghost[l][h].replace(/ kp-mln-ghost__\w+| kp-mln-ghost\b| kp-shimmer-track/g, "")), c = skeleton(twin(l, h));
     return g.replace(/span\.(?=\s|$)/g, "") === c.replace(/span\.(?=\s|$)/g, "") ? [] : [`${l} ${h}`];
   }));
   ok("2.2 · H1 · the ghost is the card's anatomy, element for element: the same door grid and host box, the 48px plate's slot, the title's facts, both phone-stacked fact lists, the figure's rung and the 20px chevron", shapes.length === 0, j(shapes));
@@ -401,6 +401,14 @@ const skeleton = (m: string) => [...m.replace(/(class="[^"]*kp-mln-door__plate[^
   };
   const hidden = LOCALES.flatMap((l) => HOSTS.flatMap((h) => hiddenDefects(FX.ghost[l][h], l).map((x) => `${l} ${h}: ${x}`)));
   ok("2.3 · H1 · every word of the ghost but its name is hidden (`.kp-mln-ghost__words`: nothing to read, find or copy) — \"Millionea\" drawn in words, as the How-to card's ghost draws its title, the week a bar — the root aria-hidden and marked for the drive, no id and no link", hidden.length === 0, hidden.join(" | "));
+  // The board's ghost is CLASSIC markup: /markets' loading picture draws it for every classic visitor once Millionea is
+  // offered (found on production at ACTIVE, 2026-10-23: the plate wore the journey home's class). It wears no journey class
+  // — qa:chunks-prod's journey-html rule, the same pattern (scripts/qa-chunks-prod.mjs, "journey class").
+  const JOURNEY_CLASS = /(?<![\w-])kp-(?:jhdr|jsheet|jcard|jhome|jhowto|howto|bsheet)(?![A-Za-z0-9])/;
+  const journeyClass = LOCALES.flatMap((l) => HOSTS.flatMap((h) => (JOURNEY_CLASS.test(FX.ghost[l][h]) ? [`${l} ${h}`] : [])));
+  ok("2.3b · the ghost wears no journey class on any host (the classic board draws it: no journey markup on a classic page)", journeyClass.length === 0, j(journeyClass));
+  const journeyPlate = FX.ghost.en.board.replace("kp-mln-door__plate kp-mln-ghost__plate", "kp-mln-door__plate kp-jhome-ghost__plate");
+  ok("2.3b′ PLANT · the journey home's plate class back on the ghost's plate is reported", journeyPlate !== FX.ghost.en.board && JOURNEY_CLASS.test(journeyPlate));
   const journey = LOCALES.filter((l) => {
     const s = FX.journeyGhost[l].slot, n = FX.journeyGhost[l].none;
     const at = s.indexOf('data-ghost-part="millionea"'), head = s.indexOf('data-ghost-part="headline"'), chips = s.indexOf('data-ghost-part="chips"');

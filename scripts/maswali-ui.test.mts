@@ -442,7 +442,7 @@ const darkDriveStatusDefects = (src: string) => {
 
 
 // ── §5 · the doors on other pages ──────────────────────────────────────────────────────────────────────────────────
-console.log("\n§5 · the doors: the card, the bar's core link and the rail's More row, the journey's tab, the /positions row — and none but these");
+console.log("\n§5 · the doors: the card, the bar's core link and the rail's track, the journey's tab, the /positions row — and none but these");
 const doorDefects = (src: (rel: string) => string) => {
   const d: string[] = [];
   const bar = squash(code(src("src/components/layout/top-app-bar.tsx")));
@@ -453,15 +453,19 @@ const doorDefects = (src: (rel: string) => string) => {
   // More's first row instead of a core link while Millionea shows, at every width (measured: the bar's room is capped at
   // `--w-board`, and with both inline the Swahili bar loses its account menu at 1280). Withdrawn, both lists are today's.
   if (!bar.includes('const MILLIONEA_LINK: NavItem[] = millionea ? [{ href: "/millionea", label: t.millionea.productLabel, ink: true }] : [];')) d.push("the bar's core link is not drawn on the shell's answer alone");
-  if (count(bar, 'accent: true }, ...MILLIONEA_LINK, { href: "/live",') !== 2 || count(bar, 'href: "/millionea"') !== 1) d.push("the bar's core link does not stand right after Up & Down for a player and a guest, or the bar draws Millionea elsewhere too");
+  // Re-pinned 2026-10-23: Up & Down's item lost its `accent: true` (Ali's ruling, DESIGN_AUTHORITY §K 3 "Every nav tab alike").
+  if (count(bar, '{ href: "/updown", label: t.market.udTitle }, ...MILLIONEA_LINK, { href: "/live",') !== 2 || count(bar, 'href: "/millionea"') !== 1) d.push("the bar's core link does not stand right after Up & Down for a player and a guest, or the bar draws Millionea elsewhere too");
   if (!bar.includes('const RESULTS_LINK: NavItem[] = millionea ? [] : [{ href: "/results", label: t.common.results }];')
     || !bar.includes('const RESULTS_ROW: NavItem[] = millionea ? [{ href: "/results", label: t.common.results }] : [];')
     || count(bar, "...RESULTS_LINK,") !== 2 || !/const MORE_ITEMS: NavItem\[\] = user\.isAuthed \? \[ \.\.\.RESULTS_ROW,/.test(bar) || !bar.includes(": RESULTS_ROW;")
     || count(bar, 'href: "/results"') !== 2) d.push("the bar's Results does not move into More (its first row, player and guest) while Millionea shows, and back while it does not");
   if (count(bar, "<NavMore items={MORE_ITEMS} label={t.common.more} />") !== 1 || count(bar, "<NavMore") !== 1) d.push("the bar's More is not one menu over MORE_ITEMS");
-  if (count(rail, "...millioneaRow,") !== 2 || !rail.includes('millionea ? [{ href: "/millionea", label: t.millionea.productLabel,')) d.push("the rail's More: Millionea is not the first row for a player and a guest, on the shell's answer");
-  const items = rail.slice(rail.indexOf("const items = ["), rail.indexOf("];", rail.indexOf("const items = [")));
-  if (items.includes("/millionea")) d.push("⛔ Millionea took a rail slot");
+  // ⭐ RE-PINNED OPENLY (Ali, 2026-10-22: "ok replace live please … keep live in more"; §M8a item 11): the classic phone rail
+  // draws Millionea's TRACK in Live's place on the shell's answer, and Live leads its More (player and guest); no More row.
+  if (!rail.includes('millionea ? { href: "/millionea", glyph: "millionea", label: t.millionea.productLabel, ink: true } : { href: "/live", glyph: "live", label: t.nav.live }, ];')
+    || count(rail, 'href: "/millionea"') !== 1) d.push("the rail's fourth track is not Millionea's on the shell's answer (Live's otherwise), or the rail draws Millionea elsewhere too");
+  if (!rail.includes('const liveRow: { href: string; label: string }[] = millionea ? [{ href: "/live", label: t.nav.live }] : [];')
+    || count(rail, '? [ ...liveRow, { href: "/results",') !== 1 || count(rail, ': [ ...liveRow, { href: "/results",') !== 1) d.push("the rail's More: Live is not the first row for a player and a guest while Millionea holds its track");
   if (count(shell, "const millioneaRow = !promoSuppressed && (await resolveMillionea()).visible;") !== 1) d.push("the shell does not answer the row from the rollout and the break, once");
   // S5-FIX-PLATFORM D3: the answer is spread, the prop handed only while it is true (`{}` otherwise: no "millionea":false).
   if (count(shell, "{...millioneaProp}") !== 4 || !shell.includes("const millioneaProp: { millionea?: true } = millioneaRow ? { millionea: true } : {};")
@@ -484,9 +488,10 @@ const doorDefects = (src: (rel: string) => string) => {
 {
   const d = doorDefects(read);
   // ⭐ RE-PINNED OPENLY, S5-TAB (Ali, 2026-10-19): was "More's first row in the bar and the rail … handed to the classic bars
-  // alone". The bar's door is now its core link after Up & Down (Results folding into More meanwhile, at every width), the
-  // classic phone rail keeps More's first row, and the one answer reaches all four navs — the journey's tab and link too.
-  ok("5.1 · the classic bar's core link right after Up & Down (Results moving into More's first row while it shows) and the classic phone rail's first More row, for a player and a guest alike, on the shell's one answer — the rollout and the break — handed to all four navs; no classic rail slot",
+  // alone". The bar's door is now its core link after Up & Down (Results folding into More meanwhile, at every width), and
+  // the one answer reaches all four navs — the journey's tab and link too. ⭐ AND AGAIN (Ali, 2026-10-22): the classic phone
+  // rail's door is a track in Live's place, Live leading its More — no longer More's first row.
+  ok("5.1 · the classic bar's core link right after Up & Down (Results moving into More's first row while it shows) and the classic phone rail's track in Live's place (Live leading More), for a player and a guest alike, on the shell's one answer — the rollout and the break — handed to all four navs",
     d.filter((x) => /bar|rail|shell|row's answer/.test(x)).length === 0, d.join(" | "));
   ok("5.2 · the card's door draws nothing when hidden, on a break, unread or unmodelled, and carries the test id qa:live's dark section looks for; the board draws it once above its search",
     d.filter((x) => /card/.test(x)).length === 0, d.join(" | "));
@@ -536,10 +541,14 @@ const doorDefects = (src: (rel: string) => string) => {
 console.log("\n§5b · the ink: one class of tokens alone, a still gradient that never moves, plain under forced colours, worn by every nav");
 /** Every nav that draws Millionea and the exact markup it wears the ink with (`n` times). Each S5-TAB item adds its nav. */
 const INK_WEARERS: ReadonlyArray<{ rel: string; at: string; n: number }> = [
-  { rel: "src/components/layout/nav-more.tsx", at: '{it.ink ? <span className="kp-millionea-ink">{it.label}</span> : it.label}', n: 2 },
-  // RE-PINNED OPENLY, S5-TAB (the lead's tile read, 2026-10-19): the classic phone rail's More row dropped its mark (§5c) —
-  // was `ink: true, glyph: <MillioneaGlyph name="millionea" s={16} … kp-millionea-glyph" />`. Its words keep the ink.
-  { rel: "src/components/layout/bottom-nav.tsx", at: 'millionea ? [{ href: "/millionea", label: t.millionea.productLabel, ink: true }]', n: 1 },
+  // RE-PINNED OPENLY (Ali, 2026-10-22; §M8a item 11): the classic phone rail draws Millionea as a TRACK in Live's place,
+  // its siblings' slot with the ink on its words and its glyph resting in gold on the pip, as the journey's tab — was its
+  // More's first row (words in the ink, no mark; S5-TAB, 2026-10-19). No More list draws Millionea now, so More's rows
+  // carry no ink (nav-more.tsx's `ink` went with the row).
+  { rel: "src/components/layout/bottom-nav.tsx", at: 'millionea ? { href: "/millionea", glyph: "millionea", label: t.millionea.productLabel, ink: true }', n: 1 },
+  { rel: "src/components/layout/bottom-nav.tsx", at: '<span className="kp-rail__label">{ink ? <span className="kp-millionea-ink">{label}</span> : label}</span>', n: 1 },
+  { rel: "src/components/layout/bottom-nav.tsx", at: '<span className={ink ? "kp-rail__pip kp-millionea-glyph" : "kp-rail__pip"}>', n: 1 },
+  { rel: "src/components/layout/nav-more.tsx", at: "kp-millionea-ink", n: 0 },
   // S5-TAB B: the classic bar's core link (no mark: its siblings carry none), its words in the ink.
   { rel: "src/components/layout/top-app-bar.tsx", at: 'const MILLIONEA_LINK: NavItem[] = millionea ? [{ href: "/millionea", label: t.millionea.productLabel, ink: true }] : [];', n: 1 },
   { rel: "src/components/layout/top-app-bar.tsx", at: '{it.ink ? <span className="kp-millionea-ink">{it.label}</span> : it.label}', n: 1 },
@@ -589,8 +598,9 @@ const inkDefects = (src: (rel: string) => string) => {
   ok("5b.1 · one ink class: green to gold to red clipped to the word, a faint gold drop-shadow — tokens alone", d.filter((x) => !/moves|motion rule|forced|wears|lit|not-found/.test(x)).length === 0, d.join(" | "));
   ok("5b.2 · the ink never moves (no animation, no transition, no keyframe); forced colours draw plain system text", d.filter((x) => /moves|motion rule|forced/.test(x)).length === 0, d.join(" | "));
   // ⭐ RE-PINNED OPENLY, S5-TAB (2026-10-19): was "More's rows: the classic rail's and the top bar's". Every nav that draws
-  // Millionea now: the classic rail's More row, the classic bar's core link, the journey's tab and its desktop link.
-  ok("5b.3 · every nav that draws Millionea wears the one class — the classic rail's More row, the classic bar's core link, the journey rail's tab (its glyph resting in gold) and the journey's desktop link", d.filter((x) => /wears/.test(x)).length === 0, d.join(" | "));
+  // Millionea now: the classic rail's track (Ali, 2026-10-22; it was a More row), the classic bar's core link, the journey's
+  // tab and its desktop link.
+  ok("5b.3 · every nav that draws Millionea wears the one class — the classic rail's track (its glyph resting in gold), the classic bar's core link, the journey rail's tab (its glyph resting in gold) and the journey's desktop link; no More list", d.filter((x) => /wears/.test(x)).length === 0, d.join(" | "));
   ok("5b.8 · lit, a door's word steps up to the -200s (aria-current, as a hover does; 6.85:1 on the destination pill) and the rail tab's glyph takes the siblings' Fill-on-pill ink; a not-found page's first paint puts both back, the -300s and the gold",
     d.filter((x) => /lit|not-found/.test(x)).length === 0, d.join(" | "));
   const rawColour = inkDefects(plant("src/app/globals.css", "var(--yes-300), var(--gold-300), var(--no-300));", "var(--yes-300), var(--gold-300), oklch(70% 0.2 22));"));
@@ -599,8 +609,8 @@ const inkDefects = (src: (rel: string) => string) => {
   ok("5b.5 · CONTROL · an animation planted in the class is reported", moving.some((x) => x.includes("moves")), j(moving));
   const plainGone = inkDefects(plant("src/app/globals.css", "  .kp-millionea-ink, :is(a, button):hover .kp-millionea-ink, [aria-current] .kp-millionea-ink { background-image: none; color: inherit;", "  .kp-millionea-x { background-image: none; color: inherit;"));
   ok("5b.6 · CONTROL · the forced-colours rule removed is reported", plainGone.some((x) => x.includes("forced colours")), j(plainGone));
-  const inkDropped = inkDefects(plant("src/components/layout/nav-more.tsx", '{it.ink ? <span className="kp-millionea-ink">{it.label}</span> : it.label}', "{it.label}"));
-  ok("5b.7 · CONTROL · the ink dropped from one nav is reported", inkDropped.some((x) => x.includes("nav-more.tsx wears it 1 times")), j(inkDropped));
+  const inkDropped = inkDefects(plant("src/components/layout/bottom-nav.tsx", '<span className="kp-rail__label">{ink ? <span className="kp-millionea-ink">{label}</span> : label}</span>', '<span className="kp-rail__label">{label}</span>'));
+  ok("5b.7 · CONTROL · the ink dropped from one nav (the classic rail's track) is reported", inkDropped.some((x) => x.includes("bottom-nav.tsx wears it 0 times")), j(inkDropped));
   const tabBare = inkDefects(plant("src/components/journey/journey-tabs.tsx", '{ink ? <span className="kp-millionea-ink">{label}</span> : label}', "{label}"));
   ok("5b.7′ · CONTROL · the journey tab's word without the ink is reported", tabBare.some((x) => x.includes("journey-tabs.tsx wears it 0 times")), j(tabBare));
   const litFlat = inkDefects(plant("src/app/globals.css", ":is(a, button):hover .kp-millionea-ink, [aria-current] .kp-millionea-ink { background-image:", ":is(a, button):hover .kp-millionea-ink { background-image:"));
@@ -618,12 +628,13 @@ const morePanelDefects = (src: (rel: string) => string) => {
   const more = squash(code(src("src/components/layout/nav-more.tsx")));
   const rail = squash(code(src("src/components/layout/bottom-nav.tsx")));
   // One x: a mark before one row's words set them ~28px right of every other row's (the 16px glyph, its 6px margin, the
-  // row's 6px gap). Millionea's row is its words in the ink alone, as the classic bar's core link, and More keeps no slot.
+  // row's 6px gap), so More keeps no slot for one. ⭐ RE-PINNED (Ali, 2026-10-22; §M8a item 11): the classic phone rail's
+  // More no longer draws Millionea at all — its track does, in Live's place — so no More row of the rail carries Millionea.
   const at = more.indexOf("items: readonly {");
   const itemsType = at < 0 ? "" : more.slice(at, more.indexOf("}[];", at));
   if (!itemsType || /\bglyph\b|ReactNode/.test(itemsType) || /\{it\.glyph\}/.test(more)) d.push("one x: More's rows keep a slot for a mark before their words");
-  const row = rail.slice(rail.indexOf("const millioneaRow"), rail.indexOf("const moreItems"));
-  if (!row.includes('millionea ? [{ href: "/millionea", label: t.millionea.productLabel, ink: true }] : [];') || /glyph/i.test(row) || rail.includes("MillioneaGlyph")) d.push("one x: the phone rail's Millionea row carries a mark");
+  const moreRows = rail.slice(rail.indexOf("const liveRow"), rail.indexOf("const millioneaLit"));
+  if (!moreRows.includes("const moreItems") || /millionea"|productLabel|MillioneaGlyph/.test(moreRows)) d.push("one x: the phone rail's More carries a Millionea row");
   // Opaque: no page reads through either panel — the surface whole (no alpha step), no backdrop blur.
   const panels = [...more.matchAll(/role="menu" className="([^"]*)"/g)].map((m) => m[1].split(" "));
   const named = panels.map((cls) => ({ cls, which: cls.includes("top-[calc(100%+6px)]") ? "the bar's" : cls.includes("bottom-[calc(100%+8px)]") ? "the rail's" : "an unknown" }));
@@ -639,13 +650,13 @@ const morePanelDefects = (src: (rel: string) => string) => {
 {
   const plant = (rel: string, from: string, to: string) => (r: string) => (r === rel ? read(r).replace(from, to) : read(r));
   const d = morePanelDefects(read);
-  ok("5c.1 · every row of a More list starts its words at one x: no row carries a mark — the phone rail's Millionea row is its words in the ink alone, as the bar's core link is, and More keeps no slot for one",
+  ok("5c.1 · every row of a More list starts its words at one x: no row carries a mark and More keeps no slot for one; the phone rail's More draws no Millionea row (its track does, in Live's place)",
     d.filter((x) => x.startsWith("one x")).length === 0, d.join(" | "));
   ok("5c.2 · both More panels are opaque — the kit's elevated surface whole (bg-bg-elevated, the language menu's), no alpha step, no backdrop blur — border and radius unchanged: no page reads through a menu",
     d.filter((x) => x.startsWith("opaque")).length === 0, d.join(" | "));
-  const marked = morePanelDefects(plant("src/components/layout/bottom-nav.tsx", "label: t.millionea.productLabel, ink: true }]", 'label: t.millionea.productLabel, ink: true, glyph: <MillioneaGlyph name="millionea" s={16} className="mr-1.5 shrink-0" /> }]'));
-  ok("5c.1′ CONTROL · the mark put back on the phone rail's Millionea row is reported", marked.some((x) => x.includes("phone rail's Millionea row")), j(marked));
-  const slot = morePanelDefects(plant("src/components/layout/nav-more.tsx", '{it.ink ? <span className="kp-millionea-ink">{it.label}</span> : it.label}', '{it.glyph}{it.ink ? <span className="kp-millionea-ink">{it.label}</span> : it.label}'));
+  const rowBack = morePanelDefects(plant("src/components/layout/bottom-nav.tsx", "    ? [\n        ...liveRow,", '    ? [\n        { href: "/millionea", label: t.millionea.productLabel },\n        ...liveRow,'));
+  ok("5c.1′ CONTROL · a Millionea row put back into the phone rail's More is reported", rowBack.some((x) => x.includes("phone rail's More carries a Millionea row")), j(rowBack));
+  const slot = morePanelDefects(plant("src/components/layout/nav-more.tsx", "{it.label}", "{it.glyph}{it.label}"));
   ok("5c.1″ CONTROL · a slot for a mark put back into More's rows is reported", slot.some((x) => x.includes("keep a slot")), j(slot));
   const barSeen = morePanelDefects(plant("src/components/layout/nav-more.tsx", "top-[calc(100%+6px)] z-[50] min-w-[190px] rounded-modal border border-border-strong bg-bg-elevated p-1 shadow-overlay", "top-[calc(100%+6px)] z-[50] min-w-[190px] rounded-modal border border-border-strong bg-bg-elevated/95 p-1 backdrop-blur-xl shadow-overlay"));
   ok("5c.2′ CONTROL · the bar's panel back at 95% under a backdrop blur (the tile read's see-through panel) is reported",
@@ -762,8 +773,12 @@ console.log("\n§8 · controls — each check above fails on a planted copy");
   const softStatus = drive.replace('res?.status() === 404 && (await notFoundShown(rp))', '(await notFoundShown(rp))');
   ok("8.4e · a signed-in dark drive that accepts a streamed 200 with not-found words is reported",
     softStatus !== drive && darkDriveStatusDefects(softStatus).length > 0);
-  const railSlot = doorDefects(plant("src/components/layout/bottom-nav.tsx", "const items = [", 'const items = [{ href: "/millionea", label: "M", icon: null },'));
-  ok("8.5 · Millionea in a classic rail slot is reported (the classic phone rail keeps it as More's first row)", railSlot.some((x) => x.includes("rail slot")));
+  // ⭐ RE-PINNED OPENLY (Ali, 2026-10-22; §M8a item 11): was "Millionea in a classic rail slot is reported (the classic phone
+  // rail keeps it as More's first row)". The rail's track is Millionea's now, on the shell's answer alone; Live leads More.
+  const railAlways = doorDefects(plant("src/components/layout/bottom-nav.tsx", '    millionea\n      ? { href: "/millionea"', '    true\n      ? { href: "/millionea"'));
+  ok("8.5 · Millionea's rail track drawn whatever the shell's answer (a reader it is hidden from would see it) is reported", railAlways.some((x) => x.includes("fourth track")), j(railAlways));
+  const liveGone = doorDefects(plant("src/components/layout/bottom-nav.tsx", "    ? [\n        ...liveRow,", "    ? ["));
+  ok("8.5⁗ · Live dropped from the rail's More while Millionea holds its track is reported", liveGone.some((x) => x.includes("Live is not the first row")), j(liveGone));
   // S5-TAB B's controls: the bar's core link never drawn; Results kept inline beside it (the Swahili bar then loses its
   // account menu at 1280); Results dropped from More instead of moved there (a destination unreachable from the bar).
   const BAR = "src/components/layout/top-app-bar.tsx";

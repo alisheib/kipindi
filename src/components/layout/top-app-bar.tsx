@@ -36,14 +36,24 @@ import type { ProposalsState } from "@/lib/server/proposals-config";
  *
  * `--r-pill` used to mean BOTH "product line" (Up & Down) and "account action" (Sign in / Sign
  * up) — one shape, two kinds. Shape now has exactly one meaning: Up & Down is a destination, so
- * it takes destination geometry, and its distinction moves to a 5px gilt dot plus `--brand-300`
- * ink.
+ * it takes destination geometry.
  *
- * **Current destination = `--pill-active` + `--text` + weight 600. That is the ONLY active
- * treatment, at every width** — the bottom rail says it the same way. It used to say it with
- * `--aqua-300`, a second active language for one idea.
+ * ⭐ AND UP & DOWN IS DRAWN EXACTLY AS ITS SIBLINGS — Ali, 2026-10-23: "people are misunderstanding
+ * and thinking there is a certain notification there … please remove the golden dot, make it like
+ * other tabs please". Its pill had become a 5px gilt "product-line dot" plus `--brand-300` ink (the
+ * round-2 kit, 2026-08-13); players read the dot as an unread mark that never clears, so the dot
+ * and the ink are both gone: every link here is one box, one ink, one hover and one lit state
+ * (DESIGN_AUTHORITY §K 3, "Every nav tab alike"; `test:nav-tabs-alike`). Millionea's link keeps
+ * its words' own ink (§M8a item 11), which nobody reads as a notification.
  *
- * The product-line dot is a small gilt identity accent; the active destination still uses brand.
+ * **Current destination = `--nav-pill` and its lit edge + `--text` + weight 600 (`.kp-navlink`;
+ * `--pill-active` until PHOSPHOR-MIGRATION W3). That is the ONLY active treatment, at every
+ * width** — the bottom rail says it the same way. It used to say it with `--aqua-300`, a second
+ * active language for one idea.
+ *
+ * ⏳ No per-second timer in global chrome, ever — not on Up & Down's link either: a countdown on
+ * every page is a persistent urgency cue (an RG finding for a licensed operator, §C5) and a
+ * per-second re-render on a bar that must stay usable on a low-end Android over 2G.
  */
 type NavItem = {
   href: string;
@@ -59,16 +69,9 @@ type NavItem = {
      ⚠️ 2026-09-25 — the REASON survives the product change but the example no longer does: invite
      is ACTIVE again (unpaid). It is in the list because it is live, not badged because it is
      promised, which is the same rule this note states. */
-  /**
-   * Marks a destination as a DISTINCT PRODUCT LINE rather than another page of the same game —
-   * currently only Up & Down. It keeps destination geometry (see the note above); the accent is a
-   * gilt dot and brand ink, never a different shape or the active pill.
-   *
-   * ⏳ No per-second timer in global chrome, ever: a countdown on every page is a persistent
-   * urgency cue (an RG finding for a licensed operator, §C5) and a per-second re-render on a bar
-   * that must stay usable on a low-end Android over 2G.
-   */
-  accent?: boolean;
+  /* ⛔ An `accent?: boolean` ("a distinct product line", Up & Down's alone) lived here and drew the gilt dot and the
+     `--brand-300` ink; Ali's ruling of 2026-10-23 (the note above) deleted it with them. A destination is not marked
+     out from its siblings. */
 };
 
 export type TopAppBarUser = {
@@ -87,7 +90,7 @@ export type TopAppBarUser = {
   walletHeld?: boolean;
 };
 
-export function TopAppBar({ user, proposalsState, inviteVisible = false, invitePaid = false, millionea = false, millioneaOnBreak = false }: { user: TopAppBarUser; proposalsState: ProposalsState; inviteVisible?: boolean; invitePaid?: boolean; millionea?: boolean; millioneaOnBreak?: boolean }) {
+export function TopAppBar({ user, proposalsState, inviteVisible = false, invitePaid = false, onBreak = false, millionea = false, millioneaOnBreak = false }: { user: TopAppBarUser; proposalsState: ProposalsState; inviteVisible?: boolean; invitePaid?: boolean; onBreak?: boolean; millionea?: boolean; millioneaOnBreak?: boolean }) {
   const pathname = usePathname();
   /** D13 · on a break, a Millionea page lights the destination the journey's table names (null everywhere else). */
   const standIn = millioneaOnBreak ? classicMillioneaStandIn(pathname) : null;
@@ -103,7 +106,7 @@ export function TopAppBar({ user, proposalsState, inviteVisible = false, inviteP
   // a sub-page of Markets, and a player must be able to reach it from any width.
   /* ⭐ MASWALI-BUILD S5-TAB · MASWALI MILLIONEA'S CORE LINK, RIGHT AFTER UP & DOWN (Ali, 2026-10-19; DESIGN_AUTHORITY §M8a
      item 11), for a player and a guest alike: a destination like its siblings — a peer product line, as Up & Down is — the
-     same link, with only its words in Millionea's ink (`kp-millionea-ink`): no gilt dot, no mark. It replaces S5's first
+     same link, with only its words in Millionea's ink (`kp-millionea-ink`): no mark. It replaces S5's first
      row of More (D-13 (b)'s "no inline link", struck). ⛔ Drawn only on the shell's own answer (`millionea`: the rollout
      admits the request and the reader is not on a break), resolved on the server and handed down as `inviteVisible` is;
      for everybody else the bar is today's, byte for byte.
@@ -121,7 +124,7 @@ export function TopAppBar({ user, proposalsState, inviteVisible = false, inviteP
   const CORE_ITEMS: NavItem[] = user.isAuthed
     ? [
         { href: "/markets",   label: t.common.markets },
-        { href: "/updown",    label: t.market.udTitle, accent: true },
+        { href: "/updown",    label: t.market.udTitle },
         ...MILLIONEA_LINK,
         { href: "/live",      label: t.nav.live },
         ...RESULTS_LINK,
@@ -139,7 +142,7 @@ export function TopAppBar({ user, proposalsState, inviteVisible = false, inviteP
       ]
     : [
         { href: "/markets",     label: t.common.markets },
-        { href: "/updown",      label: t.market.udTitle, accent: true },
+        { href: "/updown",      label: t.market.udTitle },
         ...MILLIONEA_LINK,
         { href: "/live",        label: t.nav.live },
         ...RESULTS_LINK,
@@ -293,7 +296,7 @@ export function TopAppBar({ user, proposalsState, inviteVisible = false, inviteP
             // ⛔ AND THE PILL IS NOW THE WALLET DOOR AT EVERY WIDTH — it has always been a
             // `<Link href="/wallet">`. That is why removing the icon costs nothing: the
             // door did not go away, the DUPLICATE did.
-            <WalletBalancePill balance={liveBalance} held={!!user.walletHeld} />
+            <WalletBalancePill balance={liveBalance} held={!!user.walletHeld} onBreak={onBreak} />
           )}
 
           {/* ⛔ THE WRAPPER SPAN IS LOAD-BEARING — `hidden lg:inline-flex` ON the button
@@ -303,7 +306,12 @@ export function TopAppBar({ user, proposalsState, inviteVisible = false, inviteP
               attempt put the classes on the <Link> and the CTA still rendered at 360, 33px
               past the viewport edge. The span is not a `.btn`, so the utility applies to it.
               ⚠️ This is the idiom this file already uses for the same reason. */}
-          {user.isAuthed && !user.walletHeld && !pathname.startsWith("/wallet/deposit") && (
+          {/* ⭐ …AND NOT DURING THE READER'S OWN BREAK (MASWALI-BUILD S5 round 2 · PLATFORM, 2026-10-22; the hub lane's reader
+              finding, the lead's approval): `/wallet/deposit` refuses a player on a break, and the break rule offers no
+              deposit door (DESIGN_AUTHORITY, R4-I and R6-A) — the journey's "+ Weka pesa" already yields. Withheld without a
+              word, as the journey's pill is; `onBreak` is AppShell's `promoSuppressed`, handed only while true (an OFFER's
+              gate, failing open). The rail's coin turns into the Wallet door for the same reason (`bottom-nav.tsx`). */}
+          {user.isAuthed && !user.walletHeld && !onBreak && !pathname.startsWith("/wallet/deposit") && (
             // The money-in door uses the shared gilt-metal skin and keeps its pill geometry.
             /* 🔴 THE DEPOSIT CTA YIELDS BELOW `lg`, AND THE RULE IS **ONE DEPOSIT PER SCREEN**.
                UPDATE-2026-09-28 §1: below 1024 the bottom rail shows (`lg:hidden`) and its CENTRE
@@ -484,8 +492,9 @@ function GuestAuthDoors() {
  *
  * ONE BOX for every item — 44px tall, identical horizontal padding. The accent (Up & Down) pill
  * used to run 6px 14px against 7px 12px for its siblings, so it read visibly taller and wider than
- * every other link. Height and padding are now identical across all links; the accent differs only
- * in ink and a dot (identity), never in size or shape.
+ * every other link. Height and padding are identical across all links, and since Ali's ruling of
+ * 2026-10-23 so is everything else: no dot, no ink of its own — one drawing for every destination
+ * (the header note; Millionea's words keep their ink, §M8a item 11).
  */
 function NavLink({ it, pathname, standIn }: { it: NavItem; pathname: string; standIn: string | null }) {
   const { t } = useT();
@@ -501,7 +510,6 @@ function NavLink({ it, pathname, standIn }: { it: NavItem; pathname: string; sta
     : pathname === it.href;
   // S5-FIX-PLATFORM D13: on a break, Millionea's page lights the destination standing in for its undrawn link.
   const lit = active || it.href === standIn;
-  const accent = it.accent === true;
   return (
     <Link
       href={it.href as never}
@@ -509,9 +517,8 @@ function NavLink({ it, pathname, standIn }: { it: NavItem; pathname: string; sta
       // ⛔ DG-P-01 — COLOUR, BACKGROUND AND THE TRANSITION LIVE IN `.kp-navlink` (globals.css), NOT
       // HERE. They were inline, which is why this link had no hover for its whole life: an inline
       // style outranks every selector, so no class could add one, and the `transition` declared
-      // beside them had nothing to animate. Accent and active are now `data-accent` /
-      // `aria-current`, read by that rule. Putting either back inline re-kills the hover.
-      data-accent={accent ? "" : undefined}
+      // beside them had nothing to animate. Active is `aria-current`, read by that rule. Putting it
+      // back inline re-kills the hover.
       className="kp-navlink inline-flex items-center gap-1.5 whitespace-nowrap"
       style={{
         // 44px is the tap floor and the kit's destination height. The nav used to be 34px —
@@ -525,18 +532,9 @@ function NavLink({ it, pathname, standIn }: { it: NavItem; pathname: string; sta
         fontWeight: lit ? 600 : 500,
       }}
     >
-      {/* The product-line mark: a 5px gilt dot. It replaces a glassy indigo pill, a bespoke
-          gradient, a brand border, a glow AND a green/rose arrow pair — five distinctions for one
-          idea, on an item that is simply another destination. */}
-      {accent && (
-        <span
-          aria-hidden
-          style={{
-            flex: "none", width: 5, height: 5,
-            borderRadius: "var(--r-pill)", background: "var(--gilt)",
-          }}
-        />
-      )}
+      {/* ⛔ No mark before the words. Up & Down's 5px gilt dot stood here (it had replaced a glassy indigo pill, a
+          bespoke gradient, a brand border, a glow and a green/rose arrow pair); Ali's ruling of 2026-10-23 removed it,
+          because a dot on a tab reads as a notification. */}
       {it.ink ? <span className="kp-millionea-ink">{it.label}</span> : it.label}
       {it.proposalsBadge && (
         <ProposalsStateBadge state={it.proposalsBadge} comingSoonLabel={t.proposals.comingSoonTag} maintenanceLabel={t.proposals.maintenanceTag} size="xs" />

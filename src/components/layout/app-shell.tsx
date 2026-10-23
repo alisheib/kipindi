@@ -401,6 +401,13 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
      the destination the journey's own table names (`classicMillioneaStandIn`). Handed ONLY when true, as `millioneaProp`
      is (D3): no other reader's payload changes, and a dark address (Millionea hidden) lights nothing, as an unknown one. */
   const millioneaBreakProp: { millioneaOnBreak?: true } = promoSuppressed && (await resolveMillionea()).visible ? { millioneaOnBreak: true } : {};
+  /* ⭐ ON A BREAK, THE CLASSIC SHELL OFFERS NO DEPOSIT DOOR EITHER (MASWALI-BUILD S5 round 2 · PLATFORM, 2026-10-22; the hub
+     lane's reader finding, the lead's approval). `/wallet/deposit` refuses a player on a break and the break rule offers no
+     deposit door (DESIGN_AUTHORITY, R4-I and R6-A); the journey's bar and Wallet already keep it. The classic bar's deposit
+     pill is withheld, the balance capsule's Wallet drops its Deposit, and the rail's coin turns into the Wallet door, as for a
+     held wallet. Handed ONLY while true (D3's rule): no other reader's payload changes. It is `promoSuppressed`, which gates
+     an OFFER and fails open (`feature-state.ts` LAW 1) — never the break's end, which stays the journey bar's alone. */
+  const breakProp: { onBreak?: true } = promoSuppressed ? { onBreak: true } : {};
   /** D12 · the request sees Millionea as a PREVIEW (STAFF_PREVIEW and a stored staff role): it wears the preview bar. */
   const millioneaPreview = (await resolveMillionea()).preview;
   /* ⭐ THE SECOND HALF OF THE PAIR, RESOLVED IN THE SAME PLACE AND FOR THE SAME REASON: the menu
@@ -515,7 +522,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
           MASWALI-BUILD S5-TAB (2026-10-19): each arm takes `{...millioneaProp}`, the one answer above, handed only while it
           is true (D3) — the journey bar draws Millionea's link from it, the classic bar its core link; the classic bar also
           takes `{...millioneaBreakProp}` (D13), the destination it lights on a Millionea page during a break. */}
-      {journeyShown ? <LazyJourneyTopBar user={journeyUser} onBreak={promoSuppressed} breakEnd={journeyBreak} proposalsState={proposalsState} inviteVisible={inviteVisible} inviteAgent={inviteViewer.agentInGoodStanding} kycOffered={journeyKycOffered} invitePaid={invitePaid} {...millioneaProp} /> : <TopAppBar user={topUser} proposalsState={proposalsState} inviteVisible={inviteVisible} invitePaid={invitePaid} {...millioneaProp} {...millioneaBreakProp} />}
+      {journeyShown ? <LazyJourneyTopBar user={journeyUser} onBreak={promoSuppressed} breakEnd={journeyBreak} proposalsState={proposalsState} inviteVisible={inviteVisible} inviteAgent={inviteViewer.agentInGoodStanding} kycOffered={journeyKycOffered} invitePaid={invitePaid} {...millioneaProp} /> : <TopAppBar user={topUser} proposalsState={proposalsState} inviteVisible={inviteVisible} invitePaid={invitePaid} {...millioneaProp} {...breakProp} {...millioneaBreakProp} />}
       {/* ⭐ THE PREVIEW MARKER — first under the bar, so whoever holds this browser knows at once that they are
           looking at pages players do not see yet, and has the way out on the same line. */}
       {journeyPreview && <PreviewMarker label={t.journey.previewMarker} exit={t.journey.previewExit} />}
@@ -621,7 +628,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
           ⭐ 2026-09-14 — main GROWS (the shell is a flex column), so on a page shorter than the window
           the footer sits at the window's bottom edge instead of leaving a bare darker band under it
           (/wallet/deposit/return at 1280). Same pattern as admin/layout.tsx. */}
-      <MainLandmark viewer={journeyShown && !session ? "guest" : undefined}>
+      <MainLandmark viewer={!session ? "guest" : undefined}>
         <RouteTransition>{children}</RouteTransition>
       </MainLandmark>
       {/* `supportEmail` is resolved HERE for the third time on this line's own logic (E-226):
@@ -643,7 +650,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       {/* MASWALI-BUILD S5-TAB: both rails take the one Millionea answer, handed only while it is true (D3) — the journey's
           draws its fifth tab from it, the classic rail its first More row; the classic rail also takes the break's answer
           (D13), as the classic bar does. */}
-      {journeyShown ? <LazyJourneyTabs userId={session?.userId ?? null} {...millioneaProp} /> : <BottomNav isAuthed={!!session} proposalsState={proposalsState} inviteVisible={inviteVisible} walletHeld={!!topUser.walletHeld} {...millioneaProp} {...millioneaBreakProp} />}
+      {journeyShown ? <LazyJourneyTabs userId={session?.userId ?? null} {...millioneaProp} /> : <BottomNav isAuthed={!!session} proposalsState={proposalsState} inviteVisible={inviteVisible} walletHeld={!!topUser.walletHeld} {...millioneaProp} {...breakProp} {...millioneaBreakProp} />}
       <RealityCheckHost enabled={!!session} intervalMin={realityCheckMin} userId={session?.userId ?? null} />
       {/* 🔴 SESSION-GATED, like its neighbours on the lines above and below (audit F-08).
           It was the only one of the three that was not, and the omission had no upper bound.
@@ -743,6 +750,11 @@ function SkipToContent({ label }: { label: string }) {
  * Ingia/Jisajili (`header-state.ts` `authPills`). The hub's loading ghost (`route-ghost.tsx`) picks its guest or member
  * drawing from it in CSS. It asked `:root:has(.kp-jhdr__auth)` before, which made `<html>` a `:has()` subject (see
  * `journeyShellShown`); the shell that draws the header draws this landmark, so the two change together.
+ * ⭐ …AND EVERY SIGNED-OUT READER, CLASSIC TOO (MASWALI-BUILD S5 round 2 · PLATFORM, 2026-10-22, the lead's item from the
+ * hub lane's finding): the Millionea hub draws a guest's door from it in CSS for either shell, and in classic a guest's
+ * swap landed 24px off. A journey reader is marked exactly as before (signed out ⇔ the header's pills). Every rule that
+ * reads it reaches only the journey's ghosts or Millionea's pages — `test:millionea-shell` §4 holds that census, so the
+ * classic reader's new attribute changes no rule a classic page draws.
  */
 function MainLandmark({ children, viewer }: { children: React.ReactNode; viewer?: "guest" }) {
   return <main id="main-content" className="flex-1" data-viewer={viewer}>{children}</main>;
@@ -789,13 +801,13 @@ function OptOutShell({ t, children }: { t: Dict; children: React.ReactNode }) {
             {/* zh keeps its words whole (break-keep); the zh string carries zero-width break hints.
                 ⭐ THE REGULATOR'S NAME IS ONE NAME HERE TOO (R5-G, 2026-10-09, G-5 — R5-A's F18 rule, `keepRegulator` and the
                 `.kp-gbt` size container, as the journey's footer wears them). This line is the row's width less the 18+
-                roundel and its gap (vw − 70 below 1024): "Licensed by the Gaming" / "Board of Tanzania." at en 320–334 and
-                "Leseni ya Bodi ya Michezo" / "ya Kubahatisha Tanzania." at sw 333–390 now read "Licensed by the" / "Gaming
-                Board of Tanzania." and, since round 7 (the name carries its "ya": a 277.4px run, held from a 281px line),
-                "Leseni" / "ya Bodi ya Michezo ya Kubahatisha Tanzania." at sw 351–390 (the one-word first line is the owner's
-                question K34), one line from 391 (the sentence is 320.9px); a line narrower than the name (sw under 351)
-                wraps with each connective held: "Leseni ya Bodi ya Michezo" / "ya Kubahatisha Tanzania." (round 9, R9-B:
-                this record corrected; nothing it draws changed). `flex-1`: a size container has no width of its own to give a flex row,
+                roundel and its gap (vw − 70 below 1024). en 320–334 read "Licensed by the Gaming" / "Board of Tanzania.";
+                with the name whole, Chromium balances it as "Licensed by" / "the Gaming Board of Tanzania." (measured
+                2026-10-22), then one line. sw: round 7 held the name whole with its "ya" (a 277.4px run, from a 281px line),
+                which drew "Leseni" / "ya Bodi ya Michezo ya Kubahatisha Tanzania." at 351–390 (the owner's question K34).
+                Since MASWALI-BUILD S5 round 2 (2026-10-22, the lead's ruling on K34) the Swahili name is never held whole
+                (globals.css): sw reads "Leseni ya Bodi ya Michezo" / "ya Kubahatisha Tanzania." up to 390, each connective
+                held, and one line from 391 (the sentence is 320.9px). `flex-1`: a size container has no width of its own to give a flex row,
                 so the line takes the row's remainder — the width it wrapped in before; left-aligned, no glyph moves. */}
             <p className="kp-gbt flex-1 text-text-muted leading-relaxed text-body-sm text-balance break-keep">{keepRegulator(t.footer.licensedByGbt)}</p>
           </div>

@@ -12,8 +12,10 @@
  *       A drive week, because the seeded public week is selling and one public week sells at a time (MR-3);
  *   4 · the drafter's own attestation is refused (MB-79); a second reader — a MODERATOR, in a browser context of their
  *       own (a second context for the SAME account would sign the first out) — attests; the Owner opens the week;
- *   2 · (inside 4) when the open refuses for want of a licence basis or of guarantee, the Owner records the basis
- *       (typed RECORD) or pays in exactly what the refusal says is short (typed FUND GUARANTEE), then opens again;
+ *   2 · (inside 4) when the open refuses for want of a licence basis (every such refusal names "licence basis" — with
+ *       nothing recorded the Owner's ruling of 2026-10-23 is the basis, so a fresh store needs none) or of guarantee, the
+ *       Owner records the basis (typed RECORD) or pays in exactly what the refusal says is short (typed FUND GUARANTEE),
+ *       then opens again;
  *   5 · a close after the first event is refused in the service's words; an earlier close is accepted (MB-28);
  *   6 · on the seeded weeks (`/api/dev-test/seed-maswali`; a 409 means the shots already seeded this store): enables the
  *       two-officer rule only after seeding, seals M1, has a different MODERATOR confirm its exact review, returns the
@@ -544,7 +546,7 @@ await part("4 · attest and open", async () => {
   for (let attempt = 0; attempt < 3; attempt++) {
     await go(page, weekPath);
     const list = clip(await card(page, "Before it can open").textContent());
-    if (/No licence basis is recorded/.test(list)) { needed.push("licence"); await recordLicence(); continue; }
+    if (/licence basis/.test(list)) { needed.push("licence"); await recordLicence(); continue; }
     const short = /The guarantee holds TZS ([\d,]+); TZS ([\d,]+) is needed to open/.exec(list);
     if (short) { needed.push("guarantee"); await fundGuarantee(Math.max(1, num(short[2]) - num(short[1]))); continue; }
     break;

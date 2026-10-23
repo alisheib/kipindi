@@ -166,7 +166,7 @@ against each other within a daily budget, may fetch their own price, and the ros
 | **Where** | Release and live readback: [`docs/HOUSE-BOTS.md`](HOUSE-BOTS.md) §§12.20–12.21; current programme status: [`plans/house-bots/RESUME-HERE.md`](../plans/house-bots/RESUME-HERE.md) §0e; management and admin instructions: `docs/50pick-house-bots-desk-guide.pdf`. |
 | **Next** | Read [`plans/house-bots/RESUME-HERE.md`](../plans/house-bots/RESUME-HERE.md) §0e — never this cell |
 
-## ▶ 0i · MASWALI MILLIONEA — the third product, a weekly jackpot — `MASWALI-BUILD` · 🔨 **S1–S5 on `main` dark (S5 `2ed817395`, 2026-10-22; Ali: the checked parts live now, 10/10 before players), S5's round-2 polish integrating; S7 merged with the release on its own branch; S6 integrating; rollout WITHDRAWN. ▶ Resume: MASWALI-PLAN §0** · 9/13 sessions ✅
+## ▶ 0i · MASWALI MILLIONEA — the third product, a weekly jackpot — `MASWALI-BUILD` · 🔨 **S1–S5 on `main`; rollout ACTIVE on production since 2026-10-22 23:32 UTC (Ali's ruling of 2026-10-23, ahead of the launch gate — nothing sells until an admin pays the guarantee in and a week opens); S5 round 2 (the phone rail's Millionea track, the landing's door row), UDDOT (no dot on any nav tab) and LICBASIS (the licence basis by the Owner's ruling) on `main`, on the Next.js 16.4.2 security patch; S7 and S6 readied for the weekend deadline in MASWALI-PLAN §0, then S5 round 2b. ▶ Resume: MASWALI-PLAN §0** · 9/13 sessions ✅
 
 Ali, 2026-10-16: *"disregard any august rulgint he enw paln is final ruling"* · *"th enew pd is rveewd by management and
 update dlatly so any old ruels repalc ehtem if lost y those fomr the new pdf"* · *"we need to be very creative in how we

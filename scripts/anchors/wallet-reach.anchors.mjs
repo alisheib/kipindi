@@ -63,8 +63,9 @@ export const MUTATIONS = [
     why: "⭐ THE ORIGINAL DEFECT, VERBATIM: the balance is gated shown/hidden/shown/hidden as the window widens. Every branch is defensible and the SEQUENCE is not — a player on a 1920 monitor loses the balance a 1440 laptop shows, and no explanation exists outside a source comment",
     file: BAR,
     suite: "wallet-reach",
-    from: `            <WalletBalancePill balance={liveBalance} held={!!user.walletHeld} />`,
-    to: `            <span className="hidden sm:flex lg:hidden xl:flex 2xl:hidden"><WalletBalancePill balance={liveBalance} held={!!user.walletHeld} /></span>`,
+    // Re-anchored 2026-10-22 (MASWALI-BUILD S5 round 2 · PLATFORM): the capsule is handed the reader's break too.
+    from: `            <WalletBalancePill balance={liveBalance} held={!!user.walletHeld} onBreak={onBreak} />`,
+    to: `            <span className="hidden sm:flex lg:hidden xl:flex 2xl:hidden"><WalletBalancePill balance={liveBalance} held={!!user.walletHeld} onBreak={onBreak} /></span>`,
     expect: "3: ⛔ the old non-monotonic ladder has not come back",
   },
   {

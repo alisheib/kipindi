@@ -7,7 +7,7 @@ import { I, type GlyphKey } from "@/components/ui/glyphs";
 import { NavGlyph } from "@/components/ui/nav-glyph";
 import { useT } from "@/lib/i18n";
 import { NavMore } from "@/components/layout/nav-more";
-import { classicMillioneaStandIn } from "@/lib/nav/active-tab";
+import { classicMillioneaLit, classicMillioneaStandIn } from "@/lib/nav/active-tab";
 import { MARK } from "@/lib/brand-mark";
 import type { ProposalsState } from "@/lib/server/proposals-config";
 
@@ -15,6 +15,11 @@ import type { ProposalsState } from "@/lib/server/proposals-config";
  * THE BOTTOM RAIL — round-2 kit §2 / COMPONENTS §14, rebuilt in batch 3.
  *
  * FIVE SLOTS: Markets · Up & Down · **Deposit** · Live · More.
+ * ⭐ …AND WHILE MASWALI MILLIONEA'S DOOR IS DRAWN, MILLIONEA TAKES LIVE'S PLACE (Ali, 2026-10-22: "ok replace live please …
+ * keep live in more"; DESIGN_AUTHORITY §M8a item 11): Markets · Up & Down · **Deposit** · Millionea · More, and Live is More's
+ * first row. The five equal tracks and the centred coin stand. The track is its siblings' own (slot, pip, lit pill, label);
+ * only its label's ink differs, and its glyph rests in gold, as on the journey's rail. While the door is not drawn
+ * (WITHDRAWN, a reader the rollout does not admit, a break) the rail is the one above, byte for byte.
  *
  * ⭐ THE CENTRE IS THE WALLET'S DOOR — UPDATE-2026-09-28 §2, AND IT IS ALI'S RECORDED OVERRIDE
  * OF "THE RAIL IS DESTINATIONS ONLY" (defect 2 below). The override costs the rule nothing: the
@@ -63,7 +68,7 @@ import type { ProposalsState } from "@/lib/server/proposals-config";
  * no commit ever added it. The rest position is host logic in `needle.tsx` (side rails only, `nearestEdge`;
  * E-413's clear-rest glide), and the rail's centre coin is a `data-needle-keepout` below.
  */
-export function BottomNav({ isAuthed = false, proposalsState, inviteVisible = false, walletHeld = false, millionea = false, millioneaOnBreak = false }: { isAuthed?: boolean; proposalsState: ProposalsState; inviteVisible?: boolean; walletHeld?: boolean; millionea?: boolean; millioneaOnBreak?: boolean }) {
+export function BottomNav({ isAuthed = false, proposalsState, inviteVisible = false, walletHeld = false, onBreak = false, millionea = false, millioneaOnBreak = false }: { isAuthed?: boolean; proposalsState: ProposalsState; inviteVisible?: boolean; walletHeld?: boolean; onBreak?: boolean; millionea?: boolean; millioneaOnBreak?: boolean }) {
   const pathname = usePathname();
   /** D13 · on a break, a Millionea page lights the destination the journey's table names (null everywhere else). */
   const standIn = millioneaOnBreak ? classicMillioneaStandIn(pathname) : null;
@@ -72,23 +77,37 @@ export function BottomNav({ isAuthed = false, proposalsState, inviteVisible = fa
   /** The destinations FLANKING the centre — identical for guest and player, because a destination
    *  does not depend on having an account. What changes is what `More` carries.
    *  ⚠️ Three, not four: Results moved into `More` (see the header note) and the centre coin took
-   *  the middle track. The grid below is still five equal tracks. */
-  const items = [
-    { href: "/markets", glyph: "markets" as const,    label: t.common.markets },
+   *  the middle track. The grid below is still five equal tracks.
+   *  ⭐ THE FOURTH TRACK IS MILLIONEA'S WHILE ITS DOOR IS DRAWN, LIVE'S OTHERWISE (Ali, 2026-10-22; DESIGN_AUTHORITY §M8a
+   *  item 11). `millionea` is the shell's one answer, handed only while it is true (the rollout admits this reader and the
+   *  reader is not on a break; D3), so a reader it is hidden from is served today's rail. Live then leads More
+   *  (`liveRow`, below): moved, never dropped. */
+  const items: { href: string; glyph: GlyphKey; label: string; ink?: boolean }[] = [
+    { href: "/markets", glyph: "markets",    label: t.common.markets },
     /* The full product name wraps in the Swahili phone rail. The accessible name stays
        the visible label (WCAG 2.5.3 label-in-name: a voice user says what they see). */
     // One meaning, one glyph (PHOSPHOR-MIGRATION R-LEXICON): Up & Down is `trade` in both shells; Live is `live`.
-    { href: "/updown",  glyph: "trade" as const,      label: t.nav.updown, accent: true },
-    { href: "/live",    glyph: "live" as const,       label: t.nav.live },
+    // ⭐ Drawn exactly as its siblings — no dot, no ink of its own (Ali, 2026-10-23; `RailDest` below).
+    { href: "/updown",  glyph: "trade",      label: t.nav.updown },
+    millionea
+      ? { href: "/millionea", glyph: "millionea", label: t.millionea.productLabel, ink: true }
+      : { href: "/live",      glyph: "live",      label: t.nav.live },
   ];
 
   /** THE CENTRE SLOT. `/wallet/deposit` for everyone; a guest meets the auth gate on arrival.
    *  ⛔ A HELD WALLET IS THE ONE BRANCH, and it is not a styling choice: `/wallet/deposit` REFUSES
    *  a held wallet, so a coin offering money-in there would be a door that cannot open. The slot
    *  becomes the Wallet door and the coin drops its "+" for the mark's hub. Identical reasoning,
-   *  and identical `walletHeld` input, to the header pill's own guard. */
-  const coinHref = walletHeld ? "/wallet" : "/wallet/deposit";
-  const coinLabel = walletHeld ? t.nav.wallet : t.common.deposit;
+   *  and identical `walletHeld` input, to the header pill's own guard.
+   *  ⭐ …AND A BREAK IS THE SECOND (MASWALI-BUILD S5 round 2 · PLATFORM, 2026-10-22; the hub lane's reader finding, the
+   *  lead's approval): during a player's own break `/wallet/deposit` refuses too (`wallet-service.deposit()`: a held wallet,
+   *  then the break), and DESIGN_AUTHORITY's break rule offers no deposit door (R4-I, R6-A) — the journey's Wallet already
+   *  drops its own. So on a break the slot is the Wallet door, drawn exactly as for a held wallet. `onBreak` is AppShell's
+   *  `promoSuppressed`, handed only while true: it gates an OFFER and fails open (`feature-state.ts` LAW 1) — after a failed
+   *  read the coin offers Deposit and the deposit screen still refuses. */
+  const moneyInClosed = walletHeld || onBreak;
+  const coinHref = moneyInClosed ? "/wallet" : "/wallet/deposit";
+  const coinLabel = moneyInClosed ? t.nav.wallet : t.common.deposit;
 
   /** `More` carries the rest. Positions / Wallet / Top / Invite / Propose for a player; the
    *  public destinations for a visitor, who has no positions or wallet to reach. */
@@ -138,21 +157,15 @@ export function BottomNav({ isAuthed = false, proposalsState, inviteVisible = fa
      one idea). When the wallet is not held, the coin points at /wallet/deposit and this row is the
      only way to /wallet, so it stays. */
   const walletRow: { href: string; label: string }[] =
-    walletHeld ? [] : [{ href: "/wallet", label: t.nav.wallet }];
-  /* MASWALI-BUILD S5 · MASWALI MILLIONEA IS MORE'S FIRST ROW, for a player and a guest alike (§10 §3.2 (b), (d); D-13):
-     this rail keeps its five equal tracks around the centre coin, so Millionea is a row behind More here, never a slot.
-     Drawn only on the shell's own answer (the rollout admits the request, the reader is not on a break), as
-     `inviteVisible` is.
-     ⭐ S5-TAB (Ali, 2026-10-19; DESIGN_AUTHORITY §M8a item 11) · the row's words wear the three money colours
-     (`kp-millionea-ink`, globals.css), the one ink every nav gives Millionea — the journey's tab and both desktop links
-     wear the same class — and NO MARK: More's other rows carry none, and a mark before this row's words alone set them
-     ~28px right of every other row's (the lead's tile read, 2026-10-19). Words in the ink, as the classic bar's core link. */
-  const millioneaRow: { href: string; label: string; ink: boolean }[] = millionea
-    ? [{ href: "/millionea", label: t.millionea.productLabel, ink: true }]
-    : [];
-  const moreItems: { href: string; label: string; proposalsBadge?: ProposalsState; ink?: boolean }[] = isAuthed
+    moneyInClosed ? [] : [{ href: "/wallet", label: t.nav.wallet }];
+  /* ⭐ LIVE LEADS MORE WHILE MILLIONEA HOLDS ITS TRACK (Ali, 2026-10-22: "keep live in more"; DESIGN_AUTHORITY §M8a item 11),
+     for a player and a guest alike: More's FIRST row, above Results, so the destination the track gave up is one tap from
+     the same slot. Present exactly when the fourth track is Millionea's (the same `millionea`), so Live is drawn once.
+     ⚠️ Until that ruling Millionea was this More's first row (S5, then S5-TAB's ink, 2026-10-19); its track replaced it. */
+  const liveRow: { href: string; label: string }[] = millionea ? [{ href: "/live", label: t.nav.live }] : [];
+  const moreItems: { href: string; label: string; proposalsBadge?: ProposalsState }[] = isAuthed
     ? [
-        ...millioneaRow,
+        ...liveRow,
         { href: "/results",        label: t.common.results },
         { href: "/positions",      label: t.common.positions },
         ...walletRow,
@@ -161,19 +174,27 @@ export function BottomNav({ isAuthed = false, proposalsState, inviteVisible = fa
         ...proposalsRow,
       ]
     : [
-        ...millioneaRow,
+        ...liveRow,
         { href: "/results",     label: t.common.results },
         { href: "/leaderboard", label: t.nav.leaderboard },
         { href: "/fairness",    label: t.footer.resolutionAttestation },
         ...proposalsRow,
       ];
 
+  /** While Millionea's track is drawn, a Millionea page lights it, and Millionea's tickets light Positions — Tiketi zangu's
+   *  classic destination, a More row (§M8a item 11; `classicMillioneaLit`). Null everywhere else and while the door is not
+   *  drawn (then D13's `standIn` answers a break). */
+  const millioneaLit = millionea ? classicMillioneaLit(pathname) : null;
+  /** The More row standing for the page when the page is none of the rows' own: Positions on Millionea's tickets (the
+   *  track drawn), or D13's stand-in on a break. */
+  const moreCurrent = millioneaLit === "/positions" ? millioneaLit : standIn;
   const isActive = (href: string) => {
     // S5-FIX-PLATFORM D13: on a break, a Millionea page lights the slot standing in for its undrawn More row (Markets),
     // or More itself where the stand-in is one of its rows (Positions, below), as the journey falls back.
     if (href === standIn) return true;
     if (href === "/markets") return pathname === "/" || pathname.startsWith("/markets");
     if (href === "/updown") return pathname.startsWith("/updown");
+    if (href === "/millionea") return millioneaLit === "/millionea";
     /* ⚠️ THE `/results` BRANCH IS GONE BECAUSE THE SLOT IS. It is `More`'s now, and `moreActive`
        below already does prefix matching over every `More` row — a dead branch here would read
        like a slot that still exists. */
@@ -185,7 +206,7 @@ export function BottomNav({ isAuthed = false, proposalsState, inviteVisible = fa
   /** `More` reads as current when the page behind it is one of its own — and never while the coin is current. Its Wallet
    *  row (`/wallet`) is a prefix of the coin's `/wallet/deposit`, so on the coin's own page both lit: two "you are here"
    *  marks on one bar, which the opaque pill made plain (PHOSPHOR-MIGRATION W3's tile read; the double-lit was older). */
-  const moreActive = !coinOn && moreItems.some((m) => pathname.startsWith(m.href) || m.href === standIn);
+  const moreActive = !coinOn && moreItems.some((m) => pathname.startsWith(m.href) || m.href === moreCurrent);
 
   return (
     <nav
@@ -241,7 +262,7 @@ export function BottomNav({ isAuthed = false, proposalsState, inviteVisible = fa
                   The lifted deposit coin inherits the brand mark's four colours. */}
               <span className="kp-coin__needle" />
               <span className="kp-coin__face">
-                {walletHeld ? (
+                {moneyInClosed ? (
                   <span className="kp-coin__hub" />
                 ) : (
                   /* The deposit's own glyph, as on every other money-in door (R-LEXICON 5.3A; the audit of
@@ -268,7 +289,7 @@ export function BottomNav({ isAuthed = false, proposalsState, inviteVisible = fa
             label={t.common.more}
             variant="rail"
             active={moreActive}
-            current={standIn}
+            current={moreCurrent}
             cardSpacing
           />
         </li>
@@ -282,18 +303,26 @@ export function BottomNav({ isAuthed = false, proposalsState, inviteVisible = fa
  * markup existing twice — the rail is still ONE component, which `ACCEPTANCE` §C2 requires in so
  * many words: "the rail is `bottom-nav.tsx`, with no second nav component". Nothing about a slot
  * changed in the move; this is the same markup the map used before.
+ * ⭐ EVERY SLOT IS DRAWN ALIKE — Ali, 2026-10-23: "people are misunderstanding and thinking there is a certain
+ * notification there … please remove the golden dot, make it like other tabs please". Up & Down's 5px gilt
+ * "product-line dot" on its pip's corner read as an unread badge that never clears, so it is gone: Up & Down is the
+ * same slot, pip, glyph and label as Markets, in the same ink (DESIGN_AUTHORITY §K 3, "Every nav tab alike";
+ * `test:nav-tabs-alike`). A notification dot is a state and stays where it is one — the journey's Akaunti tab.
+ * ⭐ `ink` (Millionea's track, Ali 2026-10-22, §M8a item 11) — the slot stays its siblings' own, as the journey rail's
+ * Millionea tab does: the pip rests its glyph in gold (`kp-millionea-glyph`; lit, it takes the siblings' Fill on the pill)
+ * and the label's words wear Millionea's ink (`kp-millionea-ink`). Nothing else differs (globals.css, the ink's rules).
  */
 function RailDest({
   href,
   glyph,
   label,
-  accent,
+  ink,
   on,
 }: {
   href: string;
   glyph: GlyphKey;
   label: string;
-  accent?: boolean;
+  ink?: boolean;
   on: boolean;
 }) {
   return (
@@ -308,12 +337,10 @@ function RailDest({
         {/* The pip carries the current state in the platform's one selected language (PHOSPHOR-MIGRATION W3,
             R-INDICATOR 3B): the destination's Fill glyph on the opaque royal pill, the desktop bar's own. 24px
             glyphs (R-RAIL 4B) in a 56×32 pip grown to fit them. */}
-        <span className="kp-rail__pip">
+        <span className={ink ? "kp-rail__pip kp-millionea-glyph" : "kp-rail__pip"}>
           <NavGlyph glyph={glyph} on={on} s={24} />
-          {/* The product-line dot, same 5px gilt mark as the desktop nav. */}
-          {accent && <span className="kp-rail__dot" aria-hidden />}
         </span>
-        <span className="kp-rail__label">{label}</span>
+        <span className="kp-rail__label">{ink ? <span className="kp-millionea-ink">{label}</span> : label}</span>
       </Link>
     </li>
   );
