@@ -282,66 +282,66 @@ ok("2.17 · ⭐ the officer whose upheld ruling set a question's present result 
 // sealer for a sealed result, the officer who ruled for a result an upheld objection set. The sealer never corrects a ruled
 // result back; the two-officer rule holds for the ruling officer's correction as for any seal.
 console.log(`${LF}§2c · who corrects a ruled result: the officer who set it`);
-const [D1, D2] = [await W.user({ balance: 50_000 }), await W.user({ balance: 50_000 })];
-const D = await weekWith([[D1, [picks()]], [D2, [picks()]]]);
-const sealD = new Date(D.start + 9 * DAY);
+const [RH1, RH2] = [await W.user({ balance: 50_000 }), await W.user({ balance: 50_000 })];
+const RW = await weekWith([[RH1, [picks()]], [RH2, [picks()]]]);
+const sealRW = new Date(RW.start + 9 * DAY);
 // M1 and M2 are sealed under the two-officer rule and confirmed by COMP_B; the rest by the sealer alone.
-await seal(D.wk.id, [1, 2], sealD, {}, SEALER, true);
+await seal(RW.wk.id, [1, 2], sealRW, {}, SEALER, true);
 for (const s of [1, 2]) {
-  const c = await W.svc.confirmSeal({ weekId: D.wk.id, slot: s, officerId: COMP_B, ...(await reviewed(D.wk.id, s)), now: sealD });
+  const c = await W.svc.confirmSeal({ weekId: RW.wk.id, slot: s, officerId: COMP_B, ...(await reviewed(RW.wk.id, s)), now: sealRW });
   if (!c.ok) throw new Error(`confirm ${s}: ${c.error}`);
 }
-await seal(D.wk.id, SLOTS(3, 15), sealD);
-const inD = new Date(sealD.getTime() + HOUR);
-const atD = (m: number) => new Date(inD.getTime() + m * MIN);
-const correctD = async (slot: number, officerId: string, outcome: string, m: number) => W.svc.correctSeal({ weekId: D.wk.id, slot, outcome: outcome as any,
-  evidence: `Corrected against the official source for event ${slot}`, ...(await reviewed(D.wk.id, slot)), officerId, now: atD(m) });
-const finalOf = async (slot: number) => W.svc.gradable([await question(D.wk.id, slot)])[0].outcome;
-// M3 is REVERSED on D1's objection by COMP_A: its present result is COMP_A's ruling.
-const fd3 = await file(D1, D.wk.id, 3, atD(0));
-const rev3 = fd3.ok ? await rule(fd3.objectionId, COMP_A, "REVERSE", D.wk.id, 3, atD(1), { note: "The federation's sheet reads NO for event 3" }) : fd3;
-const bySealer3 = await correctD(3, SEALER, "YES", 2);
+await seal(RW.wk.id, SLOTS(3, 15), sealRW);
+const inRW = new Date(sealRW.getTime() + HOUR);
+const atRW = (m: number) => new Date(inRW.getTime() + m * MIN);
+const correctRW = async (slot: number, officerId: string, outcome: string, m: number) => W.svc.correctSeal({ weekId: RW.wk.id, slot, outcome: outcome as any,
+  evidence: `Corrected against the official source for event ${slot}`, ...(await reviewed(RW.wk.id, slot)), officerId, now: atRW(m) });
+const finalOf = async (slot: number) => W.svc.gradable([await question(RW.wk.id, slot)])[0].outcome;
+// M3 is REVERSED on RH1's objection by COMP_A: its present result is COMP_A's ruling.
+const fd3 = await file(RH1, RW.wk.id, 3, atRW(0));
+const rev3 = fd3.ok ? await rule(fd3.objectionId, COMP_A, "REVERSE", RW.wk.id, 3, atRW(1), { note: "The federation's sheet reads NO for event 3" }) : fd3;
+const bySealer3 = await correctRW(3, SEALER, "YES", 2);
 ok("2.18 · ⭐ the sealer never corrects a result an upheld objection set: refused, and the ruled result stands — they object through another officer, as anyone does",
-  rev3.ok && !bySealer3.ok && /set on an objection: only the officer who ruled it may correct it/.test(errOf(bySealer3)) && (await question(D.wk.id, 3)).outcome === "NO",
+  rev3.ok && !bySealer3.ok && /set on an objection: only the officer who ruled it may correct it/.test(errOf(bySealer3)) && (await question(RW.wk.id, 3)).outcome === "NO",
   J({ rev3, bySealer3 }));
-const byOther3 = await correctD(3, COMP_B, "YES", 3);
-const byRuler3 = await correctD(3, COMP_A, "YES", 3);
-const sealerAfter = await correctD(3, SEALER, "NO", 4);
+const byOther3 = await correctRW(3, COMP_B, "YES", 3);
+const byRuler3 = await correctRW(3, COMP_A, "YES", 3);
+const sealerAfter = await correctRW(3, SEALER, "NO", 4);
 ok("2.19 · ⭐ the officer who set it — the one who ruled — corrects it; no other officer does, and the sealer still not, its present record now that officer's correction",
-  !byOther3.ok && /set on an objection/.test(errOf(byOther3)) && byRuler3.ok && (await question(D.wk.id, 3)).outcome === "YES"
+  !byOther3.ok && /set on an objection/.test(errOf(byOther3)) && byRuler3.ok && (await question(RW.wk.id, 3)).outcome === "YES"
     && !sealerAfter.ok && /set on an objection/.test(errOf(sealerAfter)), J({ byOther3, byRuler3, sealerAfter }));
-// M2 (two officers) is REVERSED on D2's objection by COMP_A, who then corrects it: final only once a second officer confirms
+// M2 (two officers) is REVERSED on RH2's objection by COMP_A, who then corrects it: final only once a second officer confirms
 // — never the officer who made the correction, nor the sealer.
-const fd2 = await file(D2, D.wk.id, 2, atD(5));
-const rev2 = fd2.ok ? await rule(fd2.objectionId, COMP_A, "REVERSE", D.wk.id, 2, atD(6), { note: "The federation's sheet reads NO for event 2" }) : fd2;
-const fix2 = await correctD(2, COMP_A, "YES", 7);
+const fd2 = await file(RH2, RW.wk.id, 2, atRW(5));
+const rev2 = fd2.ok ? await rule(fd2.objectionId, COMP_A, "REVERSE", RW.wk.id, 2, atRW(6), { note: "The federation's sheet reads NO for event 2" }) : fd2;
+const fix2 = await correctRW(2, COMP_A, "YES", 7);
 const pending2 = await finalOf(2);
-const selfConfirm2 = await W.svc.confirmSeal({ weekId: D.wk.id, slot: 2, officerId: COMP_A, ...(await reviewed(D.wk.id, 2)), now: atD(8) });
-const sealerConfirm2 = await W.svc.confirmSeal({ weekId: D.wk.id, slot: 2, officerId: SEALER, ...(await reviewed(D.wk.id, 2)), now: atD(8) });
-const confirm2 = await W.svc.confirmSeal({ weekId: D.wk.id, slot: 2, officerId: COMP_B, ...(await reviewed(D.wk.id, 2)), now: atD(9) });
+const selfConfirm2 = await W.svc.confirmSeal({ weekId: RW.wk.id, slot: 2, officerId: COMP_A, ...(await reviewed(RW.wk.id, 2)), now: atRW(8) });
+const sealerConfirm2 = await W.svc.confirmSeal({ weekId: RW.wk.id, slot: 2, officerId: SEALER, ...(await reviewed(RW.wk.id, 2)), now: atRW(8) });
+const confirm2 = await W.svc.confirmSeal({ weekId: RW.wk.id, slot: 2, officerId: COMP_B, ...(await reviewed(RW.wk.id, 2)), now: atRW(9) });
 ok("2.20 · ⭐ the two-officer rule holds for the ruling officer's correction: it counts only once a second officer confirms it — never the officer who made it, nor the sealer",
   rev2.ok && fix2.ok && pending2 === null && !selfConfirm2.ok && /set this result cannot confirm it/.test(errOf(selfConfirm2))
     && !sealerConfirm2.ok && /sealed it cannot confirm it/.test(errOf(sealerConfirm2)) && confirm2.ok && (await finalOf(2)) === "YES",
   J({ rev2, fix2, pending2, selfConfirm2, sealerConfirm2, confirm2 }));
 // A plain seal is unchanged: its sealer corrects it, and no other officer does.
-const byOther9 = await correctD(9, COMP_A, "NO", 10);
-const bySealer9 = await correctD(9, SEALER, "NO", 10);
+const byOther9 = await correctRW(9, COMP_A, "NO", 10);
+const bySealer9 = await correctRW(9, SEALER, "NO", 10);
 ok("2.21 · control · a plain seal is as before: its sealer corrects it, and any other officer is refused in the seal's own words",
-  !byOther9.ok && /Only the officer who sealed a question may correct it/.test(errOf(byOther9)) && bySealer9.ok && (await question(D.wk.id, 9)).outcome === "NO",
+  !byOther9.ok && /Only the officer who sealed a question may correct it/.test(errOf(byOther9)) && bySealer9.ok && (await question(RW.wk.id, 9)).outcome === "NO",
   J({ byOther9, bySealer9 }));
 // ⛔ Fail closed: a ruled question whose present record cannot be read (its ruling's row was never written) is corrected by
 // nobody until it can be — never its sealer by default.
 const { audit: auditWrite } = await import("../../src/lib/server/audit.ts");
-const fd4 = await file(D1, D.wk.id, 4, atD(11));
+const fd4 = await file(RH1, RW.wk.id, 4, atRW(11));
 W.svc.__setMaswaliAuditWriterForTests(async (row: any) => (row.action === "maswali.objection.upheld" ? { recorded: false } : auditWrite(row)));
 let rev4: any;
-try { rev4 = fd4.ok ? await rule(fd4.objectionId, COMP_A, "REVERSE", D.wk.id, 4, atD(12), { note: "The federation's sheet reads NO for event 4" }) : fd4; }
+try { rev4 = fd4.ok ? await rule(fd4.objectionId, COMP_A, "REVERSE", RW.wk.id, 4, atRW(12), { note: "The federation's sheet reads NO for event 4" }) : fd4; }
 finally { W.svc.__setMaswaliAuditWriterForTests(null); }
-const bySealer4 = await correctD(4, SEALER, "YES", 13);
-const byRuler4 = await correctD(4, COMP_A, "YES", 13);
+const bySealer4 = await correctRW(4, SEALER, "YES", 13);
+const byRuler4 = await correctRW(4, COMP_A, "YES", 13);
 ok("2.22 · ⛔ fail closed: a ruled question whose present record cannot be read is corrected by nobody — never its sealer by default",
   rev4?.ok === true && rev4.recorded === false && !bySealer4.ok && /cannot be read/.test(errOf(bySealer4)) && !byRuler4.ok && /cannot be read/.test(errOf(byRuler4))
-    && (await question(D.wk.id, 4)).outcome === "NO", J({ rev4, bySealer4, byRuler4 }));
+    && (await question(RW.wk.id, 4)).outcome === "NO", J({ rev4, bySealer4, byRuler4 }));
 
 // ═══ §3 · VOID AND REINSTATE ════════════════════════════════════════════════════════════════════════════════════════
 console.log(`${LF}§3 · void and reinstate (MR-16, MR-17)`);
