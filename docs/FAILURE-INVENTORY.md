@@ -1047,6 +1047,20 @@ silently missing — 7/7 became 8/8 without a new mutation being written).
 A runner that ran `git checkout` would have hidden this defect *and* destroyed the session's own
 uncommitted work.
 
+### 8.4 · ⚪ `red:house-bot-c5` cannot be stopped mid-run without leaving its plant — recorded (S7-SHIP, 2026-10-23), no fix in this release
+
+The shared restore guard (`scripts/lib/red-restore-guard.mjs`) gives a red drive a safe stop: when the suite child it
+waits on ends with STATUS_CONTROL_C_EXIT (0xC000013A — a console Ctrl-C or Ctrl-Break, or that status set on purpose), the
+drive reads it (`isConsoleStop`), puts the planted file back and halts (`haltIfStopped`). `red:maswali-money-path` and
+`red:house-bot-console` are built that way. `red:house-bot-c5` is not: its `run()` never reads the child's status (a
+stopped child only reads as red, and the drive goes on to its next plant), and its SIGINT/SIGTERM handlers release the
+lock and exit WITHOUT restoring the file it planted. Measured on OMEGA (2026-10-23, in an S7-SHIP red-only tree): its suite
+shell ended with 0xC000013A, and c5 went on to its next two plants; its process tree ended, and the plant stayed on disk
+(`scripts/lib/house-bot-reports-cases.mts`) beside the drive's lock — both cleared from git by the batch around it, in a
+tree that held nothing else. The remedy is the money-path drive's pattern (`armRestoreGuard`, `isConsoleStop` read in
+`run()`, `haltIfStopped` between plants). A record only — nothing changed in this release (the lead, 2026-10-23). Until
+it lands, stop `red:house-bot-c5` only in a tree of its own, and restore that tree from git afterwards.
+
 ---
 
 ### §7.3 · WHAT THE LEXICON SWEEP MISSED — found by Ali's consultants, after it shipped
