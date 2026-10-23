@@ -202,8 +202,10 @@ for (const [k, n] of Object.entries(NAMES)) ok(n, verdict[k].ok, verdict[k].deta
 const steps = stepsOf(guide).length, labels = labelsOf(guide).length;
 console.log(`  (${steps} steps · ${labels} quoted labels over ${new Set(labelsOf(guide).map((l) => l.screen)).size} screens · ${linksOf(guide).length} link(s) · ${SOURCE_ACTIONS.size} audit actions)`);
 // Floors, at the counts a green run printed: the guide never quietly loses its steps or its quoted labels.
-ok("1 · floor: at least 27 steps in part 2", steps >= 27, `${steps}`);
-ok("2 · floor: at least 318 quoted labels", labels >= 318, `${labels}`);
+// S6-GUIDE 3 · 27 → 28 steps (S6-MONEY's payment of a winner who cannot sign in) and 318 → 353 labels: the counts the
+// run on the final guide printed.
+ok("1 · floor: at least 28 steps in part 2", steps >= 28, `${steps}`);
+ok("2 · floor: at least 353 quoted labels", labels >= 353, `${labels}`);
 
 if (PROVE_RED) {
   const plant = (name: string, check: string, from: RegExp | string, to: string) => {
