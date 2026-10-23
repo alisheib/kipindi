@@ -629,9 +629,11 @@ const PLANTS: Plant[] = [
     world: swap("doc", 'window.addEventListener("online",again)', "void 0"), needs: has("doc", 'window.addEventListener("online",again)') },
   { name: "the banner back as a fixed strip over the header", expect: /^8\.unpositioned /,
     world: swap("banner", '<NoticeBar tone="warning"', '<div className="fixed top-0 inset-x-0 z-[200]" /><NoticeBar tone="warning"'), needs: has("banner", '<NoticeBar tone="warning"') },
+  // ⚠️ RE-PINNED 2026-10-23 (MASWALI-BUILD S5-R3-FIX 7): the landmark's children pass through the loading drawings' words
+  // provider (`withGhostWords`, app-shell.tsx), so the plant's anchor names it; the rule it proves is unchanged.
   { name: "the banner mounted back after the page (its old place)", expect: /^8\.flow /,
-    world: (w) => ({ ...w, shell: w.shell.replace("<Suspense fallback={null}><OfflineBanner /></Suspense>", "").replace("<RouteTransition>{children}</RouteTransition>\n      </MainLandmark>", "<RouteTransition>{children}</RouteTransition>\n      </MainLandmark>\n      <Suspense fallback={null}><OfflineBanner /></Suspense>") }),
-    needs: has("shell", "<RouteTransition>{children}</RouteTransition>\n      </MainLandmark>") },
+    world: (w) => ({ ...w, shell: w.shell.replace("<Suspense fallback={null}><OfflineBanner /></Suspense>", "").replace("<RouteTransition>{withGhostWords(children)}</RouteTransition>\n      </MainLandmark>", "<RouteTransition>{withGhostWords(children)}</RouteTransition>\n      </MainLandmark>\n      <Suspense fallback={null}><OfflineBanner /></Suspense>") }),
+    needs: has("shell", "<RouteTransition>{withGhostWords(children)}</RouteTransition>\n      </MainLandmark>") },
   { name: "NoticeBar ignores `assertive` (the alert becomes a polite status)", expect: /^8\.noticebar /,
     world: swap("noticeBar", 'role={assertive ? "alert" : "status"}', 'role="status"'), needs: has("noticeBar", 'role={assertive ? "alert" : "status"}') },
   { name: "the last resort in English and Swahili only (no Chinese)", expect: /^9\.words /,

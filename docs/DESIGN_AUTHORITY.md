@@ -3441,6 +3441,23 @@ Millionea's own surfaces ONLY; everywhere else the laws above stand unchanged.*
     §M4a rule 5, open) — and lands where the page puts each band (`qa:maswali-register-shots`'
     how-ghost and register-ghosts hops, within 1px, each drawing read once the route's entrance — `.route-enter`, 10px
     rising over `--t-move` — has settled).
+    - ⭐ **A STATIC PARAGRAPH'S WORDS, SET UNSEEN — THE KIT'S ONE PART (the lead's ruling of 2026-10-23 on R3-FIX 6's open
+      point; MASWALI-BUILD S5-R3-FIX 7).** A drawing that models a STATIC paragraph — words the dictionary holds whole,
+      with no datum in them — sets that paragraph's own words through `GhostWords` (`maswali-ghost-words.tsx`), from a
+      recipe of its page's words module (`*-words.ts`, where the page builds the same words with the same functions): in
+      the page's own element (its type, measure and face), the words unseen (`visibility: hidden` — no ink, never found by
+      a search, never selected), under GhostLine's own band (0.85em, `--r-xs`, `--bg-overlay`) centred in every line box
+      they break into (`box-decoration-break: clone`). So it breaks where the page breaks, in any engine, by construction,
+      and a word's band looks like every other bar of the drawing. The drawing stays `aria-hidden` and never focusable.
+      ⛔ **Dark-safety as DOORS fixed it (D3, D6):** `GhostWords` sets words only inside the shell's `GhostWordsProvider`
+      (its own module of React alone, `maswali-ghost-words-shown.tsx`, since every page a visible reader opens loads it),
+      which `app-shell.tsx` hands only while the rollout's one per-request answer shows Millionea, around both of its page
+      slots and with no prop — a reader it is hidden from is served main's tree and payload, and every drawing draws plain
+      bars. No figure is handed: no read and no prop on every page for a loading step (the lead's ruling), so a paragraph
+      that holds a datum (How's price and floor, a week's facts and times) is data and keeps its measured table. A
+      drawing names no word itself, and a recipe only as `words={…}`.
+      `test:maswali-ui` 1.3 and 1.3a–1.3d (the part rendered by React's server renderer with and without its provider in
+      sw, en and zh), each with its plant.
 23. **A fact list spaces its marks as a typed " · " does (the lead's SEP ruling, 2026-10-22 — measured, no CSS change).**
     `MaswaliFacts` draws each fact as one wrap unit, its separators never opening or ending a line, at `--mln-sep`: 0.9em
     in the body face; inside a tracked mono eyebrow `calc(3ch + 0.42em)`, 3ch in Chinese (the hub's L1 rule,

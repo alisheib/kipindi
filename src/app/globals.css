@@ -4894,6 +4894,39 @@ html[data-sheet-open] .route-enter { animation: none; }
 .kp-mln-ghost .kp-mln-door__chev { color: transparent; }
 .kp-mln-ghost__bar { border-radius: var(--r-xs); background: var(--bg-overlay); -webkit-box-decoration-break: clone; box-decoration-break: clone; }
 .kp-mln-ghost__words, .kp-mln-ghost .kp-mln-fact::before { visibility: hidden; }
+/* ⭐ GHOST WORDS (MASWALI-BUILD S5-R3-FIX 7; the lead's ruling of 2026-10-23, DESIGN_AUTHORITY §M4a rule 5 and §M8a item
+   22): a static paragraph's own words in a Millionea loading drawing (`maswali-ghost-words.tsx`), set in the page's own
+   type and measure and UNSEEN (`__words`: `visibility: hidden` — no ink, never found by a search, never selected), inside a
+   run that draws the kit's line band — GhostLine's own: 0.85em tall, `--r-xs` round, `--bg-overlay` — centred in EVERY
+   line box the words break into (`box-decoration-break: clone`: each line's fragment paints its own). So the drawing
+   breaks where the page breaks, in any engine, by construction, and its bands look like every other bar in the drawing.
+   ⭐ WHY SIX LAYERS: an inline run's background box is its font's content area (~1.2em, which the doors' card ghost draws,
+   `.kp-mln-ghost__bar`), never the band — so the band is painted inside it: a strip the band's height, inset by the radius
+   at both ends; a strip the run's width, the radius short above and below; and a disc in each corner.
+   ⛔ NO PADDING, BORDER OR MARGIN ON THE RUN: under `clone` an inline one repeats at every line's two ends and moves the
+   breaks. A fact list keeps its marks' gaps, the marks unseen. `test:maswali-ui` 1.3 holds the part and its provider. */
+.kp-ghost-words {
+  --gw-h: 0.85em;
+  --gw-r: var(--r-xs);
+  --gw-ink: var(--bg-overlay);
+  --gw-disc: radial-gradient(circle closest-side, var(--gw-ink) calc(100% - 0.5px), transparent);
+  --gw-fill: linear-gradient(var(--gw-ink), var(--gw-ink));
+  --gw-top: calc(50% - (var(--gw-h) / 2 - var(--gw-r)));
+  --gw-bottom: calc(50% + (var(--gw-h) / 2 - var(--gw-r)));
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+  -webkit-user-select: none;
+  user-select: none;
+  background:
+    var(--gw-disc) left 0 top var(--gw-top) / calc(2 * var(--gw-r)) calc(2 * var(--gw-r)) no-repeat,
+    var(--gw-disc) right 0 top var(--gw-top) / calc(2 * var(--gw-r)) calc(2 * var(--gw-r)) no-repeat,
+    var(--gw-disc) left 0 top var(--gw-bottom) / calc(2 * var(--gw-r)) calc(2 * var(--gw-r)) no-repeat,
+    var(--gw-disc) right 0 top var(--gw-bottom) / calc(2 * var(--gw-r)) calc(2 * var(--gw-r)) no-repeat,
+    var(--gw-fill) center / calc(100% - 2 * var(--gw-r)) var(--gw-h) no-repeat,
+    var(--gw-fill) center / 100% calc(var(--gw-h) - 2 * var(--gw-r)) no-repeat;
+}
+.kp-ghost-words__words, .kp-ghost-words__facts > .kp-mln-fact::before { visibility: hidden; }
+.kp-ghost-words__facts { -webkit-user-select: none; user-select: none; }
 /* Below 768 the body is one fact per line: a fact too long for its line hangs its continuation one em in, so the line it
    runs on never reads as a fact of its own ("pamoja na kiasi kinachohamishwa kutoka" / "  Wiki 46 itakapokamilika"). */
 @media (max-width: 767.98px) { .kp-mln-door .kp-mln-facts--phone > .kp-mln-fact { padding-inline-start: 1em; text-indent: -1em; } }
