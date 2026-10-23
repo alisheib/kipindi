@@ -50,6 +50,8 @@ import { eatWeekNumberOf, formatEatDate, formatEatDateTime } from "@/lib/eat-day
 // (`millioneaTicketHref`, MB-95), says a void's ground in the closed list's own words (MASWALI_VOID_REASON_KEY), and prices a
 // win's withdrawal example with the fee's one function (`computeWithdrawalFee`, RULES §2.7).
 import { millioneaTicketHref } from "@/lib/position-permalink";
+// S6-NOTICES (2026-10-23) · the slip's own clock for its free-cancel line (pure and isomorphic: the slip and the server read it).
+import { eatClock } from "@/components/maswali/maswali-format";
 import { MASWALI_VOID_REASON_KEY, type MaswaliVoidReason } from "@/lib/maswali-void-reason";
 import { computeWithdrawalFee } from "@/lib/payout";
 
@@ -2736,7 +2738,8 @@ async function millioneaWordIn(key: string, vars: Record<string, string | number
  * The receipt of one purchase (MB-52: no side, no payout) — ONE notice for the whole purchase, which is one act and one
  * debit: the S5 slip's own result, its title in the slip's own words (`millionea.ticketCut` / `ticketsCut`: "Ticket bought",
  * "{n} tickets bought" — Ali's ruling 7 of 2026-10-21; "Tiketi imekatwa"; "已出票"), and "{price} (main balance) · Free cancel
- * until {time}".
+ * until {time} EAT" — the free cancel's line the slip's own too (`millionea.cancelFreeUntil`, its clock by the slip's own
+ * `eatClock`), so the zone is named in every language exactly as the slip names it.
  */
 export async function notifyMillioneaTicketsCut(userId: string, opts: {
   weekCode: string;
@@ -2754,7 +2757,9 @@ export async function notifyMillioneaTicketsCut(userId: string, opts: {
   const first = opts.serials[0] ?? "";
   const money = formatTzs(opts.totalTzs);
   const what = n === 1 ? { en: first, sw: first, zh: first } : { en: `${n} tickets`, sw: `Tiketi ${n}`, zh: `${n} 张彩票` };
-  const until = opts.freeCancelUntil ? await instantIn(opts.freeCancelUntil, formatEatDateTime, "—") : null;
+  // S6-NOTICES (2026-10-23, the lead) · the free cancel's line is the slip's own key and clock — "Free cancel until 18:05 EAT",
+  // "Kughairi bila malipo hadi 18:05 EAT", "免费取消至 18:05 EAT" — never a second copy without its zone.
+  const freeLine = opts.freeCancelUntil ? await millioneaWordIn("cancelFreeUntil", { time: eatClock(Date.parse(opts.freeCancelUntil)) }) : null;
   // S6-NOTICES (2026-10-23, FLOW's finding) · the title reads the slip's own keys — never a copy of the word.
   const bought = await millioneaWordIn(n === 1 ? "ticketCut" : "ticketsCut", { n });
   return millioneaNotify({
@@ -2763,9 +2768,9 @@ export async function notifyMillioneaTicketsCut(userId: string, opts: {
     titleEn: bought ? `${w.en} · ${bought.en}` : w.en,
     titleSw: bought ? `${w.sw} · ${bought.sw}` : w.sw,
     titleZh: bought ? `${w.zh} · ${bought.zh}` : w.zh,
-    bodyEn: `${what.en} · ${money} (main balance)${until ? ` · Free cancel until ${until.en}` : ""}.`,
-    bodySw: `${what.sw} · ${money} (salio kuu)${until ? ` · Kughairi bila malipo hadi ${until.sw}` : ""}.`,
-    bodyZh: `${what.zh} · ${money}（主余额）${until ? ` · 免费取消至 ${until.zh}` : ""}。`,
+    bodyEn: `${what.en} · ${money} (main balance)${freeLine ? ` · ${freeLine.en}` : ""}.`,
+    bodySw: `${what.sw} · ${money} (salio kuu)${freeLine ? ` · ${freeLine.sw}` : ""}.`,
+    bodyZh: `${what.zh} · ${money}（主余额）${freeLine ? ` · ${freeLine.zh}` : ""}。`,
     href: millioneaNoticeHref({ notice: "receipt", serial: first, positionId: opts.firstPositionId }),
   });
 }
@@ -2844,6 +2849,9 @@ export async function notifyMillioneaQuestionVoided(userId: string, opts: {
  * A sealed question corrected by its sealer (OD-09, MB-24), to each holder: which question changed and — for a void
  * corrected to a result — that it counts again. ⛔ It never states the answer (MB-52's rule for a ticket's notices): the
  * ticket page shows the corrected record, and the objection window runs from it.
+ * ⭐ S6-NOTICES (2026-10-23) · the same notice for a result an UPHELD OBJECTION changed (`cause: "objection"`, REVERSE or
+ * REINSTATE; a VOID is told as the void notice): it says an objection was upheld, never "the correction", and names the
+ * window only when that ruling restarted it — a second upheld change keeps the window it has (MR-16).
  */
 export function notifyMillioneaQuestionCorrected(userId: string, opts: {
   weekCode: string; role: "MAIN" | "RESERVE"; ordinal: number; slot: number;
@@ -2851,25 +2859,43 @@ export function notifyMillioneaQuestionCorrected(userId: string, opts: {
   sealedAt: string;
   /** The question was void and now has a result. */
   reinstated: boolean;
+  /** What changed it: its sealer's correction (the default), or an upheld objection's ruling. */
+  cause?: "correction" | "objection";
+  /** An objection's ruling only: whether it restarted the objection window. */
+  windowRestarted?: boolean;
 }) {
   const w = millioneaWeekIn(opts.weekCode);
   const main = opts.role === "MAIN";
   const n = opts.ordinal;
+  const window = opts.windowRestarted
+    ? { en: " The objection window runs again from the corrected record.", sw: " Dirisha la pingamizi linahesabiwa upya kuanzia rekodi iliyosahihishwa.", zh: "异议窗口自更正后的记录重新起算。" }
+    : { en: "", sw: "", zh: "" };
+  const body: LocalizedText = opts.cause === "objection" ? (opts.reinstated ? {
+    en: `It is no longer void: an objection was upheld, and it counts again with its result. Your ticket shows it.${window.en}`,
+    sw: `Si batili tena: pingamizi limekubaliwa, na ${main ? "linahesabiwa" : "inahesabiwa"} tena pamoja na matokeo yake. Tiketi yako inaonyesha matokeo hayo.${window.sw}`,
+    zh: `该题不再作废：异议获支持，重新计入并有结果。您的彩票显示该结果。${window.zh}`,
+  } : {
+    en: `Its result was corrected after an objection was upheld. Your ticket shows the new result.${window.en}`,
+    sw: `Matokeo yake yamesahihishwa baada ya pingamizi kukubaliwa. Tiketi yako inaonyesha matokeo mapya.${window.sw}`,
+    zh: `异议获支持后，该题结果已更正。您的彩票显示新结果。${window.zh}`,
+  }) : (opts.reinstated ? {
+    en: "It is no longer void: the correction gave it a result. Your ticket shows it, and the objection window runs from the corrected record.",
+    sw: "Si batili tena: marekebisho yameipa matokeo. Tiketi yako inaonyesha, na muda wa pingamizi unahesabiwa kuanzia rekodi iliyosahihishwa.",
+    zh: "该题不再作废：更正后已有结果。您的彩票会显示，异议期自更正后的记录起算。",
+  } : {
+    en: "Its sealed result was corrected. Your ticket shows the new result, and the objection window runs from the corrected record.",
+    sw: "Matokeo yake yaliyowekwa muhuri yamesahihishwa. Tiketi yako inaonyesha matokeo mapya, na muda wa pingamizi unahesabiwa kuanzia rekodi iliyosahihishwa.",
+    zh: "该题的封存结果已更正。您的彩票显示新结果，异议期自更正后的记录起算。",
+  });
   return millioneaNotify({
     userId,
     kind: "VERDICT",
     titleEn: main ? `${w.en} · Question ${n} corrected` : `${w.en} · Reserve A${n} corrected`,
     titleSw: main ? `${w.sw} · Swali ${n} limesahihishwa` : `${w.sw} · Akiba A${n} imesahihishwa`,
     titleZh: main ? `${w.zh} · 第 ${n} 题已更正` : `${w.zh} · 备选题 A${n} 已更正`,
-    bodyEn: opts.reinstated
-      ? "It is no longer void: the correction gave it a result. Your ticket shows it, and the objection window runs from the corrected record."
-      : "Its sealed result was corrected. Your ticket shows the new result, and the objection window runs from the corrected record.",
-    bodySw: opts.reinstated
-      ? "Si batili tena: marekebisho yameipa matokeo. Tiketi yako inaonyesha, na muda wa pingamizi unahesabiwa kuanzia rekodi iliyosahihishwa."
-      : "Matokeo yake yaliyowekwa muhuri yamesahihishwa. Tiketi yako inaonyesha matokeo mapya, na muda wa pingamizi unahesabiwa kuanzia rekodi iliyosahihishwa.",
-    bodyZh: opts.reinstated
-      ? "该题不再作废：更正后已有结果。您的彩票会显示，异议期自更正后的记录起算。"
-      : "该题的封存结果已更正。您的彩票显示新结果，异议期自更正后的记录起算。",
+    bodyEn: body.en,
+    bodySw: body.sw,
+    bodyZh: body.zh,
     href: millioneaNoticeHref({ notice: "correction", weekCode: opts.weekCode, slot: opts.slot, sealedAt: opts.sealedAt }),
   });
 }

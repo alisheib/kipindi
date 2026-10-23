@@ -97,6 +97,8 @@ const LETTER_ACTION = "maswali.notice.letter";
 const SEALED_ACTION = "maswali.question.sealed";
 const CORRECTED_ACTION = "maswali.question.corrected";
 const CONFIRMED_ACTION = "maswali.question.confirmed";
+/** An upheld objection's ruling re-seals its question (`decideMillioneaObjection`, maswali-objections.ts). */
+const UPHELD_ACTION = "maswali.objection.upheld";
 const CLOSE_MOVED_ACTION = "maswali.week.close_moved";
 
 /** The winner SMS refusals that can never clear as things stand: counted with their reason, and never retried. */
@@ -816,24 +818,33 @@ export async function closeUnresolvedLetters(
 
 // ── A QUESTION'S OWN SEAL RECORDS (round 3, A6) ───────────────────────────────────────────────────────────
 
-/** One of a question's seal records: its seal, a correction or a confirmation, with the instant of the record it is about. */
-type SealStep = { action: string; outcome: MaswaliOutcome | null; sealedAt: string | null };
+/**
+ * One of a question's seal records: its seal, a correction, a confirmation or an upheld objection's ruling, with the instant
+ * of the record it is about — a ruling's also names its filer and whether it restarted the window (S6-NOTICES).
+ */
+type SealStep = { action: string; outcome: MaswaliOutcome | null; sealedAt: string | null; filer?: string; windowRestarted?: boolean };
 
 const outcomeOf = (v: unknown): MaswaliOutcome | null => (v === "YES" || v === "NO" || v === "VOID" ? v : null);
 
 /**
- * A question's own seal records, oldest first — its seal, each correction, each confirmation — this process's own writes
- * flushed first (the trigger ran here). Null when they cannot be read: an ALARM, and the caller falls back.
+ * A question's own seal records, oldest first — its seal, each correction, each confirmation, each upheld objection's ruling
+ * — this process's own writes flushed first (the trigger ran here). Null when they cannot be read: an ALARM, and the caller
+ * falls back. ⭐ S6-NOTICES (2026-10-23) · a ruling re-seals the question as a correction does, so what holders last had as
+ * final, and when a question became void, are read through it.
  */
 async function sealSteps(questionId: string): Promise<SealStep[] | null> {
   try {
     await auditFlush();
     const rows = await getAuditForTargetsDurable({
-      targetType: "MaswaliQuestion", targetIds: [questionId], actions: [SEALED_ACTION, CORRECTED_ACTION, CONFIRMED_ACTION], sinceIso: EPOCH, limit: 500,
+      targetType: "MaswaliQuestion", targetIds: [questionId], actions: [SEALED_ACTION, CORRECTED_ACTION, CONFIRMED_ACTION, UPHELD_ACTION], sinceIso: EPOCH, limit: 500,
     });
     return [...rows.entries].reverse().map((e) => {
       const at = e.payload?.sealedAt;
-      return { action: e.action, outcome: outcomeOf(e.action === CORRECTED_ACTION ? e.payload?.to : e.payload?.outcome), sealedAt: typeof at === "string" ? at : null };
+      const changed = e.action === CORRECTED_ACTION || e.action === UPHELD_ACTION;
+      const step: SealStep = { action: e.action, outcome: outcomeOf(changed ? e.payload?.to : e.payload?.outcome), sealedAt: typeof at === "string" ? at : null };
+      const filer = e.payload?.objectorId;
+      if (e.action === UPHELD_ACTION && typeof filer === "string") { step.filer = filer; step.windowRestarted = e.payload?.windowRestarted === true; }
+      return step;
     });
   } catch (err) {
     console.error("[maswali-notify] ALARM: a question's seal records could not be read:", (err as Error)?.message ?? err);
@@ -843,8 +854,9 @@ async function sealSteps(questionId: string): Promise<SealStep[] | null> {
 
 /**
  * The outcome holders last had as FINAL before the question's current record — the seal or correction that became final,
- * at once or on its second officer's confirmation. Null when no earlier record was ever final: a correction made before a
- * confirmation corrects nothing a holder was told (round 3, A6).
+ * at once or on its second officer's confirmation, or an upheld objection's ruling (final at once: one officer rules it, and
+ * no second confirms it — MR-16). Null when no earlier record was ever final: a correction made before a confirmation
+ * corrects nothing a holder was told (round 3, A6).
  */
 function lastFinalBefore(steps: readonly SealStep[], q: StoredQuestion): MaswaliOutcome | null {
   const twoOfficer = q.twoOfficerAtStage1 === true;
@@ -853,7 +865,7 @@ function lastFinalBefore(steps: readonly SealStep[], q: StoredQuestion): Maswali
   for (const s of steps) {
     if (s.action === CONFIRMED_ACTION) { finals.push({ outcome: current.outcome, sealedAt: s.sealedAt ?? current.sealedAt }); continue; }
     current = { outcome: s.outcome, sealedAt: s.sealedAt };
-    if (!twoOfficer) finals.push(current);
+    if (!twoOfficer || s.action === UPHELD_ACTION) finals.push(current);
   }
   const earlier = finals.filter((f) => f.sealedAt !== q.sealedAt);
   return earlier.length > 0 ? earlier[earlier.length - 1].outcome : null;
@@ -875,6 +887,16 @@ function becameVoidAt(steps: readonly SealStep[] | null, q: StoredQuestion): str
     current = s.outcome;
   }
   return current === "VOID" && since ? since : q.sealedAt;
+}
+
+/**
+ * ⭐ S6-NOTICES (2026-10-23) · the upheld objection's ruling that wrote the record at `sealedAt`, if one did: its filer — told
+ * by the decided notice, never by the holders' — and whether it restarted the window. Any run reads the same facts: the
+ * ruling's own, a later catch-up, a retry.
+ */
+function rulingAt(steps: readonly SealStep[] | null, sealedAt: string | null): { filer: string; windowRestarted: boolean } | null {
+  const s = sealedAt ? steps?.find((x) => x.action === UPHELD_ACTION && x.sealedAt === sealedAt) : undefined;
+  return s?.filer ? { filer: s.filer, windowRestarted: s.windowRestarted === true } : null;
 }
 
 // ── THE TRIGGERS ─────────────────────────────────────────────────────────────────────────────────────────
@@ -1045,15 +1067,21 @@ const gradingWeek = (w: StoredWeek | null): w is StoredWeek =>
  * place the notice promises, and the week void's own notice, with its refund, tells the end. A void muted then is told by
  * the catch-up once a correction makes the week gradable again.
  */
-async function tellVoid(r: NoticeRun, week: StoredWeek, questions: readonly StoredQuestion[], q: StoredQuestion): Promise<void> {
+async function tellVoid(r: NoticeRun, week: StoredWeek, questions: readonly StoredQuestion[], q: StoredQuestion, except?: string): Promise<void> {
   const graded = gradable([...questions]);
   const at = questions.indexOf(q);
   const ground = q.voidReason ?? null;
   if (at < 0 || graded[at]?.outcome !== "VOID" || !isMaswaliVoidReason(ground) || !q.sealedAt) return;
   if (weekVoidCertain(graded)) return;
-  const voidedAt = becameVoidAt(await sealSteps(q.id), q);
+  const steps = await sealSteps(q.id);
+  const voidedAt = becameVoidAt(steps, q);
   if (!voidedAt) return;
+  // ⭐ S6-NOTICES (2026-10-23) · a void an upheld objection ruled (keyed, like any void, by the record that made it void) is
+  // never told to its filer — the decided notice says it — whoever runs this: the ruling hands its filer (`except`), and
+  // the records name it to any later run.
+  const filer = except ?? rulingAt(steps, voidedAt)?.filer;
   for (const [userId] of byHolder(await ticketStore.listForWeek(week.id, { status: "LIVE" }))) {
+    if (userId === filer) continue;
     await once(r, userId, { notice: "void", weekCode: week.code, slot: q.slot, sealedAt: voidedAt }, () => notifyMillioneaQuestionVoided(userId, {
       weekCode: week.code, role: q.role, ordinal: q.ordinal, slot: q.slot, ground, sealedAt: voidedAt,
     }));
@@ -1082,8 +1110,15 @@ export function noticeQuestionVoided(weekId: string, slot: number): Promise<Noti
  * none means nothing they were told is corrected). A correction TO a void is told as that void; a void corrected to a
  * result is told as reinstated; YES↔NO is told as corrected. Then the CATCH-UP: every final void of the week not yet told
  * — one muted while the week's void was certain — is told once the week can grade again.
+ * ⭐ S6-NOTICES (2026-10-23) · AN UPHELD OBJECTION'S RULING IS TOLD THE SAME WAY (`objection`, from
+ * `decideMillioneaObjection`, which hands the outcome it ruled from and its record's instant): a REVERSE or a REINSTATE as
+ * this correction notice in the objection's words, a VOID as the void notice — to every holder of a live ticket but its
+ * filer, whose decided notice already says it; once per holder per ruling (its record's instant keys it). A REJECT
+ * launches nothing. The ruling's records say the same to any later run; and the facts it hands serve only while its record
+ * is the question's present one — a later record is told from the records, as its own run tells it.
  */
-export function noticeQuestionCorrected(weekId: string, slot: number, from?: MaswaliOutcome | null, at?: NoticeCallSite): Promise<NoticeRun> {
+export function noticeQuestionCorrected(weekId: string, slot: number, from?: MaswaliOutcome | null, at?: NoticeCallSite,
+  objection?: { filer: string; windowRestarted: boolean; sealedAt: string }): Promise<NoticeRun> {
   return launch("correction", weekId, async (r) => {
     const week = await weekStore.get(weekId);
     if (!gradingWeek(week)) return;
@@ -1093,21 +1128,30 @@ export function noticeQuestionCorrected(weekId: string, slot: number, from?: Mas
     const q = i >= 0 ? questions[i] : null;
     if (!q) return;
     const final = graded[i]?.outcome ?? null;
-    let before: MaswaliOutcome | null | undefined = from;
+    const handed = objection && objection.sealedAt === q.sealedAt ? objection : undefined;
+    let before: MaswaliOutcome | null | undefined = objection && !handed ? undefined : from;
+    let steps: SealStep[] | null | undefined;
     if (before === undefined) {
-      const steps = await sealSteps(q.id);
+      steps = await sealSteps(q.id);
       before = steps === null ? undefined : lastFinalBefore(steps, q);
     }
     if (final !== null && final !== "VOID" && before !== undefined && before !== null && before !== final && q.sealedAt) {
       const sealedAt = q.sealedAt;
+      const ruling = handed ?? rulingAt(steps === undefined ? await sealSteps(q.id) : steps, sealedAt);
       for (const [userId] of byHolder(await ticketStore.listForWeek(week.id, { status: "LIVE" }))) {
+        if (userId === ruling?.filer) continue;
         await once(r, userId, { notice: "correction", weekCode: week.code, slot: q.slot, sealedAt }, () => notifyMillioneaQuestionCorrected(userId, {
           weekCode: week.code, role: q.role, ordinal: q.ordinal, slot: q.slot, sealedAt, reinstated: before === "VOID",
+          ...(ruling ? { cause: "objection" as const, windowRestarted: ruling.windowRestarted } : {}),
         }));
       }
     }
-    // The catch-up, this question's own void among them (a correction TO a void is told here, keyed by when it became void).
-    for (const v of questions) if (gradable([v])[0]?.outcome === "VOID") await tellVoid(r, week, questions, v);
+    // The catch-up, this question's own void among them (a correction TO a void is told here, keyed by when it became void;
+    // an objection's VOID likewise, never to its filer).
+    for (const v of questions) {
+      if (gradable([v])[0]?.outcome !== "VOID") continue;
+      await tellVoid(r, week, questions, v, v === q ? handed?.filer : undefined);
+    }
   }, at);
 }
 

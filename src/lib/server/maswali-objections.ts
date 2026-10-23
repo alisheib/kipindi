@@ -25,7 +25,11 @@
  * ⭐ NOTICES (S6-NOTICES, 2026-10-23 — the registry's `objectionFiled` and `objectionDecided`, comms-registry.ts): once a
  *    filing commits, the console's officers are told the week's payout waits (`noticeObjectionFiled`); once a ruling commits,
  *    the one holder who filed is told it, with the officer's note (`noticeObjectionDecided`) — each the Yes/No objection's own
- *    notice for a Millionea question, sent by `maswali-notify.ts`. A refused filing or ruling sends nothing.
+ *    notice for a Millionea question, sent by `maswali-notify.ts`. An upheld change (REVERSE, VOID, REINSTATE) also reaches
+ *    every other holder of a live ticket as the seal correction's own notice — a VOID as the void notice — once per holder
+ *    per ruling (`noticeQuestionCorrected`, handed the outcome ruled from and the new record's instant, which its audit row
+ *    names too: the ruling is one of the question's own seal records, so a later run reads it). A refused filing or ruling
+ *    sends nothing; a REJECT changes no result, so it tells its filer only.
  */
 import { audit } from "./audit";
 import { randomId } from "./crypto";
@@ -233,7 +237,10 @@ export async function decideMillioneaObjection(input: {
     return refuse("Only the Owner or a Compliance officer rules on an objection.");
   }
 
-  type Out = { ok: true; changed: boolean; restarted: boolean; code: string; owed: OwedAudit[] } | Refused;
+  /** `ruled`: an upheld change's facts for the holders' notice (S6-NOTICES) — its week, question, filer, the outcome it ruled
+   *  from and its record's instant; null for a REJECT, which changes no result. */
+  type Ruled = { weekId: string; slot: number; from: MaswaliOutcome; filer: string; sealedAt: string } | null;
+  type Out = { ok: true; changed: boolean; restarted: boolean; code: string; owed: OwedAudit[]; ruled: Ruled } | Refused;
   const res = await withLock(MASWALI_CHAIN_LOCK, async (tx): Promise<Out> => {
     const o = await db.objection.findById(input.objectionId);
     if (!o) return refuse("Objection not found.");
@@ -295,7 +302,7 @@ export async function decideMillioneaObjection(input: {
     }, tx ?? undefined);
     if (!won) return refuse("This objection was decided a moment ago by another officer.");
     if (next === null) {
-      return { ok: true, changed: false, restarted: false, code: week.code, owed: [{
+      return { ok: true, changed: false, restarted: false, code: week.code, ruled: null, owed: [{
         category: "COMPLIANCE", action: "maswali.objection.rejected", actorId: input.officerId, targetType: "MaswaliQuestion", targetId: q.id,
         payload: { objectionId: o.id, objectorId: o.userId, week: week.code, slot: slotLabel(q.slot), reason: o.reason, note, effect: "the result stands" },
       }] };
@@ -316,10 +323,11 @@ export async function decideMillioneaObjection(input: {
     const g = await recomputeGateLocked(week.id, nowMs, tx ?? undefined);
     if (!g.ok) throw new Error(g.error);
     if (changed) afterCommit(tx, () => invalidateMillioneaRegisterWeek(week.code));
-    return { ok: true, changed, restarted, code: week.code, owed: [
+    return { ok: true, changed, restarted, code: week.code, ruled: { weekId: week.id, slot: q.slot, from: q.outcome, filer: o.userId, sealedAt: revisedAt }, owed: [
       { category: "COMPLIANCE", action: "maswali.objection.upheld", actorId: input.officerId, targetType: "MaswaliQuestion", targetId: q.id,
         payload: { objectionId: o.id, objectorId: o.userId, week: week.code, slot: slotLabel(q.slot), reason: o.reason, remedy: input.ruling,
-          from: q.outcome, to: next, voidReason: next === "VOID" ? voidReason : null, note, gradedSetChanged: changed, windowRestarted: restarted } },
+          from: q.outcome, to: next, voidReason: next === "VOID" ? voidReason : null, note, gradedSetChanged: changed, windowRestarted: restarted,
+          sealedAt: revisedAt } },
       ...g.owed,
     ] };
   });
@@ -327,6 +335,14 @@ export async function decideMillioneaObjection(input: {
   const recorded = await recordOwed(res.owed);
   // S6-NOTICES (2026-10-23) · the filer's notice, once the ruling has committed — never for a refused or failed one.
   void import("./maswali-notify").then((m) => m.noticeObjectionDecided(input.objectionId)).catch(() => {});
+  // S6-NOTICES (2026-10-23, the lead) · an upheld change reaches every other holder as the seal correction's own notice (a
+  // VOID as the void notice), once per holder per ruling — never on a REJECT, never its filer twice.
+  const ruled = res.ruled;
+  const restarted = res.restarted;
+  if (ruled) {
+    void import("./maswali-notify").then((m) => m.noticeQuestionCorrected(ruled.weekId, ruled.slot, ruled.from, undefined,
+      { filer: ruled.filer, windowRestarted: restarted, sealedAt: ruled.sealedAt })).catch(() => {});
+  }
   return { ok: true, changed: res.changed, restarted: res.restarted, recorded };
 }
 

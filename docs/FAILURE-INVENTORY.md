@@ -1310,6 +1310,16 @@ OB.0 (now a passing case) and §4b OM with the money-path plants (S7-OB-…); `l
   it, once (its key is the filer's ticket and the question), with the ruling and the officer's note, in the bell only, as
   the platform's notice is (no letter). Proof: `test:maswali-notify` §10b (both stores) and the plants (NOB1)–(NOB6) of
   `red:maswali-money-path`.
+- **An upheld change, told to every holder** (S6-NOTICES, the lead, 2026-10-23): a REVERSE, VOID or REINSTATE changes the
+  question's result for every holder, and only its filer was told. Every other holder of a live ticket is now told, once
+  per ruling (the instant of its record keys it), after the commit and never on a REJECT (registry row `objectionUpheld`):
+  a REVERSE or a REINSTATE as the seal correction's own notice, one emitter (`notifyMillioneaQuestionCorrected`), in the
+  objection's words ("…corrected after an objection was upheld"; the window sentence only when that ruling restarted the
+  window, MR-16); a VOID as the void notice. Never to its filer, whose decided notice says it. The ruling's record is one of
+  the question's own seal records, so any later run reads it: a void told again by a catch-up never reaches its filer, and a
+  later correction is read from the result the ruling set — final at once, also while two officers are required (without
+  it, a sealer's correction back to the first result would be told to nobody, though every holder had been told the ruled
+  one). Proof: `test:maswali-notify` 10b.8b–8h and the plants (NOB9)–(NOB17).
 
 *Recorded 2026-10-18:* MR-16 promised a per-question objection in Millionea's own window, and no objection door existed for a
 Millionea week; the settlement's refusal while any objection was open (OB.1–OB.5) and the sealer's own correction held.
@@ -1614,7 +1624,9 @@ cut", while its comment claimed to mirror the slip. THE RULE: the bell's title r
 languages (`millioneaWordIn`, notification-service.ts) — one wording, one home; Swahili "Tiketi imekatwa" and Chinese
 "已出票" as ruled. No other player-readable English "ticket(s) cut" exists (letters, SMS, receipts, OG cards, the bell:
 read 2026-10-23). Held by `test:maswali-notify` 10b.10 (the rendered titles, one ticket and two, en/sw/zh) and the plant
-(NOB7) of `red:maswali-money-path`.
+(NOB7) of `red:maswali-money-path`. ⭐ And its free cancel (the lead, 2026-10-23): the bell said "Free cancel until {time}"
+with no zone where the slip says "… EAT"; it now prints the slip's own line, `millionea.cancelFreeUntil`, with the slip's
+own clock (`eatClock`), in all three languages. Held by 10b.10b and the plant (NOB8).
 
 ## §9c · MASWALI MILLIONEA — the admin console, walked and made plain (S6, 2026-10-22)
 

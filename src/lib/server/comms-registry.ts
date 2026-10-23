@@ -511,7 +511,7 @@ export function channelAllowed(kind: NotificationKind, opts: { houseOnly?: boole
 export type MillioneaNoticeSpec = {
   /** The notice, as `maswali-notify.ts` names its run. */
   notice: "receipt" | "cancel" | "closed" | "closeMoved" | "void" | "correction" | "won" | "wonHeld" | "notWon" | "refund"
-    | "objectionDecided" | "objectionFiled";
+    | "objectionDecided" | "objectionFiled" | "objectionUpheld";
   /** The week state(s) it belongs to. */
   states: readonly ("OPEN" | "CLOSED" | "RESOLVING" | "SETTLED" | "VOIDED")[];
   /** Its bell emitter (`NOTIFICATION_EMITTERS`). */
@@ -544,4 +544,7 @@ export const MILLIONEA_NOTICES: readonly MillioneaNoticeSpec[] = [
   // being decided (MR-16): the bell only, as the Yes/No objection's two notices are (no letter, no SMS).
   { notice: "objectionDecided", states: ["RESOLVING"],         emitter: "notifyMillioneaObjectionDecided", template: null,                     sms: false, to: "filer",    trigger: "src/lib/server/maswali-objections.ts", sender: "noticeObjectionDecided" },
   { notice: "objectionFiled",   states: ["RESOLVING"],         emitter: "notifyAdminMillioneaObjectionFiled", template: null,                  sms: false, to: "officers", trigger: "src/lib/server/maswali-objections.ts", sender: "noticeObjectionFiled" },
+  // …and an UPHELD change (REVERSE, VOID, REINSTATE), told to every holder of a live ticket but its filer as the seal
+  // correction's own notice — one emitter, in the objection's words (`cause: "objection"`) — a VOID as the void notice.
+  { notice: "objectionUpheld",  states: ["RESOLVING"],         emitter: "notifyMillioneaQuestionCorrected", template: null,                    sms: false, to: "holders",  trigger: "src/lib/server/maswali-objections.ts", sender: "noticeQuestionCorrected" },
 ];
