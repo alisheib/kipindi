@@ -63,7 +63,8 @@ export function hubAside(twoUp: boolean, strip: boolean): string {
  * ⭐ S5-R2-HUB 26 · THE PAIR STANDS ON AN OPAQUE GROUND, EDGED BY ONE HAIRLINE (`kp-mln-pinned`, globals.css;
  * `HubPinned`, hub-pinned.tsx; the lead's design call). The pair's ground is the page's own, with no fade, across its
  * whole box. It runs on past the door by the column's own gap (`pb-4`, 20px in this scale), so nothing that reads on
- * shows through the pair. While the pair stands pinned, its lower edge is one hairline, the kit's divider. The foot is
+ * shows through the pair. It also runs 2px under the bar and 1px past each side (HUB 28), which closes the device-pixel
+ * seams there. While the pair stands pinned, its lower edge is one hairline, the kit's divider. The foot is
  * given back at rest (`-mb-4`), so the block under the pair stands the column's own gap below it. (It stood 36px, `pb-3`'s
  * 16 plus the gap's 20: the one uneven gap of the column.)
  */

@@ -133,14 +133,12 @@ export const U43_REVIEWED_BLOBS: Readonly<Record<string, string>> = {
   // planted classic edit) reported; inside them one key each, `walletFrozen` (the lead's three sentences, the English
   // apostrophe the dictionary's typographic one), and one two-line comment in the English block. Its diff against
   // 1341177e5 is those 5 added lines; no line removed, no other line changed — `error.failWalletFrozen` stays as it was.
-  // D19a RE-PINNED AT THE POLISH RELEASE'S SECOND MERGE (the lead, 2026-10-23): the polish head's pin cd82baeea (FLOW 14's
-  // `cancelWalletFrozen` and HUB-2B's ten hub keys over 989199be6) and HUB 26's pin da3c40599 (the zh final rule's
-  // clause order, the lead's approval of 2026-10-23: "最后一周：若无彩票答对 10/10，奖池不进行保底补足，由本周得分最高的彩票平分" —
-  // the same meaning, the same characters plus one comma) both changed it; the merged dictionary holds both. The
-  // strip-mln check against main 3ec32bb72's dictionary: outside the three `millionea` blocks byte-identical, its control
-  // (a planted classic edit) reported; inside them eleven keys in en and sw and twelve in zh — HUB-2B's ten, FLOW 14's
-  // one, and in zh the final rule.
-  "src/lib/i18n-dict.ts": "2e6a971b66a73c0c889ab1aba6a821037c979cdb",
+  // D19a RE-PINNED AT THE POLISH RELEASE'S THIRD MERGE (the lead, 2026-10-23): HUB 28 restored the zh final rule to the
+  // rules page's own sentence (CI's test:maswali-fairness L.13b: the hub and the rules page say it character for character),
+  // so the merged dictionary is again the first merge's — HUB-2B's ten keys and FLOW 14's `cancelWalletFrozen` over
+  // 989199be6. The strip-mln check against main 3ec32bb72's dictionary: outside the three `millionea` blocks byte-identical,
+  // its control (a planted classic edit) reported; inside them exactly eleven keys per language.
+  "src/lib/i18n-dict.ts": "cd82baeeaa09cabbf193b2777182a68f697d03df",
   "src/app/legal/rules/_content-up-down.tsx": "a2ee86a3f3fd39cba34ddfdfd8ef316f7961cdf9",
   "src/app/legal/rules/up-down/page.tsx": "d6ab15942ad15e0812abf22fe236e27f91e586f5",
 };

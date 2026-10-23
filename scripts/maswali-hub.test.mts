@@ -395,9 +395,7 @@ console.log("\n§10 · the hub's new and changed words, as decided, in three lan
       weekVoidingBody: "Maswali makuu {voided} batili, akiba halali {valid} tu. Ikiwa hakuna pingamizi litakalobadilisha hili kufikia {when}, wiki itabatilishwa na kila tiketi itarejeshwa.",
     },
     zh: {
-      // S5-R2-HUB 26 (the lead's ruling, 2026-10-23): the floor clause stands before the sharing clause. Chinese breaks
-      // only at its punctuation, so the old order fell into lines [199,194,91] at 320 and 360.
-      finalWeekRule: "最后一周：若无彩票答对 10/10，奖池不进行保底补足，由本周得分最高的彩票平分",
+      finalWeekRule: "最后一周：若无彩票答对 10/10，奖池由本周得分最高的彩票平分，不进行保底补足",
       finalWeekAhead: "第{week}周将是 Millionea 的最后一周，于 {date}开放。",
       finalAhead: "Millionea 即将结束。第{week}周将为最后一周。",
       weekVoidingBody: "{voided} 道正选题作废，有效备选题仅 {valid} 道。若至{when} 无异议改变此结果，整周将作废，每张彩票均将退款。",
@@ -997,18 +995,22 @@ console.log("\n§21 · L22 · the final week announced: \"It opens {date}\" only
 console.log("\n§22 · from 1024 the pinned pair stands on an opaque ground with no fade, and while pinned its lower edge is one hairline, the kit's divider");
 {
   // The tile read: mid-scroll the rows reading on in the column showed through the pair's fading foot. The pixels are read
-  // in a browser (`qa:maswali-hub-states`: the pair's strips shot with and without the column under it, with the old foot
-  // planted). Here the rule itself: one opaque ground, the hairline only on the pinned pair, and the page's pair is the one
-  // component that marks it.
+  // in a browser (`qa:maswali-hub-states`: the pair's whole box, 2px into the bar and 3px past each side, shot with and
+  // without the column under it, with the old foot planted). Here the rule itself:
+  // - one opaque ground, which runs 2px under the bar and 1px past each side (HUB 28: the seams the pixel read found);
+  // - the hairline only on the pinned pair;
+  // - the page's pair is the one component that marks it.
   const css = readFileSync(join(ROOT, "src/app/globals.css"), "utf8").replace(/\r\n/g, "\n");
   const pageSrc = readFileSync(join(ROOT, "src/app/millionea/page.tsx"), "utf8");
   const pinnedSrc = readFileSync(join(ROOT, "src/app/millionea/hub-pinned.tsx"), "utf8");
-  const RULE = "@media (min-width: 1024px) {\n  .kp-mln-pinned { background: var(--bg-base); }\n  .kp-mln-pinned[data-stuck] { box-shadow: inset 0 -1px 0 var(--border-divider); }\n}";
+  const SEAMS = "0 -2px 0 var(--bg-base), -1px 0 0 var(--bg-base), 1px 0 0 var(--bg-base)";
+  const RULE = `@media (min-width: 1024px) {\n  .kp-mln-pinned { background: var(--bg-base); box-shadow: ${SEAMS}; }\n  .kp-mln-pinned[data-stuck]::after { content: ""; position: absolute; inset-inline: 0; bottom: 0; height: 1px; background: var(--border-divider); }\n}`;
   const groundDefects = (sheet: string) => {
     const d: string[] = [];
     if (count(sheet, RULE) !== 1) d.push("the pair's opaque ground and its pinned hairline are not the one rule");
     const rules = [...sheet.matchAll(/\.kp-mln-pinned[^{]*\{([^}]*)\}/g)].map((m) => m[1]);
     if (rules.some((r) => /gradient|transparent|opacity/.test(r))) d.push("a rule of the pair's draws a fade or a see-through ground");
+    if (rules.some((r) => /\binset\s+0/.test(r))) d.push("a rule of the pair's draws an inset shadow on one edge (M1: a one-sided inner light)");
     return d;
   };
   const marks = pageSrc.includes("<HubPinned className={HUB_PINNED}>") && count(pageSrc, 'data-testid="millionea-hub-pinned"') === 0
@@ -1016,8 +1018,12 @@ console.log("\n§22 · from 1024 the pinned pair stands on an opaque ground with
     && pinnedSrc.includes('window.matchMedia("(min-width: 1024px)")');
   ok("22.1 · the pair's ground is the page's own, opaque, with no fade, its lower edge one hairline (the kit's divider) only while it stands pinned; the page's pair is `HubPinned`, which marks it pinned (`data-stuck`) only from 1024",
     groundDefects(css).length === 0 && marks, j({ defects: groundDefects(css), marks }));
-  const fade = css.replace(".kp-mln-pinned { background: var(--bg-base); }", ".kp-mln-pinned { background: linear-gradient(to bottom, var(--bg-base) calc(100% - var(--sp-5)), transparent); }");
-  ok("22.1′ PLANT · the old fading foot is reported", groundDefects(fade).length > 0, j(groundDefects(fade)));
+  const fade = css.replace(`.kp-mln-pinned { background: var(--bg-base); box-shadow: ${SEAMS}; }`, ".kp-mln-pinned { background: linear-gradient(to bottom, var(--bg-base) calc(100% - var(--sp-5)), transparent); }");
+  const seams = css.replace(`.kp-mln-pinned { background: var(--bg-base); box-shadow: ${SEAMS}; }`, ".kp-mln-pinned { background: var(--bg-base); }");
+  const insetEdge = css.replace('.kp-mln-pinned[data-stuck]::after { content: ""; position: absolute; inset-inline: 0; bottom: 0; height: 1px; background: var(--border-divider); }',
+    ".kp-mln-pinned[data-stuck] { box-shadow: inset 0 -1px 0 var(--border-divider); }");
+  ok("22.1′ PLANT · the old fading foot, HUB 27's ground without its seams under the bar and at the sides, and HUB 26's inset hairline (a one-sided inner light) are each reported",
+    [fade, seams, insetEdge].every((s) => s !== css && groundDefects(s).length > 0), j({ fade: groundDefects(fade), seams: groundDefects(seams), insetEdge: groundDefects(insetEdge) }));
 }
 
 console.log(`\n${"═".repeat(70)}\n  MASWALI HUB: ${pass} passed, ${fail} failed\n${"═".repeat(70)}`);
