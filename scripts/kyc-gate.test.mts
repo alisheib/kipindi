@@ -514,8 +514,14 @@ section("§8 · no call to assertIdentityForPayout outside withdraw(), anywhere 
   console.log(`     call sites: ${sites.map((s) => `${s.file}:${s.line} in ${s.fn}()`).join(" · ") || "none"}`);
   ok("8.1 · fixture · the walk really covered the tree", files.length > 300, `${files.length} files`);
   ok("8.2 · the gate is called at all — a renamed gate would make 8.3 vacuous", sites.length >= 1, `${sites.length} call site(s)`);
-  const outside = sites.filter((s) => !(s.file === "src/lib/server/wallet-service.ts" && s.fn === "withdraw"));
-  ok("8.3 · ⛔ every call to the gate sits inside withdraw() in wallet-service.ts", outside.length === 0,
+  // ⭐ MASWALI-BUILD S6-SHIP (the S6-MONEY merge, OD-13) · one read beside the refusal: the console's list of shares owed to
+  // winners who cannot sign in (`lockedWinnerShares`, maswali-share-payout.ts) asks the gate only to word an officer's line
+  // on why a share cannot be paid yet; the payment itself goes through withdraw(), the one caller that refuses
+  // (test:failure-reasons 9f.gate and 9f.sharepay hold the same pair, and that the list writes no identity refusal).
+  const officerLine = (s: { file: string; fn: string }) => s.file === "src/lib/server/maswali-share-payout.ts" && s.fn === "lockedWinnerShares";
+  const outside = sites.filter((s) => !(s.file === "src/lib/server/wallet-service.ts" && s.fn === "withdraw") && !officerLine(s));
+  ok("8.3 · ⛔ every call to the gate sits inside withdraw() in wallet-service.ts — beside it only the locked-share list's one read for an officer's line",
+    outside.length === 0 && sites.filter(officerLine).length <= 1 && sites.some((s) => s.file === "src/lib/server/wallet-service.ts" && s.fn === "withdraw"),
     outside.map((s) => `${s.file}:${s.line} in ${s.fn}()`).join(" · "));
 }
 

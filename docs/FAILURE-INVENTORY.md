@@ -1547,18 +1547,33 @@ are held while they are off.
 kinds; 11 (LOW) — comments that still describe a way past a rule; 13 (LOW) — gaps in the suite and its red twin. Finding 9 is
 closed (S6-INT 16, S6-LINT 4). The release that fixes and verifies them turns the rules on and re-aims §11.
 
-#### ✅ Four light reds the release head carried into the S6-SHIP gate, none the lane's own change (S6-SHIP 5 and 7)
+#### ✅ The reds the release head carried into the S6-SHIP gate, none the lane's own change (S6-SHIP 5, 7 and 14)
 
-Found by S6-SHIP's light batch on the merged head (S7, main and the S6 lanes in), each red on the code before S6-SHIP's
-change: `test:maswali-claims` 6.2 (since S6-INT 30: the sign-in service, which sends the one-time codes, names Millionea to
-stamp the Terms version at registration) — 6.2 names it, 6.2e pins its two lines; `test:guards-exist` (MB-47's row and the
-claims suite's header cited the guard by its planned name, `test:millionea-claims`) — both cite `test:maswali-claims`, the
-guard as built, and the inherited-phantoms list did not grow; `test:failure-reasons` 9f.gate (since the S6-MONEY merge:
-OD-13's locked-share list reads the identity gate to word an officer's line) — 9f.gate names both callers, and 9f.sharepay
-holds that the list writes no identity refusal and pays only through `withdraw()`; `test:type-scale` §1/§2 (since the
-S6-MONEY merge: the locked-share card printed a money figure inside tracked sentence type) — the figure wears the money
-treatment in its own span. THE RULE in each case is the guard's own, unchanged: a census names what it finds, a citation
-names a guard that exists, the identity gate refuses only inside a withdrawal, money is set in the money type.
+Found by S6-SHIP's light batch and by GitHub CI (run 39931171337 on e71e8fe8a, whose in-memory step failed only these
+beside S7's own; main's CI, 39928712493 on 07a400bc3, failed none of them) on the merged head (S7, main and the S6 lanes
+in), each red on the code before S6-SHIP's change:
+- `test:maswali-claims` 6.2 (since S6-INT 30: the sign-in service, which sends the one-time codes, names Millionea to stamp
+  the Terms version at registration) — 6.2 names it, 6.2e pins its two lines;
+- `test:guards-exist` (MB-47's row and the claims suite's header cited the guard by its planned name,
+  `test:millionea-claims`) — both cite `test:maswali-claims`, the guard as built; the inherited-phantoms list did not grow;
+- `test:failure-reasons` 9f.gate and `test:kyc-gate` 8.3 (since the S6-MONEY merge: OD-13's locked-share list reads the
+  identity gate to word an officer's line) — both censuses name that one read beside `withdraw()`, and 9f.sharepay holds
+  that the list writes no identity refusal and pays only through `withdraw()`;
+- `test:type-scale` §1/§2 (since the S6-MONEY merge: the locked-share card printed a money figure inside tracked sentence
+  type) — the figure wears the money treatment in its own span;
+- `test:harm-watch` H.10e, both stores (S6-DOCS 6's two sentences on the candidate window named the detectors with a unit;
+  S6-INT 33 took their lane tag out, which was not all of it) — the sentences say "rounded up", no unit;
+- `test:glyph-sync` §1b (since S6-INT 1 regenerated the sprites: production serves S5's app.b899eae1.svg, which this tree
+  neither built nor kept) — `PREVIOUS_SPRITES` names the pair main serves (app.b899eae1.svg, admin.75aeb290.svg) and the
+  file is restored from main, byte for byte; W6's app.76a3696e.svg leaves (one release each);
+- `test:maswali-admin-shots-caret` (since S6-ADMIN 6 added the ruled cards' tile loop, which calls the capture helper too) —
+  the guard counts one helper call per width loop, with a control (a loop that never captures is caught);
+- `test:eyebrow-roles` (S6-ADMIN 6's evidence-archive count, an uppercase tracked readout no one had read) — declared
+  `OTHER` beside the other three lists' counts.
+THE RULE in each case is the guard's own, unchanged: a census names what it finds, a citation names a guard that exists,
+the identity gate refuses only inside a withdrawal, money is set in the money type, a safety sentence names no parameter, a
+sprite production serves stays one release, every capture keeps the caret, every tracked uppercase site is read.
+`test:visual-pass-r5e` 6.5 (S7-OB's objection door's no-break space) is S7's, fixed on S7's branch by S7-SHIP.
 
 ## §9c · MASWALI MILLIONEA — the admin console, walked and made plain (S6, 2026-10-22)
 
