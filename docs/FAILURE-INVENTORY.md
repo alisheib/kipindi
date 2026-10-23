@@ -1520,6 +1520,19 @@ are held while they are off.
 kinds; 11 (LOW) — comments that still describe a way past a rule; 13 (LOW) — gaps in the suite and its red twin. Finding 9 is
 closed (S6-INT 16, S6-LINT 4). The release that fixes and verifies them turns the rules on and re-aims §11.
 
+#### ✅ Four light reds the release head carried into the S6-SHIP gate, none the lane's own change (S6-SHIP 5 and 7)
+
+Found by S6-SHIP's light batch on the merged head (S7, main and the S6 lanes in), each red on the code before S6-SHIP's
+change: `test:maswali-claims` 6.2 (since S6-INT 30: the sign-in service, which sends the one-time codes, names Millionea to
+stamp the Terms version at registration) — 6.2 names it, 6.2e pins its two lines; `test:guards-exist` (MB-47's row and the
+claims suite's header cited the guard by its planned name, `test:millionea-claims`) — both cite `test:maswali-claims`, the
+guard as built, and the inherited-phantoms list did not grow; `test:failure-reasons` 9f.gate (since the S6-MONEY merge:
+OD-13's locked-share list reads the identity gate to word an officer's line) — 9f.gate names both callers, and 9f.sharepay
+holds that the list writes no identity refusal and pays only through `withdraw()`; `test:type-scale` §1/§2 (since the
+S6-MONEY merge: the locked-share card printed a money figure inside tracked sentence type) — the figure wears the money
+treatment in its own span. THE RULE in each case is the guard's own, unchanged: a census names what it finds, a citation
+names a guard that exists, the identity gate refuses only inside a withdrawal, money is set in the money type.
+
 ## §9c · MASWALI MILLIONEA — the admin console, walked and made plain (S6, 2026-10-22)
 
 Ali, 2026-10-22: "admin make sure full control with the right sorting etc. and management", and his admin guide must be

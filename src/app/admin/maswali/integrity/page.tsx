@@ -373,7 +373,7 @@ async function Content({ searchParams }: IntegrityPageProps) {
             registered on the account, at the holder's request — the usual withdrawal rules apply, and the account's own
             hold stays. Its own read: a failure takes this card only. */}
         <AdminCard title={locked ? `Winners who cannot sign in · ${locked.length.toLocaleString("en")}` : "Winners who cannot sign in"} sw="Washindi wasioweza kuingia" padding="p-0">
-          <p className="px-4 pt-3 text-body-sm text-text-tertiary">A share owed to a winner whose account is self-excluded, closed or suspended. Pay it to the number registered on the account when the holder asks: the usual withdrawal rules apply, at most {formatTzs(WITHDRAW_MAX_TZS)} a payment, and the account&apos;s own hold stays.</p>
+          <p className="px-4 pt-3 text-body-sm text-text-tertiary">A share owed to a winner whose account is self-excluded, closed or suspended. Pay it to the number registered on the account when the holder asks: the usual withdrawal rules apply, at most <span className="font-mono tabular-nums">{formatTzs(WITHDRAW_MAX_TZS)}</span> a payment, and the account&apos;s own hold stays.</p>
           <div className="px-4 pt-3 empty:hidden"><StandingAuditWarning slot="integrity:sharePayment" /></div>
           {locked === null ? <p className="p-4 text-body-sm text-danger-fg">The shares owed to winners who cannot sign in could not be read.</p>
             : locked.length === 0 ? <EmptyState title="No share is owed to a winner who cannot sign in" body="A winner whose account cannot sign in is listed here until their share is paid in full." /> : (
