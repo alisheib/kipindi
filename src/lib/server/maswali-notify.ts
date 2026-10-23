@@ -5,7 +5,9 @@
  * The registered set (`MILLIONEA_NOTICES`, comms-registry.ts) is sent from here and from nowhere else: a purchase's
  * receipt and a free cancel to the buyer; the close, a moved close, a question voided, a correction and the week void's
  * refund to every holder of the week; and the week's result to every holder — the win to its winners (the bell, the letter,
- * the one service SMS), the loss or the rollover to the rest.
+ * the one service SMS), the loss or the rollover to the rest. ⭐ S6-NOTICES (2026-10-23; FAILURE-INVENTORY §9 OB.0) · and a
+ * question's objection (MR-16, MB-23): its filing to the console's officers, its ruling to the one holder who filed it —
+ * each the Yes/No objection's own notice, for a Millionea question, after its act committed.
  *
  * ⭐ AFTER THE MONEY COMMITS, NEVER INSIDE IT. Every caller is a money file's `afterCommit(tx, …)` or a call after its outer
  *    lock has returned, and it loads this module only when it fires — so no notice rides, slows or can roll back a money
@@ -41,8 +43,9 @@
  *    re-runs a recently terminal week whose last record is not complete, and only what is missing goes. A refusal that can
  *    never clear (a number the gateway cannot dial, no SMS rail, the channel closed, an account that does not exist) is
  *    counted with its reason and leaves the run complete; and a re-run that changed nothing writes no record (round 3, A12).
- *    ⛔ The other notices — the receipt, the cancel, the close, a moved close, a void, a correction — are AT MOST ONCE: the
- *    ticket page always shows the truth; a write that fails raises an ALARM log line and is not retried.
+ *    ⛔ The other notices — the receipt, the cancel, the close, a moved close, a void, a correction, an objection filed or
+ *    decided — are AT MOST ONCE: the ticket page always shows the truth (an objection's ruling on its door, a filing on the
+ *    officers' queue); a write that fails raises an ALARM log line and is not retried.
  * ⭐ ONE PROCESS TELLS A WEEK (round 3, A5). The timer runs on every instance and the heal forces a pass, so a result or
  *    refund run first takes its week's LEASE (the house's own, `acquireLeadership`: a claim with an expiry, written
  *    strictly), renews it as it goes and gives it up at its end; a run that cannot take it skips. And the winner's SMS is
@@ -66,9 +69,10 @@ import { calendarStartMs, gradable } from "./maswali-service";
 import { millioneaCancelUntil } from "./maswali-player";
 import { WITHDRAW_MAX_TZS } from "./validators";
 import {
-  millioneaNoticeHref, notifyMillioneaCloseMoved, notifyMillioneaNotWon, notifyMillioneaQuestionCorrected, notifyMillioneaQuestionVoided,
-  notifyMillioneaSalesClosed, notifyMillioneaTicketCancelled, notifyMillioneaTicketsCut, notifyMillioneaWeekRefunded, notifyMillioneaWon,
-  notifyMillioneaWonHeld, type MillioneaNoticeKey, type MillioneaWinShares,
+  millioneaNoticeHref, notifyAdminMillioneaObjectionFiled, notifyMillioneaCloseMoved, notifyMillioneaNotWon, notifyMillioneaObjectionDecided,
+  notifyMillioneaQuestionCorrected, notifyMillioneaQuestionVoided, notifyMillioneaSalesClosed, notifyMillioneaTicketCancelled,
+  notifyMillioneaTicketsCut, notifyMillioneaWeekRefunded, notifyMillioneaWon, notifyMillioneaWonHeld, type MillioneaNoticeKey,
+  type MillioneaWinShares,
 } from "./notification-service";
 import {
   CANNOT_SIGN_IN, findOutboundLetter, letterAddressOf, millioneaNotWonHtml, millioneaWeekRefundedHtml, millioneaWinHtml, sendEmailToUser,
@@ -117,7 +121,7 @@ export type WinnerSmsTally = {
 
 /** What one notice run did — returned to the suites, and recorded for a week's close, moved close, result and refund. */
 export type NoticeRun = {
-  notice: "receipt" | "cancel" | "closed" | "closeMoved" | "void" | "correction" | "result" | "refund";
+  notice: "receipt" | "cancel" | "closed" | "closeMoved" | "void" | "correction" | "result" | "refund" | "objection" | "objectionFiled";
   weekId: string;
   /** Recipients this run considered; bell rows it wrote; recipients it found already told; writes that failed. */
   recipients: number;
@@ -906,6 +910,68 @@ export function noticeTicketCancelled(userId: string, ticketId: string, at?: Not
       weekCode: week.code, serial: ticket.serial, refundedTzs: price,
     }));
   }, at);
+}
+
+// ── A QUESTION'S OBJECTION (S6-NOTICES, 2026-10-23; MR-16, MB-23 — FAILURE-INVENTORY §9 OB.0) ──────────────────────────
+
+/** The console officers the Yes/No objection's ping reaches (`notifyAdminObjectionFiled`): one recipient class for both. */
+export const OBJECTION_PING_ROLES = ["ADMIN", "COMPLIANCE", "MODERATOR"] as const;
+
+/** An objection to a Millionea question, with its week and question, read committed — or null (a Yes/No objection, or gone). */
+async function objectionOf(objectionId: string) {
+  const o = await db.objection.findById(objectionId);
+  if (!o || o.questionOrdinal == null) return null;
+  const week = await weekStore.getByMarketId(o.marketId);
+  if (!week) return null;
+  const q = (await questionStore.listForWeek(week.id)).find((x) => x.slot === o.questionOrdinal);
+  return q ? { o, week, q } : null;
+}
+
+/**
+ * ⭐ AN OBJECTION FILED, TO THE CONSOLE'S OFFICERS — after `fileMillioneaObjection`'s filing committed (its lock returned and
+ * its record was written; a refused filing launches nothing). An OPEN objection holds the week's payout (its settlement and
+ * its week void) until an officer rules, so every officer the Yes/No objection's ping reaches (`OBJECTION_PING_ROLES`) is
+ * told once per filing — each on the filing's own key, so a second launch tells nobody twice.
+ */
+export function noticeObjectionFiled(objectionId: string): Promise<NoticeRun> {
+  return launch("objectionFiled", objectionId, async (r) => {
+    const found = await objectionOf(objectionId);
+    if (!found || found.o.status !== "OPEN") return;
+    const { week, q } = found;
+    r.weekId = week.id;
+    for (const officer of await db.user.listByRoles([...OBJECTION_PING_ROLES])) {
+      await once(r, officer.id, { notice: "objectionFiled", objectionId }, () => notifyAdminMillioneaObjectionFiled(officer.id, {
+        weekCode: week.code, role: q.role, ordinal: q.ordinal, objectionId,
+      }));
+    }
+  });
+}
+
+/**
+ * ⭐ AN OBJECTION DECIDED, TO THE ONE HOLDER WHO FILED IT — after `decideMillioneaObjection`'s ruling committed (a refused or
+ * failed ruling launches nothing): upheld with its remedy, or not, and the officer's note — the Yes/No objection's notice
+ * for a Millionea question (the bell only, as the platform's is). Keyed by the filer's own ticket and the question: a player
+ * objects to a question once, so a second launch, or a retried ruling, tells nobody twice.
+ */
+export function noticeObjectionDecided(objectionId: string): Promise<NoticeRun> {
+  return launch("objection", objectionId, async (r) => {
+    const found = await objectionOf(objectionId);
+    if (!found || found.o.status === "OPEN") return;
+    const { o, week, q } = found;
+    r.weekId = week.id;
+    // The filer's first ticket of the week, in sale order: the ticket page carries the objection door (the ruling, the note).
+    const serial = (await ticketStore.listForWeek(week.id)).filter((t) => t.userId === o.userId && t.status !== "CANCELLED")
+      .map((t) => t.serial).sort()[0];
+    if (!serial) {
+      console.error(`[maswali-notify] ALARM: objection ${objectionId} on ${week.code} was decided, and its filer holds no ticket of the week; nobody is told.`);
+      return;
+    }
+    const ruling = o.status === "REJECTED" ? "REJECT" : o.remedy;
+    if (ruling !== "REJECT" && ruling !== "REVERSE" && ruling !== "VOID" && ruling !== "REINSTATE") return;
+    await once(r, o.userId, { notice: "objection", serial, slot: q.slot }, () => notifyMillioneaObjectionDecided(o.userId, {
+      weekCode: week.code, role: q.role, ordinal: q.ordinal, slot: q.slot, serial, ruling, note: o.reviewNote ?? "",
+    }));
+  });
 }
 
 /** The sales close, to every holder of a live ticket — after the close's commitment committed (`closeWeek`). */

@@ -352,7 +352,7 @@ export const NOTIFICATION_EMITTERS: readonly EmitterSpec[] = [
   { fn: "notifyObjectionDecided",      kind: "OBJECTION",         audience: "player" },
   { fn: "notifyVerdictRecorded",       kind: "VERDICT",           audience: "player" },
   // ── Maswali Millionea (MASWALI-BUILD S6; MB-68): a week's notices, one per state (`MILLIONEA_NOTICES` below). Every one
-  // is a money kind and states a figure. The two refunds are REFUND, as every refund is since S5 (Up & Down's too); a
+  // of the week's own is a money kind and states a figure (an objection's two, below, are the platform's OBJECTION kind). The two refunds are REFUND, as every refund is since S5 (Up & Down's too); a
   // question voided is a VERDICT (a result recorded, no money moved yet), and the close is SELECTION_CLOSED by meaning.
   { fn: "notifyMillioneaTicketsCut",      kind: "BET_PLACED",       audience: "player" },
   { fn: "notifyMillioneaTicketCancelled", kind: "REFUND",           audience: "player" },
@@ -366,6 +366,11 @@ export const NOTIFICATION_EMITTERS: readonly EmitterSpec[] = [
   { fn: "notifyMillioneaWonHeld",         kind: "VERDICT",          audience: "player" },
   { fn: "notifyMillioneaNotWon",          kind: "LOSS",             audience: "player" },
   { fn: "notifyMillioneaWeekRefunded",    kind: "REFUND",           audience: "player" },
+  // S6-NOTICES (2026-10-23) · a question's objection (MR-16, MB-23): the platform's own OBJECTION kind, as the Yes/No
+  // objection's two notices are — no money kind, no figure — its ruling to the one holder who filed it, its filing to the
+  // console's officers.
+  { fn: "notifyMillioneaObjectionDecided", kind: "OBJECTION",       audience: "player" },
+  { fn: "notifyAdminMillioneaObjectionFiled", kind: "OBJECTION",    audience: "officer" },
   // Officer-facing — same bell, same completeness rule.
   { fn: "notifyAdminKycReview",        kind: "KYC",               audience: "officer" },
   // ── Agent affiliate programme ─────────────────────────────────────────────
@@ -495,15 +500,18 @@ export function channelAllowed(kind: NotificationKind, opts: { houseOnly?: boole
  * inside a money transaction (`test:maswali-notify` holds both).
  * ⛔ THE POLL'S NOTICES NEVER REACH A TICKET (MB-68): no "Bet placed · YES", no "the exact amount you receive" — the ticket
  *    arms return before them (S3), and these are the only Millionea notices there are.
- * ⛔ HOLDERS ONLY (OD-25): every recipient below holds a ticket of the week. Anyone else hears of Millionea only through an
- *    approved marketing wording, past the consent gate (`millionea-claims.ts`, MB-47).
+ * ⛔ HOLDERS ONLY (OD-25): every PLAYER recipient below holds a ticket of the week. Anyone else hears of Millionea only
+ *    through an approved marketing wording, past the consent gate (`millionea-claims.ts`, MB-47). The one notice to staff is
+ *    an objection's filing (`objectionFiled`): the console officers the Yes/No objection's ping reaches (S6-NOTICES,
+ *    2026-10-23).
  * ⛔ THE BELL IS THE RECORD where there is no letter (MB-93): a receipt, a cancel, the close and a void are in the app
  *    already, on the ticket page; a result and a refund also go by letter to a confirmed address (or, for an account that
  *    cannot sign in, the address on file — `CANNOT_SIGN_IN`, email.ts).
  */
 export type MillioneaNoticeSpec = {
   /** The notice, as `maswali-notify.ts` names its run. */
-  notice: "receipt" | "cancel" | "closed" | "closeMoved" | "void" | "correction" | "won" | "wonHeld" | "notWon" | "refund";
+  notice: "receipt" | "cancel" | "closed" | "closeMoved" | "void" | "correction" | "won" | "wonHeld" | "notWon" | "refund"
+    | "objectionDecided" | "objectionFiled";
   /** The week state(s) it belongs to. */
   states: readonly ("OPEN" | "CLOSED" | "RESOLVING" | "SETTLED" | "VOIDED")[];
   /** Its bell emitter (`NOTIFICATION_EMITTERS`). */
@@ -512,8 +520,9 @@ export type MillioneaNoticeSpec = {
   template: string | null;
   /** The one service SMS of OD-25: a winning holder only. */
   sms: boolean;
-  /** Who is told: the buyer of the act, every holder of the week, its winners, or its other holders. */
-  to: "buyer" | "holders" | "winners" | "losers";
+  /** Who is told: the buyer of the act, every holder of the week, its winners, or its other holders — or, for an objection,
+   *  the one holder who filed it, and the console's officers (`OBJECTION_PING_ROLES`, maswali-notify.ts). */
+  to: "buyer" | "holders" | "winners" | "losers" | "filer" | "officers";
   /** The money file whose commit sends it — the one `afterCommit` or post-lock call, in that file. */
   trigger: string;
   /** The `maswali-notify.ts` function that file calls. */
@@ -531,4 +540,8 @@ export const MILLIONEA_NOTICES: readonly MillioneaNoticeSpec[] = [
   { notice: "wonHeld", states: ["SETTLED"],                     emitter: "notifyMillioneaWonHeld",         template: "millioneaWinHtml",          sms: true,  to: "winners", trigger: "src/lib/server/maswali-settlement.ts",    sender: "noticeWeekSettled" },
   { notice: "notWon",  states: ["SETTLED"],                     emitter: "notifyMillioneaNotWon",          template: "millioneaNotWonHtml",       sms: false, to: "losers",  trigger: "src/lib/server/maswali-settlement.ts",    sender: "noticeWeekSettled" },
   { notice: "refund",  states: ["VOIDED"],                      emitter: "notifyMillioneaWeekRefunded",    template: "millioneaWeekRefundedHtml", sms: false, to: "holders", trigger: "src/lib/server/maswali-void.ts",          sender: "noticeWeekRefunded" },
+  // S6-NOTICES (2026-10-23; FAILURE-INVENTORY §9 OB.0) · a question's objection, in the window while the week's results are
+  // being decided (MR-16): the bell only, as the Yes/No objection's two notices are (no letter, no SMS).
+  { notice: "objectionDecided", states: ["RESOLVING"],         emitter: "notifyMillioneaObjectionDecided", template: null,                     sms: false, to: "filer",    trigger: "src/lib/server/maswali-objections.ts", sender: "noticeObjectionDecided" },
+  { notice: "objectionFiled",   states: ["RESOLVING"],         emitter: "notifyAdminMillioneaObjectionFiled", template: null,                  sms: false, to: "officers", trigger: "src/lib/server/maswali-objections.ts", sender: "noticeObjectionFiled" },
 ];
