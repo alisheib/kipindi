@@ -8,6 +8,25 @@
 
 ---
 
+## 2026-10-22 · The Maswali Millionea rules' §11 states the stale-form rule — the hash moves a sixth time inside version 2026-10-18, before anything was published (MASWALI-BUILD S6-DOCS)
+
+**Authority.** The build lead's S6-DOCS brief (2026-10-22, its open list): "the binding rules text's §11 states the
+stale-form rule (a form opened before a week was made final cannot buy) — a move of the binding text goes with its hash
+in `millionea-rules-version.ts` inside the unpublished version, with a dated COMPLIANCE line". The rule is built: the
+purchase refuses a slip that did not state the final week's rule once its week has been made final, and nothing is
+charged (`maswali-money-service.ts`, inside the market lock; `maswali-service.ts`, before it).
+
+**What moved.** §11 "If Millionea ends" gains one paragraph, in the decided words How to play's stop rule already
+carries (`ruleSunset`, en/sw/zh — one wording per truth): "Once a week is final, the Millionea page and every ticket
+form opened from then on say so, and a ticket cannot be bought from a form opened before." Nothing else moves.
+`MILLIONEA_RULES_TEXT_SHA` moves d5a5e9e3e680 → 46f7b1b18732 under `MILLIONEA_RULES_VERSION` 2026-10-18.
+
+**Why the version did not move.** The product is WITHDRAWN and the Millionea rules are served only above that ceiling:
+nobody but staff has read 2026-10-18, and no ticket has been bought under it. At publication the version moves, as the
+entry of 2026-10-18 says.
+
+---
+
 ## 2026-10-22 · The Maswali Millionea rules' Chinese text names an event 事件 — the hash moves a fifth time inside version 2026-10-18, before anything was published (MASWALI-BUILD S6)
 
 **Authority.** The build lead's ruling D2 of 2026-10-22, on Ali's ruling of 2026-10-21 (§ "2026-10-21 · Maswali
@@ -29,6 +48,68 @@ entry of 2026-10-18 says.
 **What does not change (the same ruling).** The live classic documents keep 赛事, their established word for a market's
 event: the general Terms §6, the Yes/No rules and the Up & Down rules. A Millionea release does not move a live classic
 legal version, so the two words standing side by side across the products is deliberate, not an inconsistency.
+
+## 2026-10-22 · The language-change loader wears its green and red again (owner ruling)
+
+**Authority.** Ali, 2026-10-22, relayed by the MASWALI-BUILD lead session on OMEGA-COMPILE01: *"on change language the
+colored animation is still on grey scale — give it back its color"*; asked which colours, he chose *"its green and red"*.
+
+**What it rules.** The ring of six glyphs that orbits while the site changes language (`LocaleChangeOverlay`,
+`src/lib/i18n.tsx`) alternates the YES and NO inks again, `--yes-400` / `--no-400`; the brand-blue centre dot is unchanged.
+It is the one owner's exception to DESIGN_AUTHORITY §B2a's U43 amendment ("green and red name only the two betting sides
+and their outcomes"): a decoration that names no side and no state. The rule, and the measurements that chose the `-400`
+step, are in DESIGN_AUTHORITY §B2a, "The owner's exception: the language-change loader".
+
+**Why it is logged here.** §B2a keeps the betting pair for the sides of a stake, so that green and red always mean money
+(D2). Lending the pair to the loader is deliberate; no later pass may "restore" the brand-blue ring that R5-I
+(`42a2003d6`, 2026-10-09) gave it and that this ruling reverses.
+
+**Guards.** `test:betting-ink` §7i (its file carries exactly that ring and no other betting ink) · `test:visual-pass-r5i`
+§1, §2.15⁗ and §5 · `qa:locale-loader` (measured on screen against the ring as it was before R5-I) · `red:locale-loader`.
+
+---
+
+## 2026-10-22 · Maswali Millionea — build done, launch later; the live test is the first public week; the classic rail's Millionea track; the landing's Millionea line and Live link; the checked parts pushed dark now, 10/10 before players (owner rulings)
+
+**Authority.** Ali, 2026-10-22, to the Maswali lead (Claude, OMEGA-COMPILE01), choosing among the options put to him and,
+where he wrote them, in his own words:
+1. **Scope: build done, launch later.** S5, S7 and S6 are finished, each verified and pushed to `main` dark; the staff
+   preview follows S5 (the 2026-10-21 ruling 1); S8 is prepared and waits on his launch-gate items. The programme closes
+   when he says launch.
+2. **The live test is the first public week** (confirming the 2026-10-21 ruling 2). There is no private DRIVE week and no
+   second drive week: approved, non-staff QA accounts buy in week 1, each QA ticket cancelled inside its free-cancel window
+   so no company ticket stays in the draw; the rollback switch stands ready. MASWALI-PLAN §6.1 and §7b S8 carry it; OD-21
+   is superseded for S8 and its DRIVE-week code stays dormant.
+3. **The staff-preview check:** one production sign-in each with the QA staff account and the QA player account.
+4. **The classic phone rail.** Six tracks cannot be made perfect (the centre Deposit coin needs two tracks on each side;
+   Swahili labels do not fit ~53 px), so while Millionea's door is drawn its track takes Live's place — Markets · Up &
+   Down · Deposit · Millionea · More — and Live becomes More's first row; otherwise the rail is unchanged. *"ok replace
+   live please … keep live in more"*, *"make sure it takes the perfect design and the whole navbar is tested, visually
+   and logically still appealing."* The design rule lives in DESIGN_AUTHORITY §M8a item 11.
+5. **The classic landing page** carries a small line inviting to Millionea — *"Be this week's winner?"* with a link, *"same
+   colour as the animation in the Millionea tab"* — shown only when Millionea is offered to the reader, and *"a very
+   brief link for Live … consistent … with the overall landing"*. The design rule lives in DESIGN_AUTHORITY.
+6. **Every change is a final, documented rule:** *"make sure any change is final rule and documented everywhere it should
+   be documented, so nothing is misleading"* — each change records its rule in the owning document in the same commit and
+   corrects every place that stated the old one (AGENTS.md §3).
+7. **The checked parts go live now (~14:40 UTC).** He asked *"can we push now maswali live for players?"*; shown what is
+   not finished (S5's last design polish, S7 and S6, his launch items), he chose "Checked parts now": the
+   language-change loader's colour fix and S5 together, to `main` dark once its gates pass at the
+   exact commit (typecheck, the production build, the dark check, classic parity, the CI battery, the money suites); the
+   polish not yet merged follows in later pushes; the staff preview right after (the 2026-10-21 ruling 1). *"push it
+   perfectly live now. keep the pending so after this session I say continue maswali and we continue until done."*
+8. **10/10 before players:** every Millionea screen is still scored 10/10 by the independent critics before the rollout
+   reaches players ("Keep 10/10").
+9. **The admin guide:** a draft on his Desktop now, marked DRAFT; the final after S6 ("Draft now, final later" —
+   *"give us the pdf and my admins start making it work"*).
+10. **The payout float:** *"the amount is there … in Selcom, we have lots of money, so don't worry about this"* — the
+    Owner's statement for MASWALI-PLAN §6.1 line 3 (Finance's confirmation of the float); the line is ticked once the
+    low-float alert (MB-11, S6) is wired.
+
+**Implementation boundary.** 1–3 set the programme's sequence and S8's plan; 4 and 5 are player surfaces drawn only while
+Millionea is offered, except the landing's Live link, which every visitor sees (a classic-visible change named in the
+parity compare); 6 restates AGENTS.md §3 for this programme; 7–10 set this afternoon's push and its record. The
+language-change loader's colours (the same day) are recorded with their own release in DESIGN_AUTHORITY.
 
 ---
 
@@ -228,6 +309,9 @@ between 707c9f634d7c and 2c3c95afeeb9.)
 
 ⟶ A fifth move, 4ed78ea80417 → d5a5e9e3e680, on 2026-10-22: § "2026-10-22 · The Maswali Millionea rules' Chinese text
 names an event 事件 — …".
+
+⟶ A sixth move, d5a5e9e3e680 → 46f7b1b18732, on 2026-10-22: § "2026-10-22 · The Maswali Millionea rules' §11
+states the stale-form rule — …".
 
 **Why the version did not move.** The product is WITHDRAWN: `/legal/rules/millionea` answers as the 404 to every reader
 the rollout does not admit, nobody but staff has read 2026-10-18, and no ticket has been bought under it.

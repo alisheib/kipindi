@@ -443,7 +443,7 @@ console.log(`${LF}§5 · MB-93 — the winners not yet reached, the 24-hour aler
   const rowA = listed.find((u: any) => u.userId === A);
   const rowC = listed.find((u: any) => u.userId === C);
   ok("5.1 · ⭐ both winners are listed, each with what was sent: the bell, where a letter could go, the SMS's own record",
-    listed.length === 2 && !!rowA && !!rowC && rowA.bell && rowC.bell && rowA.email === "confirmed" && rowC.email === "none"
+    listed.length === 2 && !!rowA && !!rowC && rowA.bell && rowC.bell && rowA.emailState === "confirmed" && rowC.emailState === "none"
       && !!rowA.sms && rowA.sms.status !== "DELIVERED" && rowA.smsHeld === null && rowA.paidTzs > 0 && !rowA.held && !rowA.forfeited, J(listed));
   ok("5.2 · …and the holder who did not win is never on it", !listed.some((u: any) => u.userId === B));
   const late = (await consoleRead.consoleAlerts(at(25))).filter((x: any) => x.weekId === w1.id && /no notice reach/.test(String(x.text)));

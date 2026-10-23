@@ -6,9 +6,9 @@
  * ticket's id, its 128-bit salt and its fifteen answers; (2) the RFC 6962 audit path from it; (3) the root the close
  * stamped. The page states the server's verdict, and the owner's own browser runs the same check again (`ProofCheck`).
  * ⛔ GATED AS THE TICKET PAGE IS — the rollout first, in the page and in its metadata, then the owner:
- *    ⏳ this branch predates the tickets' own gate (`millioneaTicketGate`, L5: a kill hides the product, never a holder's
- *    tickets, `mln-s5-pages`), so it asks `millioneaGate` — the stricter of the two (a hidden product 404s here even for a
- *    holder) — and the lead swaps the one name at merge, as the ticket page reads it (the lane's report).
+ *    the tickets' own gate (`millioneaTicketGate`, L5: a kill hides the product, never a holder's tickets), as the ticket
+ *    page asks it, and its title S5's tickets door (`millioneaTicketsDoor`) — a holder reaches their proof at every rollout
+ *    state, as they reach the ticket it proves (S6-DOCS, item 1: it asked the product's gate, the review's finding).
  * ⛔ OWNER-ONLY, AND NO EXISTENCE ORACLE (MB-95): a malformed serial, a serial nobody holds and a serial someone else holds
  *    are one answer — the not-found page — because the read model answers all three with null. A signed-out reader is
  *    sent to sign in for every serial alike, before anything is read.
@@ -26,7 +26,8 @@ import { BackLink } from "@/components/ui/back-link";
 import { Callout } from "@/components/ui/callout";
 import { noticeBody } from "@/components/ui/empty-state-text";
 import { I } from "@/components/ui/glyphs";
-import { millioneaGate } from "@/lib/server/millionea-gate";
+import { millioneaTicketGate } from "@/lib/server/millionea-gate";
+import { millioneaTicketsDoor } from "@/lib/server/millionea-doors";
 import { millioneaProofHref, millioneaTicketProof } from "@/lib/server/maswali-fairness";
 import { millioneaTicketHref } from "@/lib/position-permalink";
 import { getServerT } from "@/lib/i18n-server";
@@ -41,12 +42,8 @@ export const dynamic = "force-dynamic";
 
 export async function generateMetadata(): Promise<Metadata> {
   // The title obeys the gate the body obeys, and asking never rejects (`test:visual-pass-r5d` 1.4″): a page the rollout
-  // hides is titled as the identical 404 is — S5's Millionea pages' precedent, `millioneaDoor`.
-  try {
-    await millioneaGate();
-  } catch {
-    return notFoundMetadata();
-  }
+  // hides is titled as the identical 404 is — the ticket page's precedent, `millioneaTicketsDoor` (L5).
+  if (!(await millioneaTicketsDoor())) return notFoundMetadata();
   const { t } = await getServerT();
   // ⛔ No serial in the title: the metadata does not read the ticket, and a title must not confirm that one exists.
   return { title: `${t.millioneaFairness.proofTitle} · ${t.millionea.productLabel}` };
@@ -67,7 +64,7 @@ function Datum({ label, value }: { label: string; value: string }) {
 }
 
 export default async function MillioneaProofPage({ params }: { params: Promise<{ serial: string }> }) {
-  const gate = await millioneaGate();
+  const gate = await millioneaTicketGate();
   const { serial } = await params;
   if (!gate.userId) redirect(`/auth/login?next=${encodeURIComponent(millioneaProofHref(serial))}`);
   const { t, locale } = await getServerT();

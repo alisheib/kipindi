@@ -200,7 +200,8 @@ export async function returnMaswaliGuarantee(input: { amount: number; reference:
     const unsettled = await weekStore.list({ states: ["OPEN", "CLOSED", "RESOLVING"] });
     // ⛔ S7-F2 · FAIL CLOSED: a week whose frozen rules cannot be read has an unknown floor, so nothing is returned.
     const floors = unsettledFloors(unsettled);
-    if (!floors.ok) return refuse(`Week ${floors.unreadable.map((w) => w.code).join(", ")}: its frozen rules cannot be read, so what the open weeks need is unknown and nothing was returned (OD-02).`);
+    // OD-02 · the guarantee covers every unsettled week. ⛔ Words, never the code (S6-ADMIN, DESIGN_AUTHORITY §M8a item 29).
+    if (!floors.ok) return refuse(`Week ${floors.unreadable.map((w) => w.code).join(", ")}: its frozen rules cannot be read, so what the open weeks need is unknown and nothing was returned.`);
     const need = guaranteeRequirement(floors.weeks);
     if (held - input.amount < need) {
       return refuse(`The guarantee holds ${formatTzs(held)} and the open weeks need ${formatTzs(need)}; at most ${formatTzs(Math.max(0, held - need))} can be returned.`);

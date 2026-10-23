@@ -27,6 +27,8 @@ import {
   DOMAIN_SUMMARY,
   ROLE_LABEL,
   defaultGrant,
+  domainForPath,
+  auditorReadsPath,
   isStaffRole,
   READ_CLASSES,
   canRead,
@@ -113,6 +115,18 @@ export async function canAct(role: Role, domain: AdminDomain): Promise<boolean> 
   return effectiveGrant(await loadOverrides(), role, domain).canAct;
 }
 
+/**
+ * May this role OPEN this console path? Its domain's view grant — or the one route exception the console keeps
+ * (`auditorReadsPath`, MB-92: the Auditor reads the Millionea console), which stands on the Auditor's COMPLIANCE view
+ * grant (the evidence pack's own domain), so the Owner closes it on /admin/roles by revoking that grant. VIEW ONLY: there
+ * is no path form of `canAct`. The page gate and `viewerMayOpen` ask this; the nav is handed the same exception.
+ */
+export async function canViewPath(role: Role, path: string): Promise<boolean> {
+  if (role === "ADMIN") return true;
+  if (await canView(role, domainForPath(path))) return true;
+  return auditorReadsPath(role, path) && (await canView(role, "compliance"));
+}
+
 /** The set of domains a role may VIEW — feeds the nav filter. */
 export async function viewableDomains(role: Role): Promise<Set<AdminDomain>> {
   const store = await loadOverrides();
@@ -141,6 +155,8 @@ export async function staffRoleInfos(): Promise<
         if (d === "accounting" || d === "compliance") sensitive = true;
       }
     }
+    // MB-92 · the console's one route exception, said where the Owner reads what a role sees (`canViewPath`).
+    if (role === "AUDITOR" && effectiveGrant(store, role, "compliance").canView) view.push("Millionea console (read-only)");
     out[role] = { role, label: ROLE_LABEL[role], view, act, sensitive };
   }
   return out;

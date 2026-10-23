@@ -45,13 +45,24 @@
  * ⭐ S7-F9 9 (2026-10-22, MB-74): RD.5 struck on both stores — a deposit contradicted after its winner was paid holds the
  * share at once — with RD.5b, RD.5c, RD.5d, RD.6–RD.9 and RD.10 (a release in flight) beside it on each: 214 on memory,
  * 223 on Postgres, with 1 KNOWN-RED on each (OB.0).
+ * ⭐ S7-F9 11 (2026-10-22): TK.4b — the takeover alert and its integrity card in their reviewed words (what the control
+ * enforces, never what it watches for) — on each: 215 on memory, 224 on Postgres.
+ * ⭐ S7-F9 13 (2026-10-22, the S6 review: a figure a record lacks is never 0): FL.4j–FL.4m, RD.11, RD.11b and TK.7 on
+ * each — a winner's share not on record is owed, held, released, never forfeited as 0, and watched: 222 on memory, 231 on
+ * Postgres, with 1 KNOWN-RED on each (OB.0), what this commit's tree printed.
+ * ⭐ S7-OB (2026-10-22, the Millionea objection door; merged over S7 at b6eac4034): OB.0 struck on each store — a holder
+ * files on one question through the door and an officer other than the sealer rules — and §4b OM added, six on each (the
+ * filing holds the week, the REVERSE re-grades and restarts the window once, the money follows the final record): 222 on
+ * memory, 231 on Postgres, with no KNOWN-RED left, what the merged tree printed.
+ * ⭐ S7-MERGE 3 (2026-10-22): the objection lane (1c8b42284) merged over S7-F9 13 — both sets on each store: 229 on memory,
+ * 238 on Postgres, with no KNOWN-RED left, what the merged tree printed.
  */
 import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 
 await runTwoStores({
   suite: "test:maswali-adversarial",
   casesFile: "scripts/lib/maswali-adversarial-child.mts",
-  minPass: { memory: 214, postgres: 223 },
+  minPass: { memory: 229, postgres: 238 },
   dbPrefix: "mlw_adv",
   timeoutMs: 45 * 60_000,
 });

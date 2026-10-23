@@ -1301,6 +1301,10 @@ console.log("§15 · Sales less refunds with its tickets, and Net commission rev
   }
 }
 
+// S6-DOCS · THE FLOOR, at the count a green run printed (269 on a8b43c946, run 39825278061): a suite that goes blind
+// prints fewer, and only ever rises.
+const TAX_REPORT_FLOOR = 269;
+if (pass + fails.length < TAX_REPORT_FLOOR) fails.push(`floor · at least ${TAX_REPORT_FLOOR} checks ran — ${pass + fails.length} ran`);
 console.log(`\ntax-report: ${pass} passed, ${fails.length} failed`);
 if (fails.length) { console.log("\nFAILED:"); for (const f of fails) console.log(`  - ${f}`); }
 process.exitCode = fails.length === 0 ? 0 : 1;

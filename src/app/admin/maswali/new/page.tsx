@@ -6,6 +6,8 @@ import { currentSession } from "@/lib/server/auth-service";
 import { canUseControl, CONTROL_DOMAIN } from "@/lib/server/control-gates";
 import { eatWeekStartMs } from "@/lib/eat-day";
 import { draftSuggestions } from "@/lib/server/maswali-console";
+import { readMaswaliConfigFresh } from "@/lib/server/maswali-config";
+import { chanceBand } from "../rules-form";
 import { WeekBuilder } from "./week-builder";
 
 export const metadata = { title: "Admin · Millionea · Draft a week" };
@@ -30,11 +32,14 @@ async function Content() {
   // The window a week's events fall in: from its Friday close to the Tuesday after (the results week's start). Two
   // weeks of it, so a week drafted further ahead still sees its fixtures.
   const suggestions = canDraft ? await draftSuggestions(next + 4 * 86_400_000, next + 3 * WEEK_MS).catch(() => []) : [];
+  // S6-ADMIN · the chance band the rules allow, read as the open reads them; the builder's hint states it (null: unread).
+  const rules = canDraft ? await readMaswaliConfigFresh().catch(() => null) : null;
+  const band = rules?.ok ? chanceBand(rules.config) : null;
   return (
     <>
       <AdminPageHead title="Draft a week" sw="Andaa wiki" />
       <AdminBody>
-        {canDraft ? <WeekBuilder defaultMonday={monday} suggestions={suggestions} /> : <ControlLocked what="Draft a week" need={CONTROL_DOMAIN.createMaswaliWeek} block />}
+        {canDraft ? <WeekBuilder defaultMonday={monday} suggestions={suggestions} band={band} /> : <ControlLocked what="Draft a week" need={CONTROL_DOMAIN.createMaswaliWeek} block />}
       </AdminBody>
     </>
   );

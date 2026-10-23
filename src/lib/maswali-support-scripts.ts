@@ -10,7 +10,7 @@
  * ⭐ ONE SOURCE. The platform kept no DESK scripts before Millionea — the chat helper's intent table
  *    (`src/lib/chat/send-message.ts`) answers players, not the desk, and names no Millionea topic while the product is
  *    withdrawn. These live here and are read on the desk's own page (`/admin/maswali/lookup`), beside the one ticket a
- *    player is asking about. The operator guide MB-64 asks for is not written yet; when it is, it points at that page
+ *    player is asking about. The admin guide (`docs/maswali-operator-guide.html`, part 2 step B20) points at that page
  *    rather than copying them.
  * ⛔ NO FIGURE IS TYPED. Every number is a placeholder filled at the moment the desk reads it (`fillSupportScript`), from
  *    the ticket's week's frozen rules or the live configuration: the check window and its earliest close, the
@@ -109,14 +109,14 @@ export const MILLIONEA_SUPPORT_SCRIPTS: readonly SupportScript[] = [
     title: "A deposit that paid for a ticket was reversed",
     steps: [
       "The ticket stays in the week: the commitment published at the close includes it, and it is graded like any other.",
-      "Tell Compliance now, naming the serial. If the ticket wins, Compliance holds its share (the Integrity page: Winners, Hold the share) and decides it under Held shares (OD-07). Say nothing beyond the script.",
+      "Tell Compliance now, naming the serial. If the ticket wins, Compliance holds its share (the Integrity page: Winners, Hold the share) and decides it under Held shares. Say nothing beyond the script.", // OD-07
     ],
     en: "The deposit that paid for this ticket was reversed by the payment provider. The ticket stays in the week and is graded like every other ticket. If it wins, our compliance team reviews its share together with the payment before deciding it, and you will be told the outcome.",
     sw: "Amana iliyolipia tiketi hii ilirudishwa na mtoa huduma wa malipo. Tiketi inabaki kwenye wiki na inapimwa kama tiketi nyingine zote. Ikishinda, timu yetu ya uzingatiaji itakagua mgao wake pamoja na malipo hayo kabla ya kuuamua, na utajulishwa matokeo.",
   },
   {
     key: "death",
-    title: "A ticket holder has died (MB-86)",
+    title: "A ticket holder has died", // MB-86
     steps: [
       "Suspend the account on its player page, giving the reason \"deceased — estate claim\": it is signed out and cannot sign in, so nothing can be withdrawn, and a share it wins later is credited and held. Only an active account can be suspended: for any other, ask Compliance to freeze its wallet on the same page.",
       "Ask Compliance to hold any Millionea share already paid to it (the Integrity page: Winners, Hold the share).",
@@ -130,7 +130,7 @@ export const MILLIONEA_SUPPORT_SCRIPTS: readonly SupportScript[] = [
     title: "A holiday week",
     steps: [
       "A holiday changes no rule: each question keeps the void deadline printed on it, and a void brings in the reserve.",
-      "The trading officer reviews each week's events against public holidays before it opens, and a skipped week is announced in advance (OD-27).",
+      "The trading officer reviews each week's events against public holidays before it opens, and a skipped week is announced in advance.", // OD-27
     ],
     en: "Millionea runs every week, holidays included. Before a week opens, our team checks its events against the public holidays. A week may be skipped with notice, and then the jackpot simply waits for the next week. If a holiday moves an event, the question's own rule decides: if it is not played by its deadline it is voided, and a reserve counts in its place.",
     sw: "Millionea inaendeshwa kila wiki, ikiwemo wiki za sikukuu. Kabla wiki haijafunguliwa, timu yetu hukagua matukio yake dhidi ya sikukuu za umma. Wiki inaweza kurukwa baada ya kutoa taarifa, na hapo jackpot husubiri wiki inayofuata. Sikukuu ikihamisha tukio, kanuni ya swali lenyewe ndiyo huamua: kama halitachezwa kufikia muda wake wa mwisho, linabatilishwa na swali la akiba linahesabiwa mahali pake.",
@@ -147,12 +147,12 @@ export const MILLIONEA_SUPPORT_SCRIPTS: readonly SupportScript[] = [
   },
   {
     key: "complaint",
-    title: "A complaint — the path, and how soon it is answered (MB-91)",
+    title: "A complaint — the path, and how soon it is answered", // MB-91
     steps: [
       "Write down the serial, the week and the question, word for word.",
-      "Inside the week's check window: take the challenge down word for word and tell Compliance at once, before accounting releases the week (OD-06). Compliance rules on it.",
+      "Inside the week's check window: the holder objects to the question from the ticket's page (Object to a result); one who cannot, the desk takes down word for word and passes to Compliance at once, before accounting releases the week. A Compliance officer who did not record the result rules on it.", // OD-06; MR-16 as built (S7-OB)
       "Otherwise: Compliance answers in writing from the week's evidence pack (the Millionea Evidence page).",
-      "A result proven wrong after payment is never clawed back; Compliance compensates the tickets it wronged from operator funds, never the jackpot (OD-09).",
+      "A result proven wrong after payment is never clawed back; Compliance compensates the tickets it wronged from operator funds, never the jackpot.", // OD-09
     ],
     en: "Here is how to raise it. If the week's results are still in their check window — it opens when the results are final, lasts {window} and never closes before {notBefore} EAT — tell us straight away, naming the question. At any other time, write to us at {email}, within the time our Terms allow (their section “Voids and disputes”). Our compliance team answers in writing, usually within {days} working days. A result proven wrong after payment is never taken back from the winners; tickets it wronged are compensated by 50pick. If you are not satisfied with our answer, you may take it to the Gaming Board of Tanzania.",
     sw: "Hivi ndivyo unavyoweza kuliwasilisha. Kama matokeo ya wiki bado yako kwenye muda wake wa ukaguzi — unaanza matokeo yanapokuwa ya mwisho, unadumu {window}, na haufungwi kabla ya {notBefore} EAT — tuambie mara moja, ukilitaja swali. Wakati mwingine wowote, tuandikie kupitia {email}, ndani ya muda unaoruhusiwa na Masharti yetu (sehemu yake ya “Kufuta dau na migogoro”). Timu yetu ya uzingatiaji itakujibu kwa maandishi, kwa kawaida ndani ya siku {days} za kazi. Matokeo yakithibitika kuwa si sahihi baada ya malipo, hayachukuliwi tena kutoka kwa washindi; tiketi zilizoathirika zinafidiwa na 50pick. Kama hujaridhika na jibu letu, unaweza kulipeleka kwa Bodi ya Michezo ya Kubahatisha Tanzania.",

@@ -234,6 +234,9 @@ export const CONTROL_DOMAIN = {
   /** S6 · MB-93 · the desk records a call that reached a winner (on /integrity, typed). */
   markMillioneaWinnerReached: "compliance",
   clearUnresolvedLetter: "compliance",
+  /** S7-OB · a ruling on a player's objection to one question (MR-16), on /integrity: the platform's ruling act, and
+   *  the service asks the same roles (`requireRulingOfficer`: ADMIN or COMPLIANCE). */
+  ruleMaswaliObjection: "compliance",
   fundMaswaliGuarantee: "ops",
   returnMaswaliGuarantee: "ops",
   sunsetMaswali: "ops",

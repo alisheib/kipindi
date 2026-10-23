@@ -154,7 +154,9 @@ const FROZEN_RATCHET = new Map<string, number>([
   // the dead half made the file clean and the sparkline guarded in one move.
   // `i18n.tsx` LEFT THIS LIST on 2026-10-09 (R5-I, the visual pass's round 5): its 6 inline values were the language-change
   // loader's glyphs, hand-typed in the YES green and the NO rose (oklch 78% 0.16 152 / 22) — the betting pair as a
-  // decoration (DESIGN_AUTHORITY §B2a). They read the brand family's tokens (`var(--brand-300)`, `var(--brand-200)`) now.
+  // decoration (DESIGN_AUTHORITY §B2a). They read the brand family's tokens (`var(--brand-300)`, `var(--brand-200)`) from then.
+  // ⭐ 2026-10-22, the owner: the ring wears its green and red again (§B2a's owner exception) — as the pair's TOKENS,
+  // `var(--yes-400)` / `var(--no-400)`, never the literals back, so the file stays off this list (a hand-typed value in it fails).
   // `cashback-promo.tsx` LEFT THIS LIST on 2026-08-21 (D5): its 5 inline values WERE the
   // gold costume — the gradient, the gilt border, the jackpot glow and the bloom. The
   // panel picks the `.mat-raised` rung now and holds no design value of its own.

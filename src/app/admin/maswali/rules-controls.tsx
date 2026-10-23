@@ -71,7 +71,7 @@ export function RulesForm({ initial, policies }: { initial: RulesFormValues; pol
           </div>
         </section>
       ))}
-      <p className="text-body-sm text-text-secondary">A Millionea ticket has no paid early exit (MB-50): that window is not a setting.</p>
+      <p className="text-body-sm text-text-secondary">A Millionea ticket has no paid early exit: that window is not a setting.{/* MB-50 */}</p>
       <div className="flex items-center gap-3 flex-wrap">
         <Button size="sm" disabled={pending || changed.length === 0} onClick={() => { setError(null); setConfirm(true); }}>Save the rules</Button>
         {changed.length > 0 && <Button size="sm" variant="ghost" disabled={pending} onClick={() => { setValues(initial); setError(null); }}>Undo the changes</Button>}
@@ -94,7 +94,7 @@ export function RulesForm({ initial, policies }: { initial: RulesFormValues; pol
                 </li>
               ))}
             </ul>
-            <p className="text-body-sm">The next week to open freezes the rules as they stand then. A week already open keeps the rules it froze (MB-75).</p>
+            <p className="text-body-sm">The next week to open freezes the rules as they stand then. A week already open keeps the rules it froze.{/* MB-75 */}</p>
           </div>
         }
         onConfirm={save} />
@@ -150,9 +150,10 @@ export function HolidaysForm({ dates }: { dates: string[] }) {
       <Button size="sm" disabled={pending || !dirty} onClick={() => { setError(null); setConfirm(true); }}>Save the list</Button>
       <Feedback error={error} note={note} />
       <UnsavedChangesGuard dirty={dirty || pick !== ""} body="The holiday list has changes that were not saved. Leaving now discards them." />
+      {/* MB-85 · the holiday review warns; it never refuses. */}
       <ConfirmModal open={confirm} onClose={() => setConfirm(false)} loading={pending} tone="brand"
         title="Save the holiday list?" confirmLabel="Save the list"
-        body={`The holiday review names a listed holiday a week's sales close falls on, as a warning while the close can still move — never a refusal (MB-85). ${list.length === 0 ? "The list will be empty." : `${list.length} date${list.length === 1 ? "" : "s"} will be listed.`}`}
+        body={`The holiday review names a listed holiday a week's sales close falls on, as a warning while the close can still move — never a refusal. ${list.length === 0 ? "The list will be empty." : `${list.length} date${list.length === 1 ? "" : "s"} will be listed.`}`}
         onConfirm={save} />
     </div>
   );

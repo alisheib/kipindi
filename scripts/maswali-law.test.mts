@@ -13,23 +13,29 @@
  *   L5 §3 is "THE THREE FEE MODELS" and names `jackpot-payout`; §6 records the 2026-10-16 decision
  *   L6 the code's fee models are exactly the three, and the caption fits its cell
  *   L7 the decision the law cites exists in COMPLIANCE-DECISIONS
+ *   L8 §2.12's sunset paragraph states MR-30's final-week rule in the words its buyers read: the dictionary's English
+ *      `finalWeekRule`, word for word (no 10/10: the highest scores share equally, with no floor top-up) — S7-F9 14, the
+ *      lead's ruling of 2026-10-22 (DESIGN_AUTHORITY §M8a item 19). The law said only that the final week "runs normally".
  *
  * ⛔ IN-PROCESS BY CONSTRUCTION: `--prove-red` plants every defect IN MEMORY (the `test:migration-ownership` way), so this
  * file makes no file-writing call and can never leave the law edited on disk.
  */
 import { readFileSync } from "node:fs";
 import { FEE_CAPTION_MAX_CHARS, FEE_MODELS, describeFeeModel } from "../src/lib/payout.ts";
+import { dict } from "../src/lib/i18n-dict.ts";
 
 process.exitCode = 1;
 const PROVE_RED = process.argv.includes("--prove-red");
 const read = (rel: string) => readFileSync(new URL(`../${rel}`, import.meta.url), "utf8").replace(/\r\n/g, "\n");
 
-type World = { rules: string; decisions: string; feeModels: readonly string[]; caption: string };
+type World = { rules: string; decisions: string; feeModels: readonly string[]; caption: string; finalWeekRule: string };
 const REAL: World = {
   rules: read("docs/RULES.md"),
   decisions: read("docs/COMPLIANCE-DECISIONS.md"),
   feeModels: FEE_MODELS,
   caption: describeFeeModel({ feeModel: "jackpot-payout", jackpotFeeRate: 0.13 }).caption,
+  // The players' sentence, as the hub, the slip, the confirm sheet and How to play draw it (DESIGN_AUTHORITY §M8a item 19).
+  finalWeekRule: dict.en.millionea.finalWeekRule,
 };
 
 /** The section of RULES.md from a heading to the next heading of the same or higher level. */
@@ -60,6 +66,15 @@ function check(w: World): string[] {
     if (!/⏳ \*\*DECIDED, NOT SELLING\*\*/.test(s212)) f.push("[L3] §2.12 does not open with its ⏳ not-selling marker");
     if (!/taken \*\*only when k ≥ 1\*\*/.test(s212)) f.push("[L3] §2.12 does not say the fee is taken only when a week has a winner");
     if (!/maswali\.config/.test(s212)) f.push("[L3] §2.12 does not name the config that holds its figures");
+    // L8 · the sunset paragraph (to the next blank line), its line breaks read as spaces: the players' sentence in bold.
+    const sunset = (/\*\*The sunset\*\*[^]*?(?:\n\n|$)/.exec(s212)?.[0] ?? "").replace(/\s+/g, " ");
+    if (!sunset) f.push("[L8] §2.12 has no sunset paragraph");
+    else {
+      if (!/\(MR-30\)/.test(sunset)) f.push("[L8] §2.12's sunset paragraph does not cite MR-30");
+      if (!w.finalWeekRule || !sunset.includes(`**${w.finalWeekRule}**`)) {
+        f.push(`[L8] §2.12's sunset paragraph does not state the final week's rule in the players' words ("${w.finalWeekRule}")`);
+      }
+    }
   }
   const s24 = section(w.rules, /^### 2\.4 · Positions per market[^\n]*/m);
   if (!/THE ONE EXCEPTION — MASWALI MILLIONEA/.test(s24) || !/\*\*10 per week\*\*/.test(s24)) f.push("[L4] §2.4 does not name the Millionea cap as its one exception");
@@ -85,7 +100,7 @@ const ok = (label: string, cond: boolean, detail = "") => {
 if (!PROVE_RED) {
   const failures = check(REAL);
   ok("L · the law and the code agree on Maswali Millionea", failures.length === 0, failures.join(" · "));
-  for (const id of ["L1", "L2", "L3", "L4", "L5", "L6", "L7"]) ok(`${id} · holds`, !failures.some((x) => x.startsWith(`[${id}]`)));
+  for (const id of ["L1", "L2", "L3", "L4", "L5", "L6", "L7", "L8"]) ok(`${id} · holds`, !failures.some((x) => x.startsWith(`[${id}]`)));
 } else {
   // Each plant is one way the law could drift from the code; each must be reported under its own id, and the real
   // world must stay green in the same run (the positive control).
@@ -105,6 +120,12 @@ if (!PROVE_RED) {
     ["the code forgets jackpot-payout", () => ({ ...REAL, feeModels: ["capped-commission", "loser-share"] }), "[L6]"],
     ["a caption too long for its cell", () => ({ ...REAL, caption: "13% of the jackpot at payout" }), "[L6]"],
     ["the cited decision missing", () => swap(REAL, "decisions", "## 2026-10-16 · Maswali Millionea", "## 2026-10-16 · Weekly product"), "[L7]"],
+    // S7-F9 14 · the law's sunset back to "runs normally" with the players' rule gone, and the players' sentence reworded
+    // on the screens alone (a second wording the law no longer states).
+    ["the sunset back to \"runs normally\", the final week's rule gone", () => swap(REAL, "rules",
+      "Without one, it is the one week a score below 10 is paid, by the rule its buyers\nread on the hub, the slip, the confirm sheet and How to play (`finalWeekRule`): \"**Final week: if no ticket gets 10/10,\nthe pool is shared equally by this week's highest-scoring tickets, with no floor top-up**\".",
+      "The final week runs normally."), "[L8]"],
+    ["the players' sentence reworded on the screens alone (its floor clause dropped)", () => ({ ...REAL, finalWeekRule: REAL.finalWeekRule.replace(", with no floor top-up", "") }), "[L8]"],
   ];
   ok("RED control · the real world is green in this run", check(REAL).length === 0, check(REAL).join(" · "));
   for (const [name, plant, id] of plants) {

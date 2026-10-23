@@ -2433,14 +2433,14 @@ export const AUDIT_READERS_OUTSIDE_CONSOLE: Readonly<Record<string, string>> = {
      trigger nor the nightly heal holds one again. No row, payload or number leaves the module; it returns ticket ids it
      held. A desk account's tickets are its holder's; the rows are Millionea's own COMPLIANCE records, never a house action. */
   "src/lib/server/maswali-settlement.ts": "RD.5's reversal hold: the hold records of ONE account's paid shares (target MaswaliTicket, one action), folded into the set of tickets already held for that deposit — no row is handed on",
-  /* Classified 2026-10-22 (MASWALI-BUILD S7-F9, MB-96 / TK.2), read from the source (`takeoverWatch`). Two reads: the
-     recent winners' own password writes (target User, by the three password actions) and, for only the winners whose
-     password changed after their credit, their own withdrawal requests (by actor, by four withdraw actions). Each is
-     reduced to instants, how the password was written and a count per account; no row or payload leaves the module.
-     Those values reach /admin/maswali/integrity, which decides its audience on the STORED role before it reads (0.434),
-     so the module is `handedOn`; the console's alert strip (`maswali-console.ts`) folds them into one count per paying
-     week, never an account. A desk account's password and withdrawal rows are its holder's own, never a house action. */
-  "src/lib/server/maswali-takeover.ts": "MB-96's winner-takeover watch: the recent winners' own password writes (target User, by action) and those winners' own withdrawal requests (by actor, by action), reduced to instants, how the password was written and a count per account — handed to /admin/maswali/integrity, which decides its audience on the stored role first (0.434)",
+  /* Classified 2026-10-22 (MASWALI-BUILD S7-F9, MB-96 / TK.2), read from the source (`takeoverWatch`). Two reads of the
+     recent winners' OWN rows, each by named actions (one by target User, one by actor, the second only for the accounts
+     the first found), reduced inside the module to instants and a count per account; no row or payload leaves it. Those
+     values reach /admin/maswali/integrity, which decides its audience on the STORED role before it reads (0.434), so the
+     module is `handedOn`; the console's alert strip (`maswali-console.ts`) folds them into one count per paying week,
+     never an account. A desk account's rows are its holder's own, never a house action. (The repository is public: this
+     says what the reads hand on, never what the watch looks for — the lead's ruling, 2026-10-22.) */
+  "src/lib/server/maswali-takeover.ts": "MB-96's winner-takeover watch: the recent winners' own rows, read by named actions (by target User, then by actor), reduced to instants and a count per account — handed to /admin/maswali/integrity, which decides its audience on the stored role first (0.434)",
   /* Classified 2026-10-18 (MASWALI-BUILD S6, lane N rounds 2 to 4), read from the source (`lastRunRecord`, `lettersDone`,
      `letterOwed`, `sealSteps`, `closeMoves`): the reconcile, the letters' own records, the correction notice and the moved
      close. Round 4 moved each letter record onto its holder's own target (round 13: the week and the account, never peppered), and reads the moves' newest close.
