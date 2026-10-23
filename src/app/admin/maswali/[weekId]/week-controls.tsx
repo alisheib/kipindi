@@ -24,6 +24,7 @@ import { ControlLocked } from "@/components/admin/control-locked";
 import { useMayAct, ActReadOnly } from "@/components/admin/act-gate";
 import { isMaswaliVoidReason, MASWALI_VOID_REASON_LABEL } from "@/lib/maswali-void-reason";
 import { VOID_DEADLINE_PASSED } from "@/lib/maswali-admin-format";
+import { slotLabel } from "@/lib/maswali-score";
 import { withoutSealedPicks } from "@/lib/maswali-seal-batch";
 import {
   attestMaswaliParityAction, confirmMaswaliSealAction, correctMaswaliSealAction, discardMaswaliDraftAction, moveMaswaliCloseAction, openMaswaliWeekAction,
@@ -303,7 +304,7 @@ export function SealConsole({ weekId, weekCode, rows, voidReasons, windowOpen, c
             setSealOpen(false);
             setSealAuditWarning(result.auditWarning);
             if (!result.ok) {
-              const applied = result.sealed.map((slot) => rows.find((row) => row.slot === slot)?.label ?? `slot ${slot}`);
+              const applied = result.sealed.map((slot) => rows.find((row) => row.slot === slot)?.label ?? slotLabel(slot));
               setError(applied.length ? `${applied.join(", ")} sealed. ${result.error} The sealed results will not be retried.` : result.error);
             }
             router.refresh();

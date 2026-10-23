@@ -38,7 +38,7 @@ import { clusterReport, clusterWinnerLine, consoleOfficerName } from "./maswali-
 import { canView } from "./rbac";
 import type { Role } from "./roles";
 import { snapshotOrLegacy } from "./market-config";
-import { MAIN_COUNT, settlementGate, weekVoidCertain } from "@/lib/maswali-score";
+import { MAIN_COUNT, settlementGate, slotLabel, weekVoidCertain } from "@/lib/maswali-score";
 import { guaranteeRequirement } from "@/lib/maswali-money";
 import type { RolloutState } from "@/lib/millionea-rollout";
 import { formatTzs } from "@/lib/utils";
@@ -212,6 +212,19 @@ export function voidDeadlineAlertText(weekCode: string, count: number): string {
   return `${weekCode}: ${count} question(s) passed their void deadline unsealed. Seal each from its source if the source gave its result by the deadline; void only a question with no result by then, on “${MASWALI_VOID_REASON_LABEL.not_played}” or “${MASWALI_VOID_REASON_LABEL.no_source}”.`;
 }
 
+/**
+ * ⭐ FLOW 12 (the lead's ruling of 2026-10-23, from GUIDE's Weeks picture): an alert names a question by its LABEL — M1–M10,
+ * A1–A5, `slotLabel`, as the seal console, the objections, the integrity page and the guide name it — never "slot 14", a
+ * storage number no officer sees anywhere else. `test:maswali-admin-plain` 9.8.
+ */
+export function unsealedAlertText(weekCode: string, slot: number, hours: number): string {
+  return `${weekCode}: ${slotLabel(slot)} is unsealed ${hours} hours after its event started.`;
+}
+/** A seal that disagrees with its linked Yes/No market's resolution, its question by its label (FLOW 12). */
+export function linkedMismatchAlertText(weekCode: string, slot: number, ours: string, theirs: string): string {
+  return `${weekCode}: ${slotLabel(slot)} is sealed ${ours}, but its linked Yes/No market resolved ${theirs}.`;
+}
+
 /** `deps.readFloat` reads the payout float (the payments provider's by default; a suite hands its own); `deps.readTakeover`
  *  the winners' takeover watch (`maswali-takeover.ts` by default). */
 export async function consoleAlerts(
@@ -239,8 +252,8 @@ export async function consoleAlerts(
       for (const q of qs) {
         if (q.outcome !== null) continue;
         const since = nowMs - Date.parse(q.eventStartsAt);
-        if (since >= 12 * HOUR) out.push({ level: "critical", weekId: w.id, text: `${w.code}: slot ${q.slot} is unsealed 12 hours after its event started.` });
-        else if (since >= 2 * HOUR) out.push({ level: "warning", weekId: w.id, text: `${w.code}: slot ${q.slot} is unsealed 2 hours after its event started.` });
+        if (since >= 12 * HOUR) out.push({ level: "critical", weekId: w.id, text: unsealedAlertText(w.code, q.slot, 12) });
+        else if (since >= 2 * HOUR) out.push({ level: "warning", weekId: w.id, text: unsealedAlertText(w.code, q.slot, 2) });
       }
       // A question drafted from a Yes/No market must seal the same way that market resolved: a mismatch is either a wrong
       // seal or a wrong resolution, and both are money (S4 item 5).
@@ -249,7 +262,7 @@ export async function consoleAlerts(
         const linked = await marketStore.get(q.linkedMarketId).catch(() => null);
         const theirs = linked?.resolvedOutcome;
         if ((theirs === "YES" || theirs === "NO") && theirs !== q.outcome) {
-          out.push({ level: "critical", weekId: w.id, text: `${w.code}: slot ${q.slot} is sealed ${q.outcome}, but its linked Yes/No market resolved ${theirs}.` });
+          out.push({ level: "critical", weekId: w.id, text: linkedMismatchAlertText(w.code, q.slot, q.outcome, theirs) });
         }
       }
       const proposed = await proposeVoidsAtDeadline(w.id, now);

@@ -1807,6 +1807,18 @@ on the week's market; a failed count keeps the release's words, and the release 
 `test:maswali-admin-plain` 9.3 (re-pinned), 9.3b (elapsed, never the threshold), 9.3c (the days form) and 9.3d (the
 objection variant and its read), with the plants (AP27)–(AP30) of `red:maswali-admin-plain`.
 
+#### ✅ GD.4 · three alerts named a question "slot 14" — fixed by FLOW 12 (the lead's ruling of 2026-10-23)
+
+Found in the GUIDE lane's Weeks picture: "MLN-2026-W46: slot 14 is unsealed 12 hours after its event started." — the
+storage number of a question, which no officer reads anywhere else; the seal console, the objections, the integrity page and
+the guide name it M1–M10, A1–A5. THE RULE: everything an officer reads names a question by its label (`slotLabel`). The
+two unsealed-question alerts and the linked-market mismatch alert now read "MLN-2026-W46: A4 is unsealed 12 hours after its
+event started." and "… A4 is sealed YES, but its linked Yes/No market resolved NO." (`unsealedAlertText`,
+`linkedMismatchAlertText`, `maswali-console.ts`), and the seal table's partial-seal message falls back to the label, never
+"slot n" (`week-controls.tsx`). The grep of the console, its services, integrity and the notices for a bare slot found
+nothing else an officer reads (the rest are internal keys and developer errors). Held by `test:maswali-admin-plain` 9.8 (the
+rendered alerts, their wiring, a census of the console's sources) with the plants (AP31)–(AP32) of `red:maswali-admin-plain`.
+
 ## §9d · MASWALI MILLIONEA — the final flow evaluation's fixes (FLOW, 2026-10-23)
 
 Ali, 2026-10-23: *"evaluate the final redirections and workflow of maswali … fix anything you notice not in place

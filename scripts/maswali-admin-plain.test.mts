@@ -47,7 +47,7 @@ import { CATEGORY_LABEL } from "../src/lib/ai/poll-vocabulary.ts";
 import { EVENT_KIND_LABEL, VOID_DEADLINE_PASSED, agoInText, eatInText, officerHandle } from "../src/lib/maswali-admin-format.ts";
 import { MILLIONEA_STRIP_LINKS, millioneaStripLink, millioneaStripMore } from "../src/lib/maswali-strip-link.ts";
 import { canViewPath } from "../src/lib/server/rbac.ts";
-import { releaseWaitAlertText, voidDeadlineAlertText } from "../src/lib/server/maswali-console.ts";
+import { linkedMismatchAlertText, releaseWaitAlertText, unsealedAlertText, voidDeadlineAlertText } from "../src/lib/server/maswali-console.ts";
 import { VOID_DEADLINE_NOTE } from "../src/lib/server/maswali-scheduler.ts";
 import { MASWALI_VOID_REASON_LABEL } from "../src/lib/maswali-void-reason.ts";
 import { untaggedRulesFor } from "../src/lib/server/marketing/millionea-untagged.ts";
@@ -317,6 +317,20 @@ const pageWords = (path: string) => decomment(read(path)).replace(/&ldquo;/g, "�
       && sealTable.includes('{r.proposedVoid && <span className="block text-body-sm text-warning">{VOID_DEADLINE_PASSED}</span>}')
       && consolePagesSay.length === 0,
     `${VOID_DEADLINE_PASSED}${consolePagesSay.length ? ` · still in ${consolePagesSay.join(", ")}` : ""}`);
+
+  // 9.8 · FLOW 12 (the lead's ruling of 2026-10-23, from GUIDE's Weeks picture): an alert names a question by its label —
+  // M1–M10, A1–A5 — never "slot 14"; and no console source prints a bare slot number anywhere an officer reads it.
+  const unsealedA4 = unsealedAlertText("MLN-2026-W46", 14, 12), unsealedM3 = unsealedAlertText("MLN-2026-W46", 3, 2);
+  const mismatchA4 = linkedMismatchAlertText("MLN-2026-W46", 14, "YES", "NO");
+  const BARE_SLOT = /`[^`]*\bslot \$\{/i;
+  const bare = [...SERVICES, ...consoleFiles].filter((f) => BARE_SLOT.test(decomment(read(f))));
+  ok("9.8 · ⭐ an alert names the question by its label — \"A4\", \"M3\" — never \"slot 14\", and no console source prints a bare slot number",
+    unsealedA4 === "MLN-2026-W46: A4 is unsealed 12 hours after its event started."
+      && unsealedM3 === "MLN-2026-W46: M3 is unsealed 2 hours after its event started."
+      && mismatchA4 === "MLN-2026-W46: A4 is sealed YES, but its linked Yes/No market resolved NO."
+      && alertsFn.includes("text: unsealedAlertText(w.code, q.slot, 12)") && alertsFn.includes("text: unsealedAlertText(w.code, q.slot, 2)")
+      && alertsFn.includes("text: linkedMismatchAlertText(w.code, q.slot, q.outcome, theirs)") && bare.length === 0,
+    `${unsealedA4} | ${mismatchA4}${bare.length ? ` · bare slot in ${bare.join(", ")}` : ""}`);
 }
 {
   // 9.5 · the front page's Millionea card links a page the viewer may open, asked with that page's own gate question
@@ -339,7 +353,7 @@ const pageWords = (path: string) => decomment(read(path)).replace(/&ldquo;/g, "�
       && !home.includes(">Open the weeks</Link>") && !home.includes("more on the weeks page</li>"));
 }
 
-const FLOOR = 47; // the count the first green run printed: 28 at S6-ADMIN 6 (run 39824239196); 41 with §9 (S6-SHIP 6); 43 with 9.6 (FLOW 1); 44 with 9.7 (FLOW 2); 47 with 9.3b–d (FLOW 8)
+const FLOOR = 48; // the count the first green run printed: 28 at S6-ADMIN 6 (run 39824239196); 41 with §9 (S6-SHIP 6); 43 with 9.6 (FLOW 1); 44 with 9.7 (FLOW 2); 47 with 9.3b–d (FLOW 8); 48 with 9.8 (FLOW 12)
 ok(`floor · at least ${FLOOR} checks ran before this one`, passed + failed >= FLOOR, `${passed + failed} ran`);
 console.log(`\nmaswali-admin-plain: ${passed} passed, ${failed} failed`);
 if (failed) process.exitCode = 1;

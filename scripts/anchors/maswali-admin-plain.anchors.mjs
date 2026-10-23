@@ -217,4 +217,18 @@ export const MUTATIONS = [
     to: "so it cannot be settled. Finance releases it.`;",
     failure: /FAIL 9[.]3d /,
   },
+  {
+    name: "(AP31) 9.8 · an unsealed question's alert names it \"slot 14\" again",
+    file: "src/lib/server/maswali-console.ts",
+    from: "return `${weekCode}: ${slotLabel(slot)} is unsealed ${hours} hours after its event started.`;",
+    to: "return `${weekCode}: slot ${slot} is unsealed ${hours} hours after its event started.`;",
+    failure: /FAIL 9[.]8 /,
+  },
+  {
+    name: "(AP32) 9.8 · the seal table's partial-seal message falls back to a bare slot number again",
+    file: "src/app/admin/maswali/[weekId]/week-controls.tsx",
+    from: "?.label ?? slotLabel(slot));",
+    to: "?.label ?? `slot ${slot}`);",
+    failure: /FAIL 9[.]8 /,
+  },
 ];
