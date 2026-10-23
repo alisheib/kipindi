@@ -12,10 +12,16 @@
  *              tickets of fifteen random answers, on an account of its own slice with room under the cap, a BUSY
  *              retried with the SAME key as the slip retries it; Up & Down bets at `updownPerMin` on the open round;
  *              and after the close, a sample of the purchases that landed retried with their own keys (each must be
- *              answered with its receipt). Every answer, timed, goes to `outFile`.
+ *              answered with its receipt). ⭐ MB-97, beside them: the week page read per request at `viewsPerMin` (the
+ *              purchases' shape; half guests, half signed in) — the reads `/millionea` awaits on every request — and
+ *              `streams` live streams on this container's bus, each wired as `/api/events` wires a viewer's
+ *              (`forwardMillioneaPool`), with one more listener counting the pool frames the feed published here. Every
+ *              answer, timed, goes to `outFile`.
  *   check    — the database afterwards: the week's row, its tickets (any placed at or after the close, on the database
  *              clock), the root over its live tickets, the pool three ways, the close's audit rows, each account's
- *              live tickets and balance, Up & Down's pool against its positions, the trial balance, the invariants.
+ *              live tickets and balance, Up & Down's pool against its positions, the trial balance, the invariants;
+ *              and (MB-97) the root's own time and `proofSample` inclusion proofs, timed and verified against the week's
+ *              committed root, a forged leaf refused.
  * ⛔ Not run directly. ⛔ The orchestrator refuses any database it did not create.
  * ⚠️ This file carries no backslash: line breaks are built from their code points.
  */
@@ -35,7 +41,17 @@ const { checkMaswaliInvariants } = await import("../../src/lib/server/maswali-in
 const { auditFlush } = await import("../../src/lib/server/audit.ts");
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-const say = (v: unknown) => console.log(`@@RESULT ${JSON.stringify(v)}`);
+/**
+ * The answer, and its write. ⚠️ On Linux a pipe takes stdout asynchronously, and `process.exit` drops whatever is still
+ * queued: the check's answer (every live ticket's id, hundreds of kilobytes) reached the orchestrator cut off mid-id, so
+ * the first runs on a GitHub runner (2026-10-22) read "the check worker ended (0) without a result" (on Windows a pipe is
+ * written synchronously, which is why OMEGA never saw it). The worker waits for this write before it exits.
+ */
+let answered: Promise<void> = Promise.resolve();
+const say = (v: unknown) => {
+  const line = `@@RESULT ${JSON.stringify(v)}${String.fromCharCode(10)}`;
+  answered = new Promise<void>((resolve) => { process.stdout.write(line, () => resolve()); });
+};
 const writeAtomic = (path: string, text: string) => {
   writeFileSync(`${path}.tmp`, text);
   renameSync(`${path}.tmp`, path);
@@ -144,6 +160,33 @@ try {
     const closeMs = Date.parse(st.closesAt), startMs: number = job.rushStartAt, endMs: number = job.endAt;
     // The week timer, armed the way a container's boot arms it: the close is stamped by whichever instance's tick wins.
     await scheduler.hydrateMaswaliOnBoot();
+
+    // ⭐ MB-97 · THE LIVE STREAMS: `job.streams` viewers' `/api/events` streams on this container's bus, wired as the route
+    // wires them (`forwardMillioneaPool`; half guests, half signed in), and one more listener on the bus itself counting
+    // what the pool feed published here. The counting listener is registered first, so it holds each frame before any
+    // stream's send of it (a send waits on the stream's audience, asynchronously): a send belongs to the newest frame.
+    const P: any = await import("../../src/lib/server/maswali-player.ts");
+    const PREVIEW: any = await import("../../src/lib/server/millionea-preview.ts");
+    const BUS: any = await import("../../src/lib/server/event-bus.ts");
+    const frames: Array<{ at: number; state: string; sales: number; sends: number; bytes: number; firstMs: number | null; lastMs: number | null }> = [];
+    BUS.subscribe("maswali:pool", (f: any) => {
+      frames.push({ at: Date.now(), state: String(f?.state ?? ""), sales: Number(f?.sales), sends: 0, bytes: 0, firstMs: null, lastMs: null });
+    });
+    const streams = Math.max(0, Math.round(Number(job.streams ?? 0)));
+    const streamCounts: number[] = Array.from({ length: streams }, () => 0);
+    for (let i = 0; i < streams; i++) {
+      const viewer = i % 2 === 0 ? null : (mine[i % Math.max(1, mine.length)] ?? null);
+      PREVIEW.forwardMillioneaPool(viewer, (payload: string) => {
+        streamCounts[i]++;
+        const f = frames[frames.length - 1];
+        if (!f) return;
+        const ms = Date.now() - f.at;
+        f.sends++;
+        f.bytes += payload.length;
+        if (f.firstMs === null || ms < f.firstMs) f.firstMs = ms;
+        if (f.lastMs === null || ms > f.lastMs) f.lastMs = ms;
+      });
+    }
     await barrier();
     const lateStartMs = Math.max(0, Date.now() - startMs);
     if (Date.now() < startMs) await sleep(startMs - Date.now());
@@ -196,12 +239,33 @@ try {
       } catch (e) { r = { ok: false, reason: "THREW", error: String((e as Error)?.message ?? e).slice(0, 200) }; }
       bets.push({ at: t0, userId, ok: r.ok === true, reason: r.ok ? null : String(r.reason ?? r.code ?? "refused"), positionId: r.ok ? r.data?.positionId ?? null : null, ms: Date.now() - t0 });
     };
+    // ⭐ MB-97 · THE WEEK PAGE, READ PER REQUEST: what `/millionea` awaits on every request (the page is force-dynamic) —
+    // `millioneaHub`, then `millioneaCloseMove` and `millioneaHubCommitments` together — by a guest or a signed-in player
+    // of this instance's slice, timed. React's render is not in it.
+    const views: any[] = [], viewPending: Promise<void>[] = [];
+    const view = async () => {
+      const guest = Math.random() < 0.5;
+      const userId = guest ? null : (mine[Math.floor(Math.random() * mine.length)] ?? null);
+      const t0 = Date.now();
+      try {
+        const now = new Date();
+        const hub: any = await P.millioneaHub({ userId, state: "ACTIVE" }, now);
+        const w = hub?.week ?? null;
+        if (w) await Promise.all([P.millioneaCloseMove(w, now.getTime()), P.millioneaHubCommitments(w.id)]);
+        views.push({ at: t0, toClose: t0 - closeMs, guest, ok: true, code: w?.code ?? null, ms: Date.now() - t0 });
+      } catch (e) {
+        views.push({ at: t0, toClose: t0 - closeMs, guest, ok: false, code: null, error: String((e as Error)?.message ?? e).slice(0, 200), ms: Date.now() - t0 });
+      }
+    };
 
     const base: number = job.perMin, burst = base * job.lastMinuteFactor;
     const rateAt = (t: number) => (t >= closeMs - 60_000 && t < closeMs ? burst : base);
+    const viewBase = Math.max(0, Number(job.viewsPerMin ?? 0)), viewBurst = viewBase * job.lastMinuteFactor;
+    const viewRateAt = (t: number) => (t >= closeMs - 60_000 && t < closeMs ? viewBurst : viewBase);
     await Promise.all([
       arrivals(startMs, endMs, Math.max(base, burst), rateAt, (t) => { pending.push(purchase(t)); }),
       arrivals(startMs, endMs, job.updownPerMin, () => job.updownPerMin, () => { pending.push(bet()); }),
+      arrivals(startMs, endMs, Math.max(viewBase, viewBurst), viewRateAt, () => { viewPending.push(view()); }),
       (async () => {
         // MB-31 · after the close, a purchase that landed and lost its answer is retried with its own key: the receipt.
         const at = closeMs + 5_000;
@@ -217,10 +281,11 @@ try {
       })(),
     ]);
     // Everything sent is answered before the instance reports: a purchase still in flight would be missing from the books.
-    await Promise.race([Promise.all(pending), sleep(180_000)]);
+    await Promise.race([Promise.all([...pending, ...viewPending]), sleep(180_000)]);
     const unanswered = pending.length - buys.length - bets.length - noRoom;
-    writeAtomic(job.outFile, JSON.stringify({ index: me, lateStartMs, noRoom, unanswered, buys, bets, retries }));
-    say({ ok: true, index: me, buys: buys.length, bets: bets.length, retries: retries.length, lateStartMs, noRoom, unanswered });
+    const viewsUnanswered = viewPending.length - views.length;
+    writeAtomic(job.outFile, JSON.stringify({ index: me, lateStartMs, noRoom, unanswered, buys, bets, retries, views, viewsUnanswered, frames, streamCounts }));
+    say({ ok: true, index: me, buys: buys.length, bets: bets.length, retries: retries.length, views: views.length, frames: frames.length, lateStartMs, noRoom, unanswered });
   } else if (job.role === "check") {
     const st = JSON.parse(readFileSync(job.stateFile, "utf8"));
     const week: any = await W.dal.weekStore.get(st.weekId);
@@ -239,11 +304,32 @@ try {
     const udMarket: any = await W.mdal.marketStore.get(st.updownMarketId);
     const udPositions: any[] = await W.w.svc.listPositionsForMarket(st.updownMarketId);
     const tb: any = await W.ledger.trialBalance();
+    // ⭐ MB-97 · THE INCLUSION PROOF'S COST: the root over every live ticket (the close's one pass), timed; then
+    // `job.proofSample` inclusion proofs spread over the week's tickets, each timed and verified against the week's committed
+    // root — and each with a forged leaf, which must be refused (the control).
+    const { inclusionProof, verifyInclusion } = await import("../../src/lib/maswali-commitment.ts");
+    const committed = live.map((t) => ({ ticketId: t.id as string, leaf: t.selectionsHash as string }));
+    const r0 = performance.now();
+    const rootOfLive = merkleRoot(committed);
+    const rootMs = Math.round((performance.now() - r0) * 10) / 10;
+    const proofSample = Math.min(Math.max(0, Math.round(Number(job.proofSample ?? 0))), committed.length);
+    const proofMs: number[] = [];
+    let verified = 0, forgedAccepted = 0;
+    for (let i = 0; i < proofSample; i++) {
+      const id = committed[Math.floor((i * committed.length) / proofSample)].ticketId;
+      const p0 = performance.now();
+      const proof = inclusionProof(committed, id);
+      proofMs.push(Math.round((performance.now() - p0) * 10) / 10);
+      if (verifyInclusion(proof, String(week.ticketMerkleRoot ?? ""))) verified++;
+      const forgedLeaf = `${proof.leaf[0] === "0" ? "1" : "0"}${proof.leaf.slice(1)}`;
+      if (verifyInclusion({ ...proof, leaf: forgedLeaf }, String(week.ticketMerkleRoot ?? ""))) forgedAccepted++;
+    }
     say({
       ok: true,
       week: { state: week.state, closesAt: week.closesAt, closedAt: week.closedAt, ticketCount: week.ticketCount, salesAtClose: week.salesAtClose, ticketMerkleRoot: week.ticketMerkleRoot },
       tickets: { all: tickets.length, live: live.length, atOrAfterClose: tickets.filter((t) => Date.parse(t.createdAt) >= closeMs).length, ids: live.map((t) => t.id as string) },
-      rootOfLive: merkleRoot(live.map((t) => ({ ticketId: t.id as string, leaf: t.selectionsHash as string }))),
+      rootOfLive,
+      proofs: { n: committed.length, sample: proofSample, ms: proofMs, verified, forgedAccepted, rootMs },
       pool: { market: market?.yesPool ?? null, other: market?.noPool ?? null, ledger: await W.balanceOf(W.acct.pool(st.marketId)) },
       closedAudit: closedRows.map((e) => new Date(e.createdAt).toISOString()),
       liveByUser, balanceOf,
@@ -264,4 +350,6 @@ try {
   process.exitCode = 1;
 }
 try { await auditFlush(); } catch { /* the audit queue is not what this worker measures */ }
+// The answer reaches the pipe before the process ends (see `say`).
+await answered;
 process.exit(process.exitCode ?? 0);

@@ -2717,10 +2717,50 @@ MB-96 (TK.2, S7-F9 8 and 11), MB-74 (RD.5, S7-F9 9) and MB-23 (OB.0, S7-OB, merg
   These are the first baseline. **The targets, set by the lead (2026-10-22, S7-F9 6) from it:** a landed purchase p95
   ≤ 1,000 ms and p99 ≤ 2,000 ms (measured 699 / 1,425), and 0 BUSY after retries — S17's constants
   (`TARGET_PURCHASE_P95_MS`, `TARGET_PURCHASE_P99_MS`, `TARGET_BUSY_PERCENT`), each now a verdict; the refusal,
-  Up & Down and close-stamp targets stay TBD-BASELINE (printed, not judged). The rush runs again on the final merged
-  head.
+  Up & Down and close-stamp targets stay TBD-BASELINE (printed, not judged). The rush ran again on S7's merged head with
+  MB-97 beside it, on a GitHub runner against its own baseline (the next record).
   ⚠️ The prep had never run green: it opened its week two weeks ahead and could not move the close to the run against
   `MaswaliCycle_close_after_open_check` — fixed in the harness (S7-F8 11: the week opens at the real clock).
+- **S7 · the rush again, with MB-97 beside it — on a GitHub runner, against its own baseline (S7-F9 17, 18 and 20,
+  2026-10-22; run 39824076563, one job on one machine: Ubuntu 24.04.5, 4 vCPU AMD EPYC 9V74, 16 GB, image ubuntu24
+  20261012.334.1).** MB-97 asks what the week page costs in the rush — "rendering per request, SSE fan-out to every
+  viewer, and the cost of computing Merkle proofs" — and S17 now loads all three beside the purchases (S7-F9 17): the
+  week page read per request (what `/millionea` awaits on every request, it being `force-dynamic`: `millioneaHub`, then
+  `millioneaCloseMove` and `millioneaHubCommitments`; half guests, half signed in) at one read a planned purchase, the
+  purchases' shape; 800 live streams, 400 a container, wired as `/api/events` wires a viewer's (`forwardMillioneaPool`);
+  and after the close the root and 100 inclusion proofs over the week's live tickets. ⚠️ Under the harness the questions
+  are read uncached (`hubQuestionsOf` takes Next's data cache only inside a request), so the page read measured is an
+  upper bound for that part. Both runs are synthetic test inputs on one machine, never compared with OMEGA's figures.
+  - *The baseline* — the harness before MB-97 (`66ec6e9be`; the product code is the head's), with only S7-F9 18's Linux
+    fix (the worker now waits for its answer to reach the pipe: on Linux the check's answer arrived cut off, so no rush
+    had ever finished there). ALL PASS, 27 passed: 3,884 purchases sent (3,597 before the close, 904 in its last minute),
+    3,594 landed (9,704 tickets), 290 refused, every one "sales closed" (10 at its edge, 280 after), no BUSY; 3,218 Up &
+    Down bets, every one landed. A landed purchase p50 24 ms, p90 75, **p95 126, p99 294**, max 928 (the last minute
+    p95 112, p99 201); a refusal p95 26; an Up & Down bet p95 101, p99 215. The close: the timer 2 ms after its instant,
+    the stamp's audit row 391 ms after it. Every identity held (2.1–2.12).
+  - *The head* (`4c5969df1`, MB-97's load beside the rush). ALL PASS, 32 passed: 3,856 purchases sent (3,570 before the
+    close, 931 in its last minute), 3,570 landed (9,589 tickets), 286 refused, every one "sales closed" (5 at its edge,
+    281 after), no BUSY; 3,316 Up & Down bets, every one landed. A landed purchase p50 25 ms, p90 99, **p95 150, p99
+    314**, max 742 (the last minute p95 187, p99 355); a refusal p95 9; an Up & Down bet p95 98, p99 236. The close: 1 ms,
+    its audit row 351 ms. Every identity held (2.1–2.12, 3.1–3.4, 4.1).
+  - *MB-97, measured.* The week page: 3,786 reads, p50 13 ms, p90 16, p95 18, p99 25, max 45 (a guest p95 17, signed in
+    19; the last minute 21; after the close 18). The live figure: 1,812 and 1,758 purchases landed on the two containers
+    and the feed published 252 and 248 frames over the ten minutes (at most 301 fit the feed's window there), about 25 a
+    minute each against about 180 sales a minute; each of the 400 streams on a container was given every frame (about 265 bytes a frame a stream), and a
+    frame reached its last stream in 1 ms at p95 (max 3). The proofs: over 9,589 live tickets one inclusion proof costs
+    p50 96.5 ms, p95 109.9, max 126.9, every sampled proof under the committed root and a forged leaf refused; the root
+    itself 108.2 ms, so every ticket's proof made on request, one at a time, would be about 929 s of one CPU — MB-97's
+    "precompute proofs at the close" stands for the day a surface serves them (none does yet: `inclusionProof` has no
+    caller outside its suite).
+  - *The plants* (short rushes, 5 minutes at 100 a minute: the product refuses to bring a close under 6 minutes away),
+    each failing its own identity alone (31 passed, 1 failed) and every file restored: the feed's coalescing removed →
+    3.3 (355 and 353 frames against at most 152 and 151 — one a sale); guests' streams dropped → 3.2 (fewest 0); the
+    figure 500 ahead → 3.4; the proof's path reversed → 4.1 (0 of 100 verified); the hub naming no week → 3.1 (765 reads).
+  - *The lead's targets on this machine, against the baseline measured with them:* the baseline meets them (p95 126 ≤
+    1,000 ms, p99 294 ≤ 2,000 ms, 0 BUSY) and so does the head with MB-97's load (p95 150, p99 314, 0 BUSY): with the page
+    reads and the streams beside it (the proofs run after the close) a landed purchase took about 24 ms more at p95 and
+    20 ms more at p99, within two runs' own spread of each other. MB-97's three new targets — the page
+    read's p95, a frame's reach, one proof's p95 — print as TBD-BASELINE for the lead to set from these figures.
 - **S7 · the automatic resolver against two-admin authorization (S7-F9 2, 2026-10-22).** The question: can the AI seal a
   Millionea question alone while two-admin authorization is on? It cannot. A question is sealed only by `sealQuestion`,
   `confirmSeal` and `correctSeal`, and only officer actions call them. The automatic seal (`resolveDueMarket`) stamps
@@ -2993,7 +3033,7 @@ to the shilling.
 | MB-94 | Security | H | **An officer account is compromised.** One officer seals and voids. Guarantee funding, sunset and pause move money or stop sales. | Step-up re-authentication and typed confirmation on seal, void, fund, sunset, pause and settle release. Alert on a seal from a new device. All audited. | Eng | S4, S7 |
 | MB-95 | Security | M | **Ticket access and pick privacy.** `/millionea/tickets/[ticketId]` could be read by guessing ids, picks could leak through SSE or the API, and OG share images could expose picks before the close. | Owner-only access; ids that cannot be enumerated. Inclusion proof to the owner only. No pick aggregates before settlement. Share images only after the close. | Eng | S5, S7 |
 | MB-96 | Security | M | **Winner account takeover.** A jackpot winner is a SIM-swap target. | Alert Compliance when a winning account may have been taken over after a credit: a count per paying week on the console, the account on the integrity page, where Compliance reviews it and may hold the share (OD-07). An alert, never an automatic hold: 2026-10-10 removed withdrawal holds, and any hold needs its own ruling. | Eng, Ali | S7 ✅ `32b7f7992`, `8194bf3e3` |
-| MB-97 | Performance | M | **The week page in the rush.** Rendering per request, SSE fan-out to every viewer, and the cost of computing Merkle proofs. | Cache the week page, with the headline on a coalesced SSE event and polling or no ticker on 2G. Precompute proofs at the close. Include in the S7 load test. | Eng | S5, S7 |
+| MB-97 | Performance | M | **The week page in the rush.** Rendering per request, SSE fan-out to every viewer, and the cost of computing Merkle proofs. | Cache the week page, with the headline on a coalesced SSE event and polling or no ticker on 2G. Precompute proofs at the close. Include in the S7 load test.<br>**Measured (S7-F9 17–20, §7b S7):** in the rush on a GitHub runner the page read costs p95 18 ms, the coalesced feed about 25 frames a minute a container against about 180 sales, a frame's fan-out to 400 streams 1 ms, and one inclusion proof over 9,589 tickets about 100 ms — every proof on request about 929 s of one CPU, so a surface that serves proofs precomputes them at the close (none serves one yet). | Eng | S5 (the cache), S7 ✅ `4c5969df1` (the load test) |
 | MB-98 | Legal | L | **Sports data rights.** Source terms of use for fixture and price data used in a betting product. | Check the terms for each trusted source. Record them in the source registry. | Ali | S4 |
 | MB-99 | Platform/IA | H | **The rulebook needs five corrections before the door is written:**<br>(a) MR-9/MR-13: an unsalted `selectionsHash` can be brute-forced (MB-32);<br>(b) MR-16: the window opens when the graded set is final and restarts ONCE per week, from the ruling, when an upheld objection changes the graded set (a later change re-grades but keeps the window), not "at the last gating seal" (MB-23);<br>(c) MR-26: POOL must end at exactly 0, with no `settlementPayoutEntries` tolerance (MB-02);<br>(d) no "one closed unsettled week" index (MB-16);<br>(e) MR-19 reconciled with "seal all 15 by default" (MB-14). | Fold all five into door §6 and §7 before S1. | Eng | S0, S1 |
 
