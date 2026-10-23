@@ -124,7 +124,7 @@ import type { CampaignTemplate, CampaignVariant, RecipientOrigin } from "@/lib/m
 import { footerMeasurementToken } from "@/lib/marketing/footer";
 import { campaignProductOf, type MillioneaFacts } from "@/lib/marketing/millionea-claims";
 import { untaggedRulesFor } from "@/lib/server/marketing/millionea-untagged";
-import { CAMPAIGN_FLAGGED_ACTION, millioneaLintEpoch, sendingSincePreLint } from "@/lib/server/marketing/millionea-lint-epoch";
+import { CAMPAIGN_FLAGGED_ACTION, millioneaLintEpoch, sendingSincePreLint, stampUntaggedRun } from "@/lib/server/marketing/millionea-lint-epoch";
 import { ledgerStamp } from "@/lib/server/marketing/ledger-stamp";
 import { assertSettle, fillRecipientCounts } from "@/lib/server/marketing/campaign-model";
 import { recipientRows, zeroRecipientStatusCounts } from "@/lib/marketing/campaign-status";
@@ -284,8 +284,9 @@ export type EngineDeps = {
    *  reads none — a Millionea campaign then pauses `template_invalid` as unread, never sends unchecked. */
   millioneaFacts?: () => Promise<MillioneaFacts | null>;
   /** ⭐ Round 4, rule 6 · the instant Millionea's claims rules first ran (`millioneaLintEpoch`, stamped once, on the slice's
-   *  own clock). Optional, so a dependency set written before it still type-checks; a set without it holds every campaign
-   *  to the rules, and an instant that cannot be read grandfathers none (round 5, MEDIUM 4b: such a slice waits). */
+   *  own clock) — read only for a campaign the untagged rules judge (S6-LINT 6). Optional, so a dependency set written
+   *  before it still type-checks; a set without it holds every campaign to the rules, and an instant that cannot be read
+   *  grandfathers none (round 5, MEDIUM 4b: such a slice waits). */
   millioneaLintEpoch?: (clock: Date) => Promise<string | null>;
   /** THE ONE loop (`dispatchSlice`) — called, never rewritten. */
   dispatch: typeof dispatchSlice;
@@ -773,8 +774,13 @@ async function sliceStep(campaignId: string, state: EngineProcessState, deps: En
   // Millionea campaign carries the week's facts, read once here: the dry render and every recipient's render judge with them.
   // ⭐ Round 4, rule 6 · a classic campaign SENDING since before Millionea's claims rules first ran is not paused by them:
   // what they would refuse is said on its page, once a run, and it keeps sending — a restart binds it.
-  const epoch = deps.millioneaLintEpoch ? await deps.millioneaLintEpoch(deps.now()).catch(() => null) : undefined;
+  // ⛔ S6-LINT 6 · the stamp is read (and the first time written) only where the untagged rules judge this campaign — one
+  // not tagged Millionea, under the ACTIVE ceiling (`templateOf` → `untaggedRulesFor`); below it, or for a tagged one,
+  // nothing reads it, and the campaign is judged exactly as before the lint.
   const facts = await withMillioneaFacts(templateOf(c), deps.millioneaFacts);
+  const epoch = facts.untaggedRules !== undefined && deps.millioneaLintEpoch
+    ? await stampUntaggedRun(deps.millioneaLintEpoch, deps.now())
+    : undefined;
   const template: CampaignTemplate = sendingSincePreLint(c, epoch ?? null) ? { ...facts, millioneaLint: "flag" } : facts;
   let flagged: string | null = null;
   for (const variant of variantsOf(template)) {

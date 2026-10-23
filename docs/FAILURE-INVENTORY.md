@@ -1384,6 +1384,21 @@ runs the tagged rules only, so a body the untagged rules refuse is refused at th
 (the counter judges an untagged campaign as before; each door hands them in) and the plants (C30)–(C34) of
 `red:maswali-claims`.
 
+#### ✅ Ruling 6 · the claims lint judged a classic campaign while Millionea was dark, and stamped its first run at boot (S6-LINT 6)
+
+The untagged rules (a campaign NOT tagged Millionea refused for Millionea's words) ran at every server door whatever
+Millionea's ceiling, so with the product WITHDRAWN a classic campaign could be refused, paused or flagged over a product no
+one could see; and their stamp — the instant they first ran, which decides whether a classic campaign already sending is
+flagged or judged in full — was written by `instrumentation.ts` at boot: a database write awaited before the server serves,
+in every process, under any ceiling. THE RULE (the lead's ruling 6 and its accepted correction): a server door hands the
+untagged rules in only while Millionea's ceiling is ACTIVE (`untaggedRulesFor`, `millionea-untagged.ts`); below it —
+WITHDRAWN or STAFF_PREVIEW — a campaign not tagged Millionea is saved, tested, sent and previewed exactly as before the lint.
+Nothing of the lint runs at boot. The stamp is written by the first door that judges a campaign with the untagged rules — the
+save, the test send or the engine's slice, each through `stampUntaggedRun` (`millionea-lint-epoch.ts`), which never throws
+and never refuses — and nothing reads or writes it before: not below the ceiling, not for a campaign tagged Millionea, not on
+the composer's preview. Held by `test:maswali-claims` §10 (10.1 a census of the boot's code; 10.2–10.3 every door under no
+environment, WITHDRAWN and STAFF_PREVIEW; 10.4 each door first at ACTIVE) and the plants (C37)–(C41) of `red:maswali-claims`.
+
 #### ✅ Item 1 · a holder's inclusion proof asked the product's gate (S6-DOCS 4)
 
 `/fairness/millionea/[serial]` asked `millioneaGate`, so when the product is hidden (a kill: WITHDRAWN) a holder's own

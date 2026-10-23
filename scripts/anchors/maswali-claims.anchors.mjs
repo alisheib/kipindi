@@ -245,7 +245,7 @@ export const MUTATIONS = [
   {
     name: "(C31) S6-LINT 1 · the save hands its verdict no untagged rules: an untagged campaign in Millionea's words is saved",
     file: "src/lib/server/marketing/campaign-draft.ts",
-    from: "  const verdict = deps.validate(fields, \"\", { untagged: untaggedRulesFor(fields.name) });",
+    from: "  const verdict = deps.validate(fields, \"\", { untagged });",
     to: "  const verdict = deps.validate(fields, \"\");",
     expect: "4.4 · ⭐ THE SAVE · an untagged campaign in Millionea's words is refused in words",
   },
@@ -284,5 +284,41 @@ export const MUTATIONS = [
     from: "  if ((text ?? \"\").length > CLAIMS_MAX_CHARS) return [];",
     to: "  if (false) return [];",
     expect: "8.6 · ⭐ finding 9",
+  },
+  /* ── S6-LINT 6 · nothing of the lint at boot; ruling 6's ceiling; the stamp at the first door that judges with the untagged rules ── */
+  {
+    name: "(C37) S6-LINT 6 · the boot stamps the rules' first run again: a boot that can hang or throw on the claims lint",
+    file: "src/instrumentation.ts",
+    from: "    // ⛔ MASWALI-BUILD S6-LINT 6 (the lead's ruling 6, its accepted correction) · NOTHING OF THE CLAIMS LINT RUNS AT BOOT: no",
+    to: "    try { const { millioneaLintEpoch } = await import(\"./lib/server/marketing/millionea-lint-epoch\"); await millioneaLintEpoch(); } catch { /* the boot write */ }\n    // ⛔ MASWALI-BUILD S6-LINT 6 (the lead's ruling 6, its accepted correction) · NOTHING OF THE CLAIMS LINT RUNS AT BOOT: no",
+    expect: "10.1 · ⭐ S6-LINT 6 · the boot runs nothing of the claims lint",
+  },
+  {
+    name: "(C38) S6-LINT 6 · the save stamps the rules' first run for every campaign — below the ACTIVE ceiling, and for a tagged one",
+    file: "src/lib/server/marketing/campaign-draft.ts",
+    from: "  if (untagged !== undefined) await stampUntaggedRun(deps.millioneaLintEpoch, deps.now());",
+    to: "  await stampUntaggedRun(deps.millioneaLintEpoch, deps.now());",
+    expect: "10.3 · ⭐ S6-LINT 6 · the save writes no stamp below the ACTIVE ceiling",
+  },
+  {
+    name: "(C39) S6-LINT 6 · the engine's slice reads the stamp for every campaign, below the ACTIVE ceiling too",
+    file: "src/lib/server/marketing/engine.ts",
+    from: "  const epoch = facts.untaggedRules !== undefined && deps.millioneaLintEpoch",
+    to: "  const epoch = deps.millioneaLintEpoch",
+    expect: "10.3 · ⭐ S6-LINT 6 · the slice reads and writes no stamp below the ACTIVE ceiling",
+  },
+  {
+    name: "(C40) S6-LINT 6 · the untagged rules are handed in whatever the ceiling: a classic campaign is refused while Millionea is dark",
+    file: UNTAGGED,
+    from: "  return millioneaCeiling().ceiling === \"ACTIVE\" ? untaggedCampaignProblems : undefined;",
+    to: "  return untaggedCampaignProblems;",
+    expect: "10.2 · ⭐ S6-LINT 6 (ruling 6) · under",
+  },
+  {
+    name: "(C41) S6-LINT 6 · the test send judges with the untagged rules but never stamps their first run",
+    file: "src/lib/server/marketing/campaign-test-send.ts",
+    from: "  if (template.untaggedRules !== undefined) await stampUntaggedRun(deps.millioneaLintEpoch, deps.now());",
+    to: "  if (false) await stampUntaggedRun(deps.millioneaLintEpoch, deps.now());",
+    expect: "10.4a · ⭐ S6-LINT 6",
   },
 ];

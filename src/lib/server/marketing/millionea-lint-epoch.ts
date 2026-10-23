@@ -2,19 +2,22 @@
  * WHEN MILLIONEA'S CLAIMS RULES FIRST RAN — the rollout's one instant (MASWALI-BUILD S6, the lane-N review's rounds 4 and
  * 5, rule 6; `millionea-claims.ts`).
  *
- * ⭐ A CLASSIC CAMPAIGN ALREADY SENDING WHEN THE RULES SHIPPED IS NOT PAUSED BY THEM. The engine's slice renders it with what
- *    the rules would refuse REPORTED, not refused (`renderForRecipient`'s `millioneaLint: "flag"`), says it once a run on
+ * ⭐ A CLASSIC CAMPAIGN ALREADY SENDING WHEN THE RULES FIRST RAN IS NOT PAUSED BY THEM. The engine's slice renders it with
+ *    what the rules would refuse REPORTED, not refused (`renderForRecipient`'s `millioneaLint: "flag"`), says it once a run on
  *    the campaign's own page (`CAMPAIGN_FLAGGED_ACTION`, read by `campaign-live.ts`) and keeps sending. A sending campaign
  *    can be neither saved nor test-sent, so what binds it is what the code allows: a restart (a Pause, then a Resume), and
- *    every copy, which is judged in full at its save. Every campaign started on a build that carries the rules is judged
- *    in full.
+ *    every copy, which is judged in full at its save. Every campaign started after the stamp is judged in full.
  * ⛔ A CAMPAIGN NAMED AS MILLIONEA'S IS NEVER GRANDFATHERED (the lead's ruling, round 5 HIGH 3): it is judged in full,
  *    whenever it was started.
- * ⭐ "SHIPPED" IS A STAMP, NEVER A CLOCK CONSTANT. It is the start of the first process of a build that carries the rules —
- *    captured once, so a door that stamps late still stamps that instant (round 5, MEDIUM 4a) — written at its boot
- *    (`instrumentation.ts`), or by the first door that judges a campaign (the save, the slice): ONE `SystemConfig` row,
- *    written only while the key has none (`createConfigIfAbsent`), so every later process and deploy reads the same instant.
- *    Process memory without a database.
+ * ⭐ "FIRST RAN" IS A STAMP, NEVER A CLOCK CONSTANT. It is the start of the first process in which the untagged rules judged
+ *    a campaign — captured once, so a door that stamps late still stamps that instant (round 5, MEDIUM 4a) — written by the
+ *    first door that judges a campaign NOT tagged Millionea under the ACTIVE ceiling (the save, the test send, the engine's
+ *    slice — each through `stampUntaggedRun`, before it judges): ONE `SystemConfig` row, written only while the key has none
+ *    (`createConfigIfAbsent`), so every later process and deploy reads the same instant. Process memory without a database.
+ * ⛔ S6-LINT 6 (the lead's ruling 6, its accepted correction) · NOTHING READS OR WRITES IT BEFORE THAT: never the boot
+ *    (`instrumentation.ts` runs nothing of the lint), never a door below the ACTIVE ceiling (no untagged rule runs there),
+ *    never for a campaign tagged Millionea (never grandfathered), and never the composer's previews (a page that shows a
+ *    draft's verdict writes nothing). Only the engine's slice reads it. `test:maswali-claims` §10.
  * ⛔ AN INSTANT THAT CANNOT BE READ IS NO INSTANT: no campaign is then grandfathered — and a slice that only Millionea's
  *    rules would stop WAITS for it, never pauses on a transient read (round 5, MEDIUM 4b; `engine.ts`).
  */
@@ -73,6 +76,24 @@ export async function millioneaLintEpoch(opts: { clock?: Date; stampAt?: Date } 
     if ((await createConfigIfAbsent(MILLIONEA_LINT_EPOCH_KEY, stamp)) === "created") return known(stamp);
     const again = await loadConfigResult<unknown>(MILLIONEA_LINT_EPOCH_KEY);
     return again.ok && isIso(again.value) ? known(again.value) : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * ⭐ S6-LINT 6 · THE STAMP, AT A DOOR THAT JUDGES WITH THE UNTAGGED RULES — the one call each such door makes (the save, the
+ * test send, the engine's slice), only when its campaign's untagged rules were handed in (`untaggedRulesFor`: a campaign not
+ * tagged Millionea, under the ACTIVE ceiling). `stamp` is the door's own `millioneaLintEpoch`; none answers null. Never
+ * throws and never refuses: the door's act goes on whatever the stamp does.
+ */
+export async function stampUntaggedRun(
+  stamp: ((clock: Date) => Promise<string | null>) | undefined,
+  clock: Date,
+): Promise<string | null> {
+  if (typeof stamp !== "function") return null;
+  try {
+    return await stamp(clock);
   } catch {
     return null;
   }
