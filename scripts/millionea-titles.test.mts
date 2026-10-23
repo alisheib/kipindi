@@ -103,7 +103,26 @@ const missing = NAMES.filter((n) => !titled.some((e) => e.name === n));
 ok("2.4 · the twelve emitters the ruling names — purchase, cancel, sales closed, close moved, void, correction, won, held, not won, week void, objection decided and filed — are each in the census",
   missing.length === 0, missing.join(", "));
 
-const FLOOR = 5;
+// ── §3 · two lines for a Millionea row ──────────────────────────────────────────────────────────────────────────────────
+console.log("\n§3 · a classic Millionea row's title takes up to three lines (FLOW 16b)");
+// Ali's ruling on FL.5 (2026-10-23): "two-line Millionea titles". FLOW 15's bell walk measured an objection decision's event
+// alone longer than the one-line title at 360 in Swahili; the title words stay as ruled, and the row grows a second line.
+// The drawn proof — every Millionea title whole at 360 and 1280 in sw/en/zh, and its plant — is FLOW 16b's bell walk.
+const panel = flat(decomment(readFileSync(resolve(ROOT, "src/components/layout/notifications-panel.tsx"), "utf8").replace(/\r\n/g, "\n")));
+ok("3.1 · ⭐ the classic bell draws a Millionea row's title on up to three lines (`line-clamp-3`, its dot on the first line) and every other classic row on one, byte for byte as before",
+  panel.includes('import { isMillioneaNoticeHref } from "@/lib/millionea-notice";')
+    && panel.includes("const mlnWrapped = !journey && isMillioneaNoticeHref(n.href);")
+    && panel.includes('<div className={journey || mlnWrapped ? "flex items-start justify-between gap-2" : "flex items-center justify-between gap-2"}>')
+    && panel.includes('<p className={journey ? "font-display text-body-sm font-semibold text-text leading-tight" : mlnWrapped ? "font-display text-body-sm font-semibold text-text line-clamp-3 leading-tight" : "font-display text-body-sm font-semibold text-text truncate leading-tight"}'));
+const { isMillioneaNoticeHref } = await import("../src/lib/millionea-notice.ts");
+const MILLIONEA = ["/millionea/tickets/MLN-2026-W49-000041#pos_1", "/millionea/tickets/MLN-2026-W49-000041#cancelled", "/millionea/tickets#MLN-2026-W49-closed",
+  "/millionea/tickets#MLN-2026-W49-result", "/millionea/tickets/MLN-2026-W49-000041#objection-3", "/admin/maswali/integrity#objection-obj_1", "/millionea"];
+const OTHER = ["/markets/mkt_1", "/updown/round_1", "/wallet", "/admin/objections/obj_1", "/admin/maswali", "/millioneafake", null, undefined, ""];
+const wrongIn = MILLIONEA.filter((h) => !isMillioneaNoticeHref(h)), wrongOut = OTHER.filter((h) => isMillioneaNoticeHref(h as string | null | undefined));
+ok("3.2 · a row is Millionea's by its notice's own link (`millioneaNoticeHref`): the player's /millionea… and the officer's filed objection; no other row",
+  wrongIn.length === 0 && wrongOut.length === 0, JSON.stringify({ wrongIn, wrongOut }));
+
+const FLOOR = 7;
 ok(`floor · at least ${FLOOR} checks ran before this one`, passed + failed >= FLOOR, `${passed + failed} ran`);
 console.log(`\nmillionea-titles: ${passed} passed, ${failed} failed`);
 if (failed) process.exitCode = 1;

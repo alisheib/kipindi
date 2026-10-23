@@ -18,4 +18,18 @@ export const MUTATIONS = [
     to: "    titleEn: `${w.en} · Sales closed`,\n    titleSw: `${w.sw} · Mauzo yamefungwa`,\n    titleZh: `${w.zh} · 销售已截止`,",
     failure: /FAIL 2[.]1 /,
   },
+  {
+    name: "(MT4) the clamp back to one line — a Millionea row's title cut again at 360",
+    file: "src/components/layout/notifications-panel.tsx",
+    from: "mlnWrapped ? \"font-display text-body-sm font-semibold text-text line-clamp-3 leading-tight\"",
+    to: "mlnWrapped ? \"font-display text-body-sm font-semibold text-text truncate leading-tight\"",
+    failure: /FAIL 3[.]1 /,
+  },
+  {
+    name: "(MT5) a filed objection's officer row is not known as Millionea's — its long title cut on one line",
+    file: "src/lib/millionea-notice.ts",
+    from: "    || href.startsWith(\"/admin/maswali/integrity#objection-\");",
+    to: "    || false;",
+    failure: /FAIL 3[.]2 /,
+  },
 ];
