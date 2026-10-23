@@ -434,7 +434,10 @@ const FILE_FLOOR = 800;
 // of run 39875472498 (S6-INT 33) named the site before the pin moved.
 // S7's own branch moved its pin to 43 for the same site (S7-SHIP 2, 2026-10-23: GitHub CI on S7's branch printed 43
 // sites against the pin of 42).
-const SITE_COUNT = 43;
+// 44 since 2026-10-23 (MASWALI-BUILD S6-GUIDE 6): `dev-test/seed-maswali-guide/route.ts` (account) creates the admin
+// guide's story's officers and players ACTIVE, as every dev-test seeder does — judged `fixture` and proven dev-only by §2.7
+// (24 sites in 24 files); the production writers stay exactly 3 (§2.5). §1's list named the site before the pin moved.
+const SITE_COUNT = 44;
 ok(`1.1 the walk read every .ts/.tsx under src/`, files.length >= FILE_FLOOR, `${files.length} files (floor ${FILE_FLOOR})`);
 ok(`1.2 ⛔ RATCHET · the census found exactly the wallet write sites measured`, all.length === SITE_COUNT,
   `${all.length} sites (pinned ${SITE_COUNT} — a changed count is a changed population: read §1's list, then move the pin)`);

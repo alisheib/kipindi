@@ -223,7 +223,9 @@ const REGISTRY: Record<string, [number, string]> = {
   // Owner's label for a destination, not money (§M8a item 7 untouched); `test:maswali-ui` §5b holds the class to tokens.
   // PHOSPHOR-MIGRATION release 2 (+3) moves the notification WIN tint to `.kp-plate--gold`.
   // 2026-10-21 (S5 merges main 4471bb44): U43's house-gold restore (dd1386f0, +24) and S5's ink (+7) are independent.
-  "src/app/globals.css": [103, "the gold ramp and aliases, identity metal including the shared empty plate's single accent, earned money, restored house needle, wallet figure, money-in coin and deposit rails, classic badge/footer, and gold button recipes (§M3a); S5's ruled Maswali destination label keeps its green-to-gold-to-red ink (§M8a item 11); dead CSS and admin definitions remain"],
+  // 2026-10-23 (−1, 103 → 102): `.kp-rail__dot`'s `var(--gilt)` left with the dot — Ali's ruling, "please remove the golden
+  // dot, make it like other tabs please" (DESIGN_AUTHORITY §K 3, "Every nav tab alike").
+  "src/app/globals.css": [102, "the gold ramp and aliases, identity metal including the shared empty plate's single accent, earned money, restored house needle, wallet figure, money-in coin and deposit rails, classic badge/footer, and gold button recipes (§M3a); S5's ruled Maswali destination label keeps its green-to-gold-to-red ink (§M8a item 11); dead CSS and admin definitions remain"],
   "src/app/motion.css": [22, "the gilt material — gilt-metal on deposit doors and the celebration, gilt-ink on earned figures, the win toast's tint; dead: `.m-skeleton`"],
   "src/app/state-tokens.css": [2, "`.countdown--urgent` — dead CSS (no consumer)"],
   "src/components/ui/button.tsx": [2, "the `gold` variant — bet and sell commits"],
@@ -241,7 +243,8 @@ const REGISTRY: Record<string, [number, string]> = {
   "src/app/legal/_components.tsx": [2, "the regulator-letter frame's corners — CLARET ink (§B4), the GiltCorner component counted"],
   "src/components/layout/avatar-menu.tsx": [2, "classic avatar accent restored to gold; staff destination stays brand (§M3a)"],
   "src/components/layout/notifications-panel.tsx": [2, "classic bell's unread marks restored to gold; Journey bell stays brand and shared empty art uses identity metal (§M3a, §C7)"],
-  "src/components/layout/top-app-bar.tsx": [2, "classic Deposit door and product-line dot restored to gold (§M3a)"],
+  // 2026-10-23 (2 → 1): the product-line dot is deleted (Ali's ruling; DESIGN_AUTHORITY §K 3, "Every nav tab alike").
+  "src/components/layout/top-app-bar.tsx": [1, "classic Deposit door restored to gold (§M3a); no destination wears gold (§K 3)"],
   "src/components/layout/wallet-balance-pill.tsx": [9, "classic wallet amount, flash, and eye restored to gold (§M3a)"],
   "src/components/layout/wallet-sheet.tsx": [1, "Wallet sheet Deposit door restored to gold (§M3a)"],
   "src/components/ui/language-menu.tsx": [1, "classic selected-language tick restored to gilt; Journey stays brand (§M3a)"],
@@ -633,7 +636,10 @@ section("7 · the owner's items, pinned as they stand — shared player chrome, 
   // holds the family's values, hue and contrast; this pin holds only that the gilt alias is gone for good.
   ok("7.1 · RULED (Ali, 2026-10-10) · `--warning-fg` is the amber, never `var(--gilt)` — F3's token re-hued, the owner item closed",
     /--warning-fg:\s*oklch\(82% 0\.13 64\);/.test(CSS) && !/--warning-fg:\s*var\(--gilt\)/.test(CSS));
-  ok("7.2 · the Juu na Chini product-line dots restore gilt in nav and rail", /borderRadius: "var\(--r-pill\)", background: "var\(--gilt\)"/.test(read("src/components/layout/top-app-bar.tsx")) && /background:\s*var\(--gilt\)/.test(rule(CSS, ".kp-rail__dot")));
+  // ⭐ FLIPPED BY THE OWNER, 2026-10-23 (Ali: "please remove the golden dot, make it like other tabs please"; DESIGN_AUTHORITY
+  // §K 3, "Every nav tab alike"): the restored gilt dots are gone from both — `test:nav-tabs-alike` reads the drawn bars.
+  ok("7.2 · RULED (Ali, 2026-10-23) · no product-line dot in the nav or the rail — every nav tab alike, no destination's own gold",
+    !/background: "var\(--gilt\)"/.test(read("src/components/layout/top-app-bar.tsx")) && rule(CSS, ".kp-rail__dot") === "" && !/kp-rail__dot/.test(read("src/components/layout/bottom-nav.tsx")));
   ok("7.3 · classic bells and language tick restore gilt, while Journey and staff identity stay brand",
     /const unreadDot = journey \? "brand" : "gold";\s*const unreadWash = journey \? "bg-brand-500\/\[0\.04\]" : "bg-gold-500\/\[0\.04\]";/.test(read("src/components/layout/notifications-panel.tsx"))
       && /const tickInk = journey \? "var\(--brand-300\)" : "var\(--gilt\)";/.test(read("src/components/ui/language-menu.tsx"))

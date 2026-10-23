@@ -20,13 +20,13 @@ import { withLock } from "./locks";
 import { millioneaNoticeHref } from "./notification-service";
 import { winnerSmsRecords, winnerSmsTargetId } from "./maswali-winner-sms";
 import {
-  calendarStartMs, deadlinesUnderRules, frozenRules, gradable, guaranteeProblem, NO_LICENCE_BASIS, openProblems, proposeVoidsAtDeadline, stopNextActNow, sunsetState,
+  calendarStartMs, deadlinesUnderRules, frozenRules, gradable, guaranteeProblem, openProblems, proposeVoidsAtDeadline, stopNextActNow, sunsetState,
 } from "./maswali-service";
 import { guaranteeReader, maswaliAccountBalance } from "./maswali-money-service";
 import { FLOAT_ALERT_BUFFER_TZS, previewMaswaliSettlement, type MaswaliSettlementPreview } from "./maswali-settlement";
 import { unrefundedVoids } from "./maswali-void";
 import { getMaswaliConfig, snapshotMaswaliRules, unsettledFloors, type MaswaliRulesSnapshot } from "./maswali-config";
-import { getLicenceBasis, licenceBasisAllowsOpen, type LicenceBasis } from "./maswali-licence";
+import { getLicenceStanding, type LicenceStanding } from "./maswali-licence";
 import { holidayOn } from "./maswali-holidays";
 import { TAKEOVER_ALERT_MS, takeoverWatch, type TakeoverWatch } from "./maswali-takeover";
 import { getSalesPause, type SalesPause } from "./maswali-pause";
@@ -135,10 +135,13 @@ export async function consoleWeekDetail(weekId: string, now: Date = new Date()):
     else {
       // The week's own checks, then the two the open asks beside them, in its own words: without these the checklist said
       // every check passes while the open refused for want of a licence basis or the guarantee. ⭐ S7 · on the deadlines
-      // the open would re-freeze (`deadlinesUnderRules`), never the draft's own, so the two can never disagree.
+      // the open would re-freeze (`deadlinesUnderRules`), never the draft's own, so the two can never disagree. The licence
+      // item appears only while the gate truly holds (a recorded None, a record that does not validate, or no record and no
+      // valid licence number) — with nothing recorded, the Owner's ruling of 2026-10-23 is the basis (`maswali-licence.ts`).
       const due = deadlinesUnderRules(week, questions, rules);
       problems = await openProblems(due.week, due.questions, rules, now.getTime());
-      if (!licenceBasisAllowsOpen(getLicenceBasis())) problems.unshift(NO_LICENCE_BASIS);
+      const licence = getLicenceStanding();
+      if (licence.holds !== null) problems.unshift(licence.holds);
       const short = await guaranteeProblem(week, rules, guaranteeReader);
       if (short) problems.push(short);
     }
@@ -293,10 +296,11 @@ export async function consoleAlerts(
   if (held === null) out.push({ level: "critical", text: "The guarantee balance could not be read." });
   else if (need !== null && held < need) out.push({ level: "critical", text: `The guarantee holds ${formatTzs(held)}; the unsettled weeks need ${formatTzs(need)}.` });
   // The product's own standing speaks only once Millionea has a week — any week, settled ones included (`maxSeq` is 0
-  // only before the first draft): before it, a missing licence basis is the plan's Gate A, not an alert for every officer.
+  // only before the first draft): before it, a licence basis that holds the gate is the plan's Gate A, not an alert for
+  // every officer. It speaks only while the gate truly holds, in the open's own words.
   if ((await weekStore.maxSeq()) > 0) {
-    // OD-01 · the licence basis is the Owner's record.
-    if (!licenceBasisAllowsOpen(getLicenceBasis())) out.push({ level: "warning", text: "No licence basis is recorded; no week can open until the Owner records it." });
+    const licence = getLicenceStanding();
+    if (licence.holds !== null) out.push({ level: "warning", text: licence.holds });
     const pause = getSalesPause();
     if (pause.paused) out.push({ level: "warning", text: `Sales are paused: ${pause.reason ?? "no reason recorded"}.` });
     // S6 · MB-93 · a winner nothing has reached a day after the settlement: the desk calls them (the integrity page lists
@@ -748,18 +752,19 @@ function requirementOf(weeks: StoredWeek[]): number | null {
 }
 
 /**
- * The product's switches at a glance — the head of every Millionea page. `stopNextAct` is the Owner's next act to stop
- * Millionea, as a stop reads the line (`stopNextActNow`; S7-F4): the stop control names it when it offers no week. Null
- * when it cannot be read — shown as unknown, never as a control that names no act.
+ * The product's switches at a glance — the head of every Millionea page. `licence` is the basis in force and where it
+ * comes from (`maswali-licence.ts`'s standing: the Owner's record, else the ruling of 2026-10-23). `stopNextAct` is the
+ * Owner's next act to stop Millionea, as a stop reads the line (`stopNextActNow`; S7-F4): the stop control names it when
+ * it offers no week. Null when it cannot be read — shown as unknown, never as a control that names no act.
  */
 export type ConsoleStanding = {
-  rollout: RolloutState | null; licence: LicenceBasis; pause: SalesPause; sunset: Awaited<ReturnType<typeof sunsetState>>; stopNextAct: string | null;
+  rollout: RolloutState | null; licence: LicenceStanding; pause: SalesPause; sunset: Awaited<ReturnType<typeof sunsetState>>; stopNextAct: string | null;
 };
 
 export async function consoleStanding(now?: Date): Promise<ConsoleStanding> {
   const rollout = await millioneaStateNow().catch(() => null);
   const stopNextAct = await stopNextActNow(now).catch(() => null);
-  return { rollout, licence: getLicenceBasis(), pause: getSalesPause(), sunset: await sunsetState(), stopNextAct };
+  return { rollout, licence: getLicenceStanding(), pause: getSalesPause(), sunset: await sunsetState(), stopNextAct };
 }
 
 // ── DRAFTING HELP (MASWALI-PLAN §7b S4 item 7) ──────────────────────────────────────────────────────

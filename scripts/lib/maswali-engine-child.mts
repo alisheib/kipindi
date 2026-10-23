@@ -28,7 +28,7 @@ const svc = await import("../../src/lib/server/maswali-service.ts");
 // clock (MB-84): the suite hands the close that same week clock as the database's, as the money world does.
 svc.__setMaswaliCloseClockForTests((weekClockMs: number) => weekClockMs);
 const { weekStore, questionStore, ticketStore, __resetMaswaliMemoryStores } = await import("../../src/lib/server/maswali-dal.ts");
-const { recordLicenceBasis } = await import("../../src/lib/server/maswali-licence.ts");
+const { recordLicenceBasis, LICENCE_WITHDRAWN } = await import("../../src/lib/server/maswali-licence.ts");
 const { saveMaswaliConfig } = await import("../../src/lib/server/maswali-config.ts");
 const { setRequireTwoOfficerResolution } = await import("../../src/lib/server/resolution-policy.ts");
 const { marketStore } = await import("../../src/lib/server/market-dal.ts");
@@ -214,16 +214,24 @@ const nowOpen = new Date(W2 + 60_000); // Monday 00:01 EAT
   // The builder's checklist reads the real (unfunded) guarantee: it must name what the open would refuse for, in the
   // open's own words — it once said every check passes while the open refused (the S4 drive's finding).
   const listed = async () => (await consoleRead.consoleWeekDetail(week.id, nowOpen))?.problems ?? [];
+  // LICBASIS · nothing is recorded and the platform's licence number stands, so the Owner's ruling of 2026-10-23 is the
+  // basis in force: the checklist names the short guarantee and no licence item (every licence refusal, and no other
+  // line of the checklist, names "licence basis" — `maswali-licence.ts`).
   const before = await listed();
-  ok("2.0 · ⭐ the builder's checklist names the missing licence basis (OD-01) and the short guarantee (OD-02), as the open words them",
+  ok("2.0 · ⭐ with nothing recorded, the Owner's ruling of 2026-10-23 is the basis: the builder's checklist names the short guarantee (OD-02) and no licence item",
     // S6-ADMIN · the words end at the rule, never at its code (DESIGN_AUTHORITY §M8a item 29): no "(OD-02)" on the screen.
-    before[0] === svc.NO_LICENCE_BASIS && before.some((p) => /^The guarantee holds TZS 0; TZS [\d,]+ is needed to open\.$/.test(p)), JSON.stringify(before));
+    !before.some((p) => /licence basis/.test(p)) && before.some((p) => /^The guarantee holds TZS 0; TZS [\d,]+ is needed to open\.$/.test(p)), JSON.stringify(before));
+  // ⛔ A recorded None is the Owner's withdrawal, and the ruling never stands in over it.
+  await recordLicenceBasis({ kind: "NONE", ref: null }, OWNER);
+  const withdrawn = await listed();
+  ok("2.0b · ⛔ once the Owner records None, the builder's checklist names the withdrawal first, as the open words it (OD-01)",
+    withdrawn[0] === LICENCE_WITHDRAWN && withdrawn.some((p) => /^The guarantee holds TZS 0;/.test(p)), JSON.stringify(withdrawn));
   const noLicence = await svc.openWeek({ weekId: week.id, officerId: DRAFTER, guarantee: RICH, now: nowOpen });
-  ok("2.1 · ⛔ no licence basis → refused (OD-01)", !noLicence.ok && errOf(noLicence) === svc.NO_LICENCE_BASIS, errOf(noLicence));
+  ok("2.1 · ⛔ a recorded None → refused (OD-01): the ruling's default never overrides a withdrawal", !noLicence.ok && errOf(noLicence) === LICENCE_WITHDRAWN, errOf(noLicence));
   await recordLicenceBasis({ kind: "OWNER_RULING", ref: "Owner ruling 2026-10-16, docs/COMPLIANCE-DECISIONS.md" }, OWNER);
   const after = await listed();
-  ok("2.1b · …once the basis is recorded the checklist drops it, and still names the guarantee",
-    !after.includes(svc.NO_LICENCE_BASIS) && after.some((p) => /^The guarantee holds TZS 0;/.test(p)), JSON.stringify(after));
+  ok("2.1b · …once a basis is recorded the checklist drops the withdrawal, and still names the guarantee",
+    !after.some((p) => /licence basis/.test(p)) && after.some((p) => /^The guarantee holds TZS 0;/.test(p)), JSON.stringify(after));
   const noParity = await svc.openWeek({ weekId: week.id, officerId: DRAFTER, guarantee: RICH, now: nowOpen });
   ok("2.2 · ⛔ no parity attestation → refused (MB-79)", !noParity.ok && /attested/.test(errOf(noParity)), errOf(noParity));
   ok("2.3 · ⛔ the drafter cannot attest their own translations", !(await attest(week.id, DRAFTER)).ok);

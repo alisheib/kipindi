@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { FilterPill } from "@/components/ui/filter-pill";
 import { Input } from "@/components/ui/input";
 import { CONSOLE_PER_PAGE, consoleStanding, poolsView } from "@/lib/server/maswali-console";
+import { licenceNowLine } from "@/lib/server/maswali-licence";
 import { readMillioneaSwitchFresh } from "@/lib/server/millionea-switch";
 import { weekStore } from "@/lib/server/maswali-dal";
 import { fmtRate, formatTzs } from "@/lib/utils";
@@ -250,7 +251,7 @@ async function Content({ searchParams }: PoolsPageProps) {
             </section>
             <section className="space-y-2">
               <h3 className="font-semibold text-body">Licence basis</h3>
-              <p className="text-body-sm text-text-secondary">Now: {standing ? (standing.licence.kind === "NONE" ? "none recorded — no week can open" : `${standing.licence.kind === "GBT_WRITTEN" ? "the Board's letter" : "the Owner's ruling"} · ${standing.licence.ref}`) : CANNOT_BE_READ}</p>
+              <p className="text-body-sm text-text-secondary break-words">Now: {standing ? licenceNowLine(standing.licence) : CANNOT_BE_READ}</p>
               {canLicence ? <LicenceCeremony /> : <ControlLocked what="Record the licence basis" need={CONTROL_DOMAIN.setMaswaliLicenceBasis} block />}
             </section>
             <section className="space-y-2">

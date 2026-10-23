@@ -5,7 +5,8 @@ import { checkOpenChecklist } from "./maswali-admin-checklist.mjs";
 
 // The open's checklist in the service's own words (S6-ADMIN: words, never a programme code — DESIGN_AUTHORITY §M8a item 29).
 const attestation = "A second reader has not attested that English, Swahili and Chinese agree.";
-const licence = "No licence basis is recorded. The Owner records it before any week opens.";
+// One of the open's three licence refusals (`maswali-licence.ts`; `test:maswali-licence-gate` §1.12 checks all three).
+const licence = "The Owner recorded None for the licence basis; the ruling of 23 October 2026 does not override that. No week opens until the Owner records a basis.";
 const guarantee = "The guarantee holds TZS 0; TZS 1,000,000 is needed to open.";
 const seeded = { licence: "Owner ruling", guarantee: "TZS 7,056,000", requirement: "TZS 1,000,000" };
 const fresh = { licence: "None", guarantee: "TZS 0", requirement: "TZS 0" };

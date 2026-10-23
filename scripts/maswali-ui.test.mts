@@ -452,7 +452,8 @@ const doorDefects = (src: (rel: string) => string) => {
   // More's first row instead of a core link while Millionea shows, at every width (measured: the bar's room is capped at
   // `--w-board`, and with both inline the Swahili bar loses its account menu at 1280). Withdrawn, both lists are today's.
   if (!bar.includes('const MILLIONEA_LINK: NavItem[] = millionea ? [{ href: "/millionea", label: t.millionea.productLabel, ink: true }] : [];')) d.push("the bar's core link is not drawn on the shell's answer alone");
-  if (count(bar, 'accent: true }, ...MILLIONEA_LINK, { href: "/live",') !== 2 || count(bar, 'href: "/millionea"') !== 1) d.push("the bar's core link does not stand right after Up & Down for a player and a guest, or the bar draws Millionea elsewhere too");
+  // Re-pinned 2026-10-23: Up & Down's item lost its `accent: true` (Ali's ruling, DESIGN_AUTHORITY §K 3 "Every nav tab alike").
+  if (count(bar, '{ href: "/updown", label: t.market.udTitle }, ...MILLIONEA_LINK, { href: "/live",') !== 2 || count(bar, 'href: "/millionea"') !== 1) d.push("the bar's core link does not stand right after Up & Down for a player and a guest, or the bar draws Millionea elsewhere too");
   if (!bar.includes('const RESULTS_LINK: NavItem[] = millionea ? [] : [{ href: "/results", label: t.common.results }];')
     || !bar.includes('const RESULTS_ROW: NavItem[] = millionea ? [{ href: "/results", label: t.common.results }] : [];')
     || count(bar, "...RESULTS_LINK,") !== 2 || !/const MORE_ITEMS: NavItem\[\] = user\.isAuthed \? \[ \.\.\.RESULTS_ROW,/.test(bar) || !bar.includes(": RESULTS_ROW;")
