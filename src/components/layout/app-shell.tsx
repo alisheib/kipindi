@@ -24,6 +24,7 @@ import {
 // was a `React.lazy` binding here, which split nothing, so this changes nothing a player gets (12.shell.offline).
 import { OfflineBanner } from "@/components/ui/offline-banner";
 import { resolveMillionea } from "@/lib/server/millionea-preview";
+import { GhostWordsProvider } from "@/components/maswali/maswali-ghost-words-shown";
 import { TopAppBar } from "./top-app-bar";
 import { LiveTicker } from "./live-ticker";
 import { BottomNav } from "./bottom-nav";
@@ -170,6 +171,17 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
   // ⛔ A classic request never meets it, its journey term being false: its `/markets` is today's board, at 200.
   // `test:markets-redirect` §2 holds this line and the page's.
   if (pathname === "/markets" && h.get("x-kp-document") === "1" && (await journeyRead).journey) redirect(journeyMarketsTarget(h.get("x-href") ?? pathname) as never);
+  /* ⭐ THE LOADING DRAWINGS' WORDS (MASWALI-BUILD S5-R3-FIX 7; the lead's ruling of 2026-10-23, DESIGN_AUTHORITY §M8a item
+     22): a Millionea loading drawing sets a static paragraph's own words, unseen, through the kit's `GhostWords`
+     (`maswali-ghost-words.tsx` says why), which sets them only inside this provider (`maswali-ghost-words-shown.tsx`, a
+     module of React alone, since every page a visible reader opens loads it). It is handed ONLY while the rollout's one
+     per-request answer shows Millionea to the request, and it carries nothing but that answer (D3's rule, as the doors'):
+     a reader it is hidden from is served the very tree and payload main serves — no element, no prop — and every drawing
+     draws plain bars. Not `millioneaRow`: a reader on a break is offered no door, yet Millionea's pages still answer them,
+     and their drawings land where those pages do. Both shells below that draw `{children}` wrap them in it.
+     `test:maswali-ui` 1.3c holds this. */
+  const ghostWords = (await resolveMillionea()).visible;
+  const withGhostWords = (page: React.ReactNode) => (ghostWords ? <GhostWordsProvider>{page}</GhostWordsProvider> : page);
   if (isFocusedJourneyPaymentPath(pathname) && (await journeyRead).journey) {
     const preview = (await journeyRead).preview;
     return <div className="min-h-screen flex flex-col bg-bg-base text-text" data-focused-payment="">
@@ -178,7 +190,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       {preview && <PreviewMarker label={t.journey.previewMarker} exit={t.journey.previewExit} />}
       <span hidden id={JOURNEY_SHELL_MARK} />
       <LazyJourneyFlag />
-      <MainLandmark><RouteTransition>{children}</RouteTransition></MainLandmark>
+      <MainLandmark><RouteTransition>{withGhostWords(children)}</RouteTransition></MainLandmark>
       {session && <SessionPresence viewerId={session.userId} />}
     </div>;
   }
@@ -629,7 +641,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
           the footer sits at the window's bottom edge instead of leaving a bare darker band under it
           (/wallet/deposit/return at 1280). Same pattern as admin/layout.tsx. */}
       <MainLandmark viewer={!session ? "guest" : undefined}>
-        <RouteTransition>{children}</RouteTransition>
+        <RouteTransition>{withGhostWords(children)}</RouteTransition>
       </MainLandmark>
       {/* `supportEmail` is resolved HERE for the third time on this line's own logic (E-226):
           the footer is `"use client"`, so a `SUPPORT_EMAIL()` call inside it reads the browser

@@ -200,7 +200,9 @@ const LEFT: Record<string, string> = {
   "src/components/updown/updown-card.tsx :: jsx :: playersText": "the count already grouped, memoised (`formatNumber(players)` — 2.4)",
   // MASWALI-BUILD S5 (2026-10-18): a Millionea question is named by its place among the ten mains; the counts beside them
   // (tickets, winners, held, results out) go through `formatNumber`.
-  "src/app/millionea/how/page.tsx :: slot {n} :: EXAMPLE_VOIDED_MAIN": `${ORDINAL}: the worked example's voided main question, by its number (1–10)`,
+  // ⚠️ RE-PINNED IN THE OPEN 2026-10-23 (MASWALI-BUILD S5-R3-FIX 8): the example's caption is said once, in How's words module
+  // (`how-words.ts`), which the page reads and its loading drawing sets unseen — the same ordinal, moved with its sentence.
+  "src/app/millionea/how/how-words.ts :: slot {n} :: EXAMPLE_VOIDED_MAIN": `${ORDINAL}: the worked example's voided main question, by its number (1–10)`,
   "src/app/millionea/register/[week]/page.tsx :: slot {n} :: s.main": `${ORDINAL}: the main question a reserve stood in for, by its number (1–10)`,
   "src/app/millionea/register/[week]/page.tsx :: slot {n} :: q.slot": `${ORDINAL}: a voided main question in the week's log, by its number (1–10)`,
   // S5-DESIGN-REGISTER (2026-10-21, the critic's M3): a question's row says how it counted, its screen-reader sentence the

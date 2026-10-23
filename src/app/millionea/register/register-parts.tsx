@@ -23,6 +23,7 @@ import type { MillioneaRegisterLiveWeek, MillioneaWeekMoney, MillioneaWeekSummar
 import type { Dict, Locale } from "@/lib/i18n-dict";
 import { millioneaWeekPhase, msOf, weekPhaseWord, type MillioneaWeekPhase } from "../millionea-view";
 import { registerWeekHref } from "../millionea-parts";
+import { commitExplainer } from "./register-words";
 
 export { ticketSalesRuns };
 
@@ -322,7 +323,8 @@ export function WeekCommitments({ t, locale, nowMs, hash, publishedAt, root, clo
             <span className="text-body-sm text-text-muted">{t.millionea.commitAtClose}</span>
           )}
         </div>
-        {hash && root && <p className="text-body-sm text-text-muted text-pretty">{t.millionea.commitExplainer}</p>}
+        {/* Its words said once (`register-words.ts`), which the week's loading drawing sets unseen too (S5-R3-FIX 8). */}
+        {hash && root && <p className="text-body-sm text-text-muted text-pretty">{commitExplainer({ t, locale }).text}</p>}
       </div>
     </section>
   );

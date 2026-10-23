@@ -84,8 +84,13 @@ jobs:
       # not compile should not wait for 457 suites to say so.
       # The section-ownership controls use real about:blank DOMs without an app server.
       # Install Chromium before the battery so that serverless browser proof also runs in CI.
+      # The phones' Chinese face (DESIGN_AUTHORITY §M4a rule 5): the runner has none, so Chromium drew Chinese as empty boxes
+      # and every Chinese width a browser gate read was void. Android's own Noto Sans CJK, the face `--font-cjk` names.
       - name: Install Chromium for browser gates
-        run: npx playwright install --with-deps chromium
+        run: |
+          npx playwright install --with-deps chromium
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends fonts-noto-cjk
+          fc-list :lang=zh family | sort -u | head -4
 
       - name: Section ownership DOM controls
         run: npm run qa:empty-state-alignment

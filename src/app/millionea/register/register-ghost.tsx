@@ -3,35 +3,28 @@
 import { PageContainer } from "@/components/layout/page-container";
 import { RoutePick } from "@/components/ui/route-pick";
 import { GhostLine, GhostTextLine, MaswaliGhostHead } from "@/components/maswali/maswali-ghost";
+import { GhostWords } from "@/components/maswali/maswali-ghost-words";
 import { useT } from "@/lib/i18n";
-import type { Locale } from "@/lib/i18n-dict";
 import { MILLIONEA_HREF } from "../millionea-parts";
 import { MillioneaRegisterWeekGhost } from "./[week]/register-week-ghost";
+import { registerIntro } from "./register-words";
 
 /**
  * /millionea/register loading skeleton — the index's own bands (`page.tsx`), each in the page's own type: a line of words is
  * the kit's bar inside the very line box those words fill (`GhostTextLine`, the hub's drawing's rule), so every band is the
  * page's height and the next lands where the page puts it. Its head and the intro under it at /fairness's reading measure
- * (the critic's M11) — as many lines as the intro takes in the reader's language (the drawing knows the language, never a
- * word of it); then the two sections as the index most often opens: "In progress" holding the week on sale (one fact, its
- * close), then "Final weeks" — each row the ONE `WeekRow`'s own parts (S5 VIS R9, `register-parts.tsx`): the code's micro
- * line, the week beside its state chip, its facts (one per line below 768, beside the week from 768) and the chevron's
- * place, in a list that draws its own top edge and divides its rows (the row draws no rule). How many weeks a section holds
- * the drawing cannot know. Wordless but for the screen reader's "loading" (`maswali-ghost.tsx` says why). Measured by
- * `qa:maswali-register-shots`' register-ghosts hop.
+ * (the critic's M11) — the intro's own words, set unseen through the kit's `GhostWords` from `register-words.ts`, so it
+ * breaks where the page's does in any engine (the lead's ruling of 2026-10-23, S5-R3-FIX 8); then the two sections as the
+ * index most often opens: "In progress" holding the week on sale (one fact, its close), then "Final weeks" — each row the
+ * ONE `WeekRow`'s own parts (S5 VIS R9, `register-parts.tsx`): the code's micro line, the week beside its state chip, its
+ * facts (one per line below 768, beside the week from 768) and the chevron's place, in a list that draws its own top edge
+ * and divides its rows (the row draws no rule). How many weeks a section holds the drawing cannot know. It names no word
+ * itself; a reader Millionea is hidden from is drawn a plain bar where the intro stands (`maswali-ghost-words.tsx` says
+ * why). Measured by `qa:maswali-register-shots`' register-ghosts hop.
  */
 
-/** How many lines a paragraph's words take below 360, from 360 and from 768. */
-type Tiers = readonly [below360: number, from360: number, from768: number];
-/** The intro's lines in each language, as the page's are measured (the band probe of 2026-10-22). */
-const INTRO_LINES: Record<Locale, Tiers> = { en: [8, 7, 4], sw: [9, 8, 4], zh: [6, 5, 3] };
 /** The sections as the index most often opens — the week on sale (its one fact), then final weeks (two facts a row). */
 const SECTIONS: ReadonlyArray<readonly number[]> = [[1], [2, 2, 2, 2]];
-
-/** A paragraph's lines, `n` of them, the last one short. */
-function Lines({ n, last }: { n: number; last: string }) {
-  return <>{Array.from({ length: n }, (_, i) => <GhostTextLine key={i} width={i === n - 1 ? last : "w-full"} />)}</>;
-}
 
 /** A fact's line in a row: its numerals are the mono face's (§T5), whose line box stands a pixel taller than a body line —
  *  an empty run of that face gives the drawn line the same box. */
@@ -62,8 +55,7 @@ function Row({ facts }: { facts: number }) {
 }
 
 export function MillioneaRegisterGhost() {
-  const { t, locale } = useT();
-  const [below360, from360, from768] = INTRO_LINES[locale];
+  const { t } = useT();
   return (
     // Millionea's Chinese is set as the page sets it (`kp-mln-zh`: its eyebrows and micro labels at 12px), so the bands match.
     <PageContainer tier="reading" className="kp-mln-zh">
@@ -71,11 +63,7 @@ export function MillioneaRegisterGhost() {
       <div className="flex flex-col gap-6" aria-busy="true" data-ghost-page="register">
         <div className="flex flex-col gap-3" aria-hidden data-ghost="head">
           <MaswaliGhostHead eyebrowWidth="w-[144px]" titleWidth="w-[208px]" />
-          <span className="block max-w-[68ch] text-body">
-            <span className="block xs:hidden"><Lines n={below360} last="w-[55%]" /></span>
-            <span className="hidden xs:block md:hidden"><Lines n={from360} last="w-[55%]" /></span>
-            <span className="hidden md:block"><Lines n={from768} last="w-[55%]" /></span>
-          </span>
+          <p className="max-w-[68ch] text-body text-text-muted text-pretty"><GhostWords words={registerIntro} /></p>
         </div>
         {SECTIONS.map((rows, s) => (
           <div key={s} className="flex flex-col gap-2" aria-hidden data-ghost={s === 0 ? "running" : "final"}>

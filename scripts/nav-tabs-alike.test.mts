@@ -315,7 +315,12 @@ async function run(w: World, m: Matrix, stage: Stage, report: (id: string, cond:
   // §3 · the stylesheet
   {
     const NAV_ITEM = /kp-rail__item|kp-navlink|kp-jnav__link/;
-    const LAYOUT_ONLY = new Set(["white-space", "text-overflow", "text-align"]);
+    // ⚠️ RE-PINNED IN THE OPEN 2026-10-23 (the merge of main 4c75dbbb6 into MASWALI-BUILD S5-R3-FIX, by its owner R3-2B):
+    // S5-R3-FIX F2's five-tab journey rail holds Up & Down's label to a MEASURE (`max-width`: six letters in English below
+    // 336, ten in Swahili below 440) so that it wraps where its nine-letter neighbours would crowd it, in both engines
+    // (DESIGN_AUTHORITY §M8a item 11) — layout, which paints nothing: no ink, no weight, no box. The rule's words are
+    // unchanged ("sets layout alone"); its list of layout properties gains the measure.
+    const LAYOUT_ONLY = new Set(["white-space", "text-overflow", "text-align", "max-width"]);
     const dotRules: string[] = [];
     const addressPaint: string[] = [];
     let addressed = 0;
@@ -334,7 +339,7 @@ async function run(w: World, m: Matrix, stage: Stage, report: (id: string, cond:
     report("3.dot", dotRules.length === 0,
       "§3 · no rule names a product-line dot (`.kp-rail__dot`) or an accent marker (`[data-accent]`)", firsts(dotRules));
     report("3.address", addressPaint.length === 0,
-      `§3 · a rule that picks a destination out by its address sets layout alone, in every state (${addressed} such selector(s): white-space, text-overflow, text-align only)`,
+      `§3 · a rule that picks a destination out by its address sets layout alone, in every state (${addressed} such selector(s): white-space, text-overflow, text-align and the label's measure, max-width, only)`,
       firsts(addressPaint));
   }
 

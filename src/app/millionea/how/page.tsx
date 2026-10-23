@@ -36,24 +36,21 @@ import { MaswaliWeekStrip } from "@/components/maswali/maswali-week-strip";
 import { sealLineOf } from "@/components/maswali/maswali-seal-line";
 import { MaswaliFacts, factsOf, keepFact } from "@/components/maswali/maswali-facts";
 import { MaswaliLedger, millioneaLedgerRows } from "@/components/maswali/maswali-ledger";
-import { joinList, reserveLabel } from "@/components/maswali/maswali-format";
 import { millioneaGate } from "@/lib/server/millionea-gate";
 import { millioneaHowTimeline, millioneaHowTo, type MillioneaExample, type MillioneaHowTo } from "@/lib/server/maswali-player";
 import { getServerT } from "@/lib/i18n-server";
 import { MARKET_CATEGORIES } from "@/lib/markets/categories";
 import { marketCategoryLabel } from "@/lib/localized";
-import { MAIN_COUNT, RESERVE_COUNT, type GradableQuestion, type MaswaliPick } from "@/lib/maswali-score";
 import { fill, formatTzs, pctNum } from "@/lib/utils";
 import { durationHours } from "@/lib/duration-phrase";
 import type { Dict, Locale } from "@/lib/i18n-dict";
 import type { WeekPhases } from "@/components/maswali/maswali-week-strip";
 import { MillioneaReadingLinks } from "../millionea-parts";
 import { HowExample } from "./how-example";
+import { exampleRecord, howCaption, howStepFour, howStepTwo } from "./how-words";
 
 export const dynamic = "force-dynamic";
 
-/** The example's voided main, as §10 §3.4 draws it ("4 → A1"). An illustration's place, not a rule. */
-const EXAMPLE_VOIDED_MAIN = 4;
 /** The page's one door to the player's own limits — the footer's and the wallet sheet's address. */
 const LIMITS_HREF = "/profile/responsible-gambling";
 
@@ -65,17 +62,13 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: `${t.millionea.howToPlay} · ${t.millionea.productLabel}` };
 }
 
-/** The example's two frames: every main matched, main 4 voided, every pick YES — drawn by the one grader from an
- *  illustrative record (L9), never a hand-made socket. BEFORE: the graded set not yet final (main 4 VOID, the reserves
- *  standing by); AFTER: final, so A1 counts in main 4's place and A2–A5 rest. A real ticket's line is final only once its
- *  week settled (`millionea-view.ts → lineOf`); this one illustrates a settled week, so it says `final` itself. */
+/** The example's two frames, drawn by the one grader from the example's illustrative record (`exampleRecord`, L9), never
+ *  a hand-made socket. BEFORE: the graded set not yet final (main 4 VOID, the reserves standing by); AFTER: final, so A1
+ *  counts in main 4's place and A2–A5 rest. A real ticket's line is final only once its week settled
+ *  (`millionea-view.ts → lineOf`); this one illustrates a settled week, so it says `final` itself. */
 function exampleLines() {
-  const qs: GradableQuestion[] = [
-    ...Array.from({ length: MAIN_COUNT }, (_, i) => ({ role: "MAIN" as const, ordinal: i + 1, outcome: i + 1 === EXAMPLE_VOIDED_MAIN ? "VOID" as const : "YES" as const })),
-    ...Array.from({ length: RESERVE_COUNT }, (_, i) => ({ role: "RESERVE" as const, ordinal: i + 1, outcome: "YES" as const })),
-  ];
-  const picks: MaswaliPick[] = Array.from({ length: MAIN_COUNT + RESERVE_COUNT }, () => "YES");
-  return { before: sealLineOf(qs, picks), after: sealLineOf(qs, picks, { final: true }) };
+  const { questions, picks } = exampleRecord();
+  return { before: sealLineOf(questions, picks), after: sealLineOf(questions, picks, { final: true }) };
 }
 
 /** Millionea's Chinese sets a digit apart from an ideograph ("24 小时", the 2026-10-19 convention; L9) — the platform's
@@ -109,8 +102,9 @@ export default async function MillioneaHowPage() {
   const h = await millioneaHowTo({ userId: gate.userId, state: gate.state });
   const pct = pctNum(h.feeRate);
   const { before, after } = exampleLines();
-  const unused = after.annex.filter((r) => r.carriedTo === undefined).map((r) => reserveLabel(r.ordinal));
-  const caption = fill(t.millionea.exampleCaption, { n: EXAMPLE_VOIDED_MAIN, r: reserveLabel(1), unused: joinList(locale, unused) });
+  // The static words — the second and fourth steps, the caption — are said once, in `how-words.ts`, which the loading
+  // drawing sets unseen too, so it breaks them where this page does (S5-R3-FIX 8).
+  const caption = howCaption({ t, locale }).text;
   // This week's shape on the template, by the hub's own rules (S5-FIX-PLAYER P7: `millioneaHowTimeline`).
   const phases: WeekPhases | null = millioneaHowTimeline(h, Date.now());
   // M6 · step 3 is the jackpot's own headline, as the hub and the card say it: at least the floor (a floor of 0 promises no
@@ -120,9 +114,9 @@ export default async function MillioneaHowPage() {
     : fill(t.millionea.ruleShared, { pct });
   const steps: ReactNode[] = [
     keepFact(locale, fill(t.millionea.howOne, { price: formatTzs(h.ticketPrice) })),
-    keepFact(locale, t.millionea.howTwo),
+    keepFact(locale, howStepTwo({ t, locale }).text),
     <MaswaliFacts key="headline" facts={factsOf(headline).map((f) => keepFact(locale, f))} />,
-    keepFact(locale, t.millionea.howFour),
+    keepFact(locale, howStepFour({ t, locale }).text),
   ];
   const rules: ReactNode[] = [
     keepFact(locale, fill(t.millionea.ruleCap, { cap: h.ticketCap })),
