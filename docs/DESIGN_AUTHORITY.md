@@ -2237,6 +2237,14 @@ Extends §B5 (one definition site per motion token) and §M2 (a surface picks a 
    unread mark; the journey's Akaunti dot, `.kp-rail__badge`). Guards:
    `test:nav-tabs-alike` (the classic rail and bar and the journey's rail and bar, rendered and painted, with plants;
    `red:nav-tabs-alike` puts the dot back) and `qa:classic-rail` (the drawn rail).
+   ⭐ **THE CLASSIC BAR'S ROW STAYS INSIDE ITS CONTENT EDGE AT EVERY WIDTH, AND ITS SPACING IS WHAT GIVES WAY (MASWALI-BUILD
+   HEADER-1024, 2026-10-23; Ali: none of this kind left).** Every child of the header's row, and every control in it, ends
+   inside the row's padding — not merely on the screen (E-190's rule) — in sw/en/zh, for a guest, a player, an unverified
+   player and a held wallet, at both rollouts. Measured on main 4c75dbbb6: in Swahili at 1024 a signed-in row ran 16.6px
+   into the gutter (FEATURE_MILLIONEA=ACTIVE; 14.6 WITHDRAWN). ⛔ No label is cut, no control yields, nothing moves where
+   the row has room: the spacer between the clusters (`.kp-bar-fill`) and the links' lead (`.kp-bar-lead`) sit at the old
+   gaps' widths and, only when the row is full, give way — the spacer first — each down to 8px (`globals.css`, the top
+   bar's row). Guards: `qa:classic-header-fit` (the edges, whole labels, the slack) and `red:classic-header-fit`.
    ⭐ **FILL MEANS A STATE; DUOTONE IS IDENTITY ON A PLATE; LINE IS EVERYTHING ELSE (PHOSPHOR-MIGRATION W4, §8c; Ali,
    2026-10-19: "nothing should be plain … everything visually perfect, logically perfect").** A glyph's tier says what it
    is, so the tier is never chosen for looks:
