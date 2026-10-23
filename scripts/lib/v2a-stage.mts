@@ -104,14 +104,15 @@ export class Stage {
   }
   /**
    * Lay `body` out at `width` with `css`, in a document whose `<html lang>` is the locale's (the stylesheet keys some rules
-   * off `:lang()`), then run `fn` in it. `density` sets `<html data-density>` when a rule is density-gated.
+   * off `:lang()`), then run `fn` in it. `density` sets `<html data-density>` when a rule is density-gated; `shell`
+   * sets `<html data-shell>` as the root layout does for a journey reader (the journey's rules key off it).
    */
-  async measure<R, A = undefined>(o: { body: string; css: string; width: number; height?: number; lang: Loc; density?: "comfortable"; arg?: A; fn: (a: A) => R }): Promise<R> {
+  async measure<R, A = undefined>(o: { body: string; css: string; width: number; height?: number; lang: Loc; density?: "comfortable"; shell?: "journey"; arg?: A; fn: (a: A) => R }): Promise<R> {
     const page = await this.browser.newPage({ viewport: { width: o.width, height: o.height ?? 900 }, deviceScaleFactor: 1 });
     try {
       await page.route("**/*", (r) => r.abort());
       const lang = o.lang === "zh" ? "zh" : o.lang;
-      await page.setContent(`<!doctype html><html lang="${lang}"${o.density ? ` data-density="${o.density}"` : ""}><head><meta charset="utf-8"><script>var __name = (f) => f;</script><style>${FONT_STACKS}</style><style>${o.css}</style></head><body class="bg-bg-base text-text">${o.body}</body></html>`, { waitUntil: "load" });
+      await page.setContent(`<!doctype html><html lang="${lang}"${o.density ? ` data-density="${o.density}"` : ""}${o.shell ? ` data-shell="${o.shell}"` : ""}><head><meta charset="utf-8"><script>var __name = (f) => f;</script><style>${FONT_STACKS}</style><style>${o.css}</style></head><body class="bg-bg-base text-text">${o.body}</body></html>`, { waitUntil: "load" });
       return await page.evaluate(o.fn as (a: A) => R, o.arg as A);
     } finally {
       await page.close();

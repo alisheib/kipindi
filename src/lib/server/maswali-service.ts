@@ -31,7 +31,7 @@ import { marketStore } from "./market-dal";
 import { isSourceTrusted, seedDefaultSources } from "./source-registry";
 import { readRequireTwoOfficerResolution } from "./resolution-policy";
 import { getMaswaliConfig, readMaswaliConfigFresh, readMaswaliRulesSnapshot, snapshotMaswaliRules, unsettledFloors, type MaswaliRulesSnapshot } from "./maswali-config";
-import { licenceBasisAllowsOpen, readLicenceBasisFresh } from "./maswali-licence";
+import { readLicenceStandingFresh } from "./maswali-licence";
 import { isEventKind, questionStore, ticketStore, weekStore, type DraftQuestionFields, type EventKind, type StoredQuestion, type StoredWeek, type WeekVisibility } from "./maswali-dal";
 import { MARKET_CATEGORIES, type MarketCategory } from "@/lib/markets/categories";
 import { EAT_OFFSET_MS, eatWeekAt, eatWeekCode, eatWeekStartMs } from "@/lib/eat-day";
@@ -375,12 +375,11 @@ export async function attestParity(input: {
 /** What the open needs from the money side (S3 implements it; S2's suites inject it). */
 export type GuaranteeReader = { balance(): Promise<number | null> };
 
-/**
- * The two conditions the open checks beside the week itself (OD-01, OD-02), each in the words it refuses with. The
- * builder's checklist (`consoleWeekDetail`) lists them too, so the page never says every check passes while the open
- * would refuse.
+/*
+ * The two conditions the open checks beside the week itself, each in the words it refuses with — the licence basis in
+ * force (OD-01: `maswali-licence.ts`, whose `holds` is the refusal) and the guarantee (OD-02, below). The builder's
+ * checklist (`consoleWeekDetail`) lists both too, so the page never says every check passes while the open would refuse.
  */
-export const NO_LICENCE_BASIS = "No licence basis is recorded. The Owner records it before any week opens (OD-01).";
 
 /**
  * OD-02: the guarantee must cover every unsettled week, this one included, before it opens — each at its OWN frozen floor
@@ -475,10 +474,13 @@ export function deadlinesUnderRules(week: StoredWeek, questions: StoredQuestion[
  */
 export async function openWeek(input: { weekId: string; officerId: string; guarantee: GuaranteeReader; now?: Date }): Promise<Result<{ week: StoredWeek; recorded: boolean }>> {
   const nowMs = (input.now ?? new Date()).getTime();
-  const [fresh, licence] = await Promise.all([readMaswaliConfigFresh(), readLicenceBasisFresh()]);
+  const [fresh, licence] = await Promise.all([readMaswaliConfigFresh(), readLicenceStandingFresh()]);
   if (!fresh.ok) return refuse(`The Millionea rules could not be read, so nothing was opened: ${fresh.error}`);
   if (!licence.ok) return refuse("The licence record could not be read, so nothing was opened.");
-  if (!licenceBasisAllowsOpen(licence.basis)) return refuse(NO_LICENCE_BASIS);
+  // OD-01 · the basis in force: the Owner's record (a recorded None included), else the ruling of 2026-10-23 on the
+  // platform's licence number. It refuses in the console's own words, and the open's audit row says which basis it sold under.
+  if (licence.standing.holds !== null) return refuse(licence.standing.holds);
+  const basis = { kind: licence.standing.basis.kind, source: licence.standing.source, ref: licence.standing.basis.ref };
   // The trusted-source registry seeds its defaults on first use, as every publish path does before it asks. S5-FIX-SRV ·
   // before the lock, as its own write: nothing inside the chain lock writes off its transaction, and the checks below
   // read the registry outside it, so they must find the defaults already committed.
@@ -564,7 +566,7 @@ export async function openWeek(input: { weekId: string; officerId: string; guara
     }
     const opened = (await weekStore.get(week.id, lockTx ?? undefined))!;
     owed.push({ category: "ADMIN", action: "maswali.week.opened", actorId: input.officerId, targetType: "MaswaliCycle", targetId: week.id,
-      payload: { code: week.code, marketId: market.id, questionSetHash: qHash, closesAt: week.closesAt, finalDeadlineAt: due.finalDeadlineAt, rules, isFinal: opened.isFinal } });
+      payload: { code: week.code, marketId: market.id, questionSetHash: qHash, closesAt: week.closesAt, finalDeadlineAt: due.finalDeadlineAt, rules, isFinal: opened.isFinal, licence: basis } });
     // S5 · a week on sale has a pool figure now — noted once the open has committed.
     afterCommit(lockTx, () => noteMaswaliPoolChanged(week.id));
     return { ok: true, week: opened, owed };

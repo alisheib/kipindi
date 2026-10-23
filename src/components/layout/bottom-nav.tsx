@@ -82,12 +82,13 @@ export function BottomNav({ isAuthed = false, proposalsState, inviteVisible = fa
    *  item 11). `millionea` is the shell's one answer, handed only while it is true (the rollout admits this reader and the
    *  reader is not on a break; D3), so a reader it is hidden from is served today's rail. Live then leads More
    *  (`liveRow`, below): moved, never dropped. */
-  const items: { href: string; glyph: GlyphKey; label: string; accent?: boolean; ink?: boolean }[] = [
+  const items: { href: string; glyph: GlyphKey; label: string; ink?: boolean }[] = [
     { href: "/markets", glyph: "markets",    label: t.common.markets },
     /* The full product name wraps in the Swahili phone rail. The accessible name stays
        the visible label (WCAG 2.5.3 label-in-name: a voice user says what they see). */
     // One meaning, one glyph (PHOSPHOR-MIGRATION R-LEXICON): Up & Down is `trade` in both shells; Live is `live`.
-    { href: "/updown",  glyph: "trade",      label: t.nav.updown, accent: true },
+    // ⭐ Drawn exactly as its siblings — no dot, no ink of its own (Ali, 2026-10-23; `RailDest` below).
+    { href: "/updown",  glyph: "trade",      label: t.nav.updown },
     millionea
       ? { href: "/millionea", glyph: "millionea", label: t.millionea.productLabel, ink: true }
       : { href: "/live",      glyph: "live",      label: t.nav.live },
@@ -302,6 +303,11 @@ export function BottomNav({ isAuthed = false, proposalsState, inviteVisible = fa
  * markup existing twice — the rail is still ONE component, which `ACCEPTANCE` §C2 requires in so
  * many words: "the rail is `bottom-nav.tsx`, with no second nav component". Nothing about a slot
  * changed in the move; this is the same markup the map used before.
+ * ⭐ EVERY SLOT IS DRAWN ALIKE — Ali, 2026-10-23: "people are misunderstanding and thinking there is a certain
+ * notification there … please remove the golden dot, make it like other tabs please". Up & Down's 5px gilt
+ * "product-line dot" on its pip's corner read as an unread badge that never clears, so it is gone: Up & Down is the
+ * same slot, pip, glyph and label as Markets, in the same ink (DESIGN_AUTHORITY §K 3, "Every nav tab alike";
+ * `test:nav-tabs-alike`). A notification dot is a state and stays where it is one — the journey's Akaunti tab.
  * ⭐ `ink` (Millionea's track, Ali 2026-10-22, §M8a item 11) — the slot stays its siblings' own, as the journey rail's
  * Millionea tab does: the pip rests its glyph in gold (`kp-millionea-glyph`; lit, it takes the siblings' Fill on the pill)
  * and the label's words wear Millionea's ink (`kp-millionea-ink`). Nothing else differs (globals.css, the ink's rules).
@@ -310,14 +316,12 @@ function RailDest({
   href,
   glyph,
   label,
-  accent,
   ink,
   on,
 }: {
   href: string;
   glyph: GlyphKey;
   label: string;
-  accent?: boolean;
   ink?: boolean;
   on: boolean;
 }) {
@@ -335,8 +339,6 @@ function RailDest({
             glyphs (R-RAIL 4B) in a 56×32 pip grown to fit them. */}
         <span className={ink ? "kp-rail__pip kp-millionea-glyph" : "kp-rail__pip"}>
           <NavGlyph glyph={glyph} on={on} s={24} />
-          {/* The product-line dot, same 5px gilt mark as the desktop nav. */}
-          {accent && <span className="kp-rail__dot" aria-hidden />}
         </span>
         <span className="kp-rail__label">{ink ? <span className="kp-millionea-ink">{label}</span> : label}</span>
       </Link>
