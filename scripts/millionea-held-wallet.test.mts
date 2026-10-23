@@ -128,7 +128,7 @@ ok("2.5 · ⭐ Tiketi zangu's empty list offers a held wallet no slip — the se
 const ticket = read("src/app/millionea/tickets/[serial]/page.tsx");
 ok("2.6 · ⭐ the ticket page draws the cancel's sentence in the cancel control's place for a held wallet (read only for a cancellable ticket)",
   ticket.includes("const cancelHeld = cancellable && (await millioneaWalletHeld(gate.userId));")
-    && ticket.includes('cancel={cancellable && cancelUntil !== null && rules ? cancelHeld ? <div data-testid="millionea-ticket-cancel-held"><Callout tone="neutral" role="status">{t.millionea.cancelWalletFrozen}</Callout></div> : <TicketCancel'));
+    && ticket.includes('cancel={cancellable && cancelUntil !== null && rules ? cancelHeld ? <div data-testid="millionea-ticket-cancel-held"><Callout tone="neutral" role="status">{noticeBody(t.millionea.cancelWalletFrozen)}</Callout></div> : <TicketCancel'));
 const acts = read("src/app/millionea/tickets/[serial]/ticket-acts.tsx");
 ok("2.7 · ⭐ the cancel's refusal says the same sentence when the hold lands while the page is open — before the registry's fallback",
   acts.includes('const body = reason === "exit_window_closed" ? t.millionea.cancelWindowClosed : reason === "position_not_open" ? t.millionea.cancelNotOpen : reason === "wallet_frozen" ? t.millionea.cancelWalletFrozen : renderFailure('));
