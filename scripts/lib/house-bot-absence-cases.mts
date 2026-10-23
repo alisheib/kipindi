@@ -237,6 +237,11 @@ export async function runAbsenceCases(ok: Ok, section: Section, ROOT: string): P
       // Privacy v2026-10-17 entry is amended; production's notice is unchanged).
       ["src/app/legal/privacy/page.tsx", "c58b316ff2116976f5021ad89b242ce09244953e"],
       ["src/app/legal/responsible-gambling/page.tsx", W4],
+      // 2026-10-23 (lane UDDOT, Ali's ruling "Remove Up & Down's dot"; DESIGN_AUTHORITY §K 3): COMMENT ONLY — the legal
+      // nav's DG-P-11 code comment now states the rule in force (every nav tab alike, the old product-line dot and ink
+      // superseded). No published word and no code changed: `git diff origin/main -- src/app/legal/` is that one JSX
+      // comment. Re-pinned at the lane commit that made it (07e643421), on the lead's decision (b) of 2026-10-23.
+      ["src/app/legal/legal-nav.tsx", "07e643421d92bd5c090c8ff511cba35fb9c4c2ce"],
     ]);
     const approvedBlob = (rel: string) => { try { return lf(git("cat-file", "blob", `${APPROVED_REF}:${rel}`)); } catch { return null; } };
     const extraBlob = (rel: string) => { try { return lf(git("cat-file", "blob", `${APPROVED_EXTRA.get(rel)}:${rel}`)); } catch { return null; } };
