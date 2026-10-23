@@ -88,6 +88,11 @@ product (`npm run test:maswali-fairness` H.7; S5's ghosts are wordless for the s
   ends at exactly 0, with no rounding tolerance. A no-winner week is `maswaliRolloverEntries`. A whole-week void
   refunds every live ticket in one bulk transaction (`refundVoidedWeek`, group `maswali_void_{weekId}`). The guarantee
   moves only through the Owner's two ceremonies (`fundMaswaliGuarantee`, `returnMaswaliGuarantee`).
+- **A share owed to a winner who cannot sign in** (self-excluded, closed or suspended; OD-13) leaves only by Compliance's
+  act, `payLockedWinnerShare` (`maswali-share-payout.ts`): one payment at the holder's request through the platform's own
+  `withdraw` (its `lockedWinnerShare` option) — to the registered number, at the live fee, behind the identity and email
+  gates, within the per-withdrawal maximum — through the self-exclusion's freeze and never around another hold, keyed per
+  ticket and attempt, under `maswali:chain` and then the wallet lock, recorded as `maswali.share.paid_locked`.
 - **Nothing runs a winning settlement on its own.** The scheduler (`maswali-scheduler.ts`) closes a week, proposes
   voids at their deadlines and completes a certain week void; an officer seals, an officer opens, and one accounting
   officer releases from a preview whose digest the release re-checks.
@@ -127,6 +132,7 @@ product (`npm run test:maswali-fairness` H.7; S5's ghosts are wordless for the s
 | `src/lib/server/maswali-support.ts` · `src/lib/maswali-support-scripts.ts` · `src/app/admin/maswali/lookup/**` | The support desk: one ticket's lookup, recorded before it answers; the desk's scripts in English and Swahili |
 | `src/lib/server/maswali-objections.ts` · `src/app/millionea/objection-actions.ts` · `src/components/maswali/maswali-objection-*.tsx` · `src/app/admin/maswali/integrity/objection-*.tsx` | The per-question objection (MR-16): the holder's door on the ticket page and Compliance's ruling on the integrity page |
 | `src/lib/server/maswali-takeover.ts` | The winners' takeover alert (MB-96): an alert and a name for Compliance, never a hold |
+| `src/lib/server/maswali-share-payout.ts` | A share owed to a winner who cannot sign in (OD-13): the console's list, and Compliance's one payment of it through `withdraw` |
 | `src/lib/marketing/millionea-claims.ts` · `src/lib/server/marketing/millionea-untagged.ts` · `millionea-lint-epoch.ts` · `src/lib/server/maswali-marketing.ts` | What a campaign may say about Millionea (MB-47): the tagged rules at the composer's one door, the untagged rules on the server only, the approved wordings with the fee the week froze |
 | `src/lib/server/tax-report-data.ts` · `tax-report-view.ts` · `tax-report-doc.ts` · `house-ledger.ts` · `report-money.ts` · `src/lib/server/reports/catalogue.ts` · `finance-window.ts` | The reports (OD-08): the tax report's product pill and three reconciling lines, the house book's waterfall step, the statutory pack's liability and guarantee lines |
 | `src/lib/server/maswali-register-cache.ts` · `maswali-week-record.ts` · `src/lib/maswali-cluster-coverage.ts` · `maswali-integrity-list.ts` · `maswali-week-list.ts` · `maswali-share-note.ts` | The register's brief cache; a settled week's record and the figures it lacks; the cluster report's coverage; the console's list queries; the words for a held share |
@@ -154,6 +160,7 @@ product (`npm run test:maswali-fairness` H.7; S5's ghosts are wordless for the s
 | `npm run test:maswali-notify` | Every notice once, across processes and both stores; the letters, the winner SMS, the desk list |
 | `npm run test:maswali-evidence` · `npm run test:maswali-reporting` | The evidence pack (both stores); the reports equal the ledger to the shilling (both stores) |
 | `npm run test:maswali-objections` · `npm run test:maswali-adversarial` | The objection door and ruling (both stores); the adversarial cases (both stores) |
+| `npm run test:maswali-share-payout` · `npm run load:maswali-cross-instance` §6c | OD-13's payment of a locked winner's share (both stores); two officers on two processes pay it once |
 | `npm run test:maswali-claims` | The claims lint |
 | `npm run test:tax-report` §12 · `npm run test:house-book` | The tax report's Millionea lines; the house book |
 | `npm run test:maswali-admin-guide` | The admin guide quotes the console as built |
@@ -175,7 +182,7 @@ domains are in `ROUTE_DOMAINS` (`src/lib/server/roles.ts`).
 |---|---|---|
 | `trading` | `/admin/maswali`, `/admin/maswali/new`, a week's page | draft, edit a question, discard a draft that never opened, attest the languages, open, move the close, seal, void a question, confirm, correct |
 | `accounting` | `/admin/maswali/pools` | release a settlement |
-| `compliance` | `/admin/maswali/integrity`, `/admin/maswali/evidence` | pause and resume sales, void a week whole, hold, release and forfeit a share, record a winner reached by phone, record a letters' check, rule on an objection |
+| `compliance` | `/admin/maswali/integrity`, `/admin/maswali/evidence` | pause and resume sales, void a week whole, hold, release and forfeit a share, record a winner reached by phone, record a letters' check, rule on an objection, pay a share owed to a winner who cannot sign in |
 | `support` | `/admin/maswali/lookup` | none: the desk's lookup is a read, recorded before it answers |
 | `ops` (the Owner, by default) | the Owner card on `/admin/maswali/pools`; the rules and the holiday list on `/admin/maswali` | fund and return the guarantee, the licence basis, the rollout, the sunset, the rules for the next week, the public holidays |
 
@@ -204,7 +211,8 @@ domains are in `ROUTE_DOMAINS` (`src/lib/server/roles.ts`).
 | The commitment and its proofs | `src/lib/maswali-commitment.ts` |
 | Why a question voided | `src/lib/maswali-void-reason.ts` |
 | The binding rules' version and text hash | `src/lib/millionea-rules-version.ts` |
-| Each control's domain | `CONTROL_DOMAIN` (`control-gates.ts`): 26 Millionea controls |
+| Each control's domain | `CONTROL_DOMAIN` (`control-gates.ts`): 27 Millionea controls |
+| A locked winner's money leaving | `payLockedWinnerShare` (compliance), through `withdraw`'s `lockedWinnerShare` alone |
 | Who rules on an objection | `ruleMaswaliObjection` (compliance; `maswali-objections.ts` bars the question's sealer, its confirmer, the officer whose upheld ruling set its result, the objector and a holder) |
 | What a campaign may say about Millionea | `millionea-claims.ts` (the tagged rules, the composer's one door) and `millionea-untagged.ts` (the server's alone) |
 | A notice sent once | `maswali-notify.ts`: each notice's own key, its run's lease and record |

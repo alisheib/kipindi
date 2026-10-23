@@ -8,6 +8,36 @@
 
 ---
 
+## 2026-10-23 · Maswali Millionea — a winner whose account cannot sign in is paid by a Compliance officer, as OD-13 decided; the identity and email rules do not change (MASWALI-BUILD S6-MONEY)
+
+**Authority.** OD-13 (`MASWALI-PLAN.md` §9), ruled as recommended on 2026-10-16 (§ "2026-10-16 · Maswali Millionea — the
+management-reviewed proposal of 2026-10-16 is final; every 2026-08-29 Maswali ruling is void"): *"a Compliance officer
+pays to the registered number at the holder's request. Identity and email rules are unchanged. No marketing goes with
+the notice."* The build lead's ruling (k) of 2026-10-22: build the officer's payment through the freeze before ACTIVE.
+
+**What is built.** `/admin/maswali/integrity` lists "Winners who cannot sign in": every paid, unheld winning share whose
+holder's account is self-excluded, closed or suspended, until it is paid in full, with why it cannot be paid now when it
+cannot. At the holder's request a Compliance officer (control `payLockedWinnerShare`; the Owner, as everywhere) chooses the
+network of the registered number, writes how and when the holder asked, types PAY SHARE, and the share is paid through the
+platform's own withdrawal: to the number registered on the account only, at the live withdrawal fee, behind the identity
+gate and the confirmed-email gate, within the per-withdrawal maximum (a larger share in equal parts, one act each), with
+the rail's minimum and the network's kill switch as for any withdrawal. The money leaves the wallet the self-exclusion
+froze — or a closed one, whose released share has no other way out — for that payment only: the freeze is not lifted,
+and any other hold (an officer's, an identity refusal, a held share) still stops it. Each payment happens once (one key
+per ticket and attempt; two officers at once pay once, across instances too), under the Millionea chain lock and then the
+wallet lock, the share asked again inside both; each is recorded (`maswali.share.paid_locked`, COMPLIANCE, awaited and read
+back) and travels in the week's evidence pack. No marketing goes with it: the holder hears only the withdrawal's own
+service notice.
+
+**As built — what "unchanged" means here (the lead's note).** A locked winner who never verified their identity, or who
+has no confirmed email address, cannot be paid until they do: the row says so, and the act refuses. It stands on Ali's
+launch list.
+
+**Proof.** `test:maswali-share-payout` (both stores), `load:maswali-cross-instance` §6c (two officers on two processes
+pay once; a payment racing a hold), `red:maswali-money-path` (SM2)–(SM13), `test:maswali-rbac` §2 and §10.
+
+---
+
 ## 2026-10-22 · The Maswali Millionea rules' §11 states the stale-form rule — the hash moves a sixth time inside version 2026-10-18, before anything was published (MASWALI-BUILD S6-DOCS)
 
 **Authority.** The build lead's S6-DOCS brief (2026-10-22, its open list): "the binding rules text's §11 states the

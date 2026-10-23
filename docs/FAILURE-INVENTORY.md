@@ -1424,6 +1424,19 @@ week's code and the instant its figures froze, and the module that holds the ver
 wired. Fixed in S6-MONEY 1: every ticket records `MILLIONEA_RULES_VERSION` beside its week's mark, through one function
 (`millioneaTicketRulesStamp`). Guard: `test:maswali-purchase` 2.14 (both stores); plant (SM1).
 
+#### ✅ SM.2 · MB-44 · OD-13 · a winner whose account cannot sign in was promised a payment no code could make
+
+A self-excluded, closed or suspended winner's share sat in a wallet nobody could withdraw from: a self-exclusion freezes
+the wallet, and the holder cannot sign in. OD-13 decided "a Compliance officer pays to the registered number at the
+holder's request. Identity and email rules are unchanged", and no act did it. **Closed** (S6-MONEY 2–5; the lead's ruling
+(k)): Compliance's `payLockedWinnerShare` on the integrity page pays the share through the platform's own withdrawal, to
+the registered number only, through the self-exclusion's freeze and never around another hold, exactly once, in the chain
+→ wallet lock order, recorded and read back (§ "2026-10-23 · Maswali Millionea — a winner whose account cannot sign in is
+paid by a Compliance officer" in `COMPLIANCE-DECISIONS.md`). THE RULE: a locked winner's money leaves only by this act,
+only to the account's own number, only under the withdrawal rules every player meets. Guards: `test:maswali-share-payout`
+§A–§C (both stores), `load:maswali-cross-instance` §6c, `test:maswali-rbac` §2 and §10; plants (SM2)–(SM13) and
+(SM-rbac-1)–(SM-rbac-3).
+
 ## §9c · MASWALI MILLIONEA — the admin console, walked and made plain (S6, 2026-10-22)
 
 Ali, 2026-10-22: "admin make sure full control with the right sorting etc. and management", and his admin guide must be
