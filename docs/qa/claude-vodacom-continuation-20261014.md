@@ -259,7 +259,9 @@ Read in order: `CLAUDE.md` onboarding; `docs/SETUP.md`; `docs/NEXT-PLAN.md` boar
 
 ## Install, access and local isolation
 
-- Use **Node24.x, npm and the lockfile** (`npm ci`, which generates Prisma); pinned Next is **16.4.0**. Do not substitute another Next version or change package manager. Install Chromium and WebKit only when needed for their browser gates.
+- Use **Node24.x, npm and the lockfile** (`npm ci`, which generates Prisma); pinned Next is **16.4.2** (2026-10-23: raised from
+  16.4.0, whose published critical advisories GHSA-2464-fhr4-w9xw and GHSA-673q-mjm6-r5xr and high GHSA-p3m5-59mp-jv5r
+  16.4.2 does not carry — Ali's ruling "patch it first"). Do not substitute another Next version or change package manager. Install Chromium and WebKit only when needed for their browser gates.
 - Default local development uses memory with `DATABASE_URL` absent. Use real auth/demo/dev-test doors and real staff-preview signing; no handmade session or KYC/provider approval. `npm start` runs production migrations and Next; use the documented dev command for ordinary memory development.
 - On this PC disposable data lives at `F:\50pick-work`: TEMP/TMP, npm/browser cache, generated builds and captures. On another machine choose its own scratch directory and record it. Real checkout `node_modules` stays with that checkout. If `.next` is redirected to an external scratch folder, give that output its own `node_modules` alias to the same checkout dependencies: a shared ancestor previously mixed Next16.2.4 and16.4.0 and invalidated fixture startup. Never recursively move a generated Next tree across drives through dependency junctions; preserve/rename only the known link. Generated Next `AGENTS.md` was read and preserved.
 - Parallel isolated jobs are authorized. Check running jobs before duplicating them. A mutating HTTP fixture and a scratch PostgreSQL cluster each have one owner; serialize their writers. Use fresh memory processes for full parity captures. Keep source and fixture frozen during each proof.
