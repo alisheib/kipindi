@@ -2835,6 +2835,16 @@ MB-96 (TK.2, S7-F9 8 and 11), MB-74 (RD.5, S7-F9 9) and MB-23 (OB.0, S7-OB, merg
   change, and the notice it sends, into `staff-role-change.ts`; the e-mail registry (`comms-registry.ts`) now names that
   file as the notice's trigger, so `test:cert-c1`'s two `staffRoleChangedHtml` checks read where the act lives. Proven by
   two plants, each caught: the notice dropped from the send, and the registry pointed back at the actions file.
+- **S7 · its one migration, proven in production's order (S7-SHIP, 2026-10-23; `AGENTS.md` §5).** S7 adds
+  `20261018130000_maswali_product_line_fence`, whose name sorts before a migration main already carries
+  (`20261018150000_counts_as_by_hand`): `prisma migrate deploy` applies every migration its table lacks, whatever the
+  order. Proven on a throwaway PostgreSQL 18.3 — a fresh database, main's folder (`ac9fd7c21`, 112 migrations), then S7's
+  (`c12c6b2ee`, 113): exactly the fence applied; a second deploy found nothing pending; its SQL replayed once more without
+  error, leaving one function and one enabled trigger; and on that database the fence refused a week's move out of the
+  Millionea line and a poll's move into it, while a MARKET → UPDOWN move and an update not naming the line stood.
+  `db:backup` → `db:verify-backup` restored it with the fence (functions 1/1, triggers 1/1, the logic fingerprint equal;
+  112 checks); `verify:backup-schema` 16 passed, its trigger-omission plant refused; `test:backup` 140 passed. The
+  database the migrations build differs from `schema.prisma` in ways older than S7 (`FAILURE-INVENTORY.md` §9, recorded).
 
 #### S8 · Live drive and public launch
 
