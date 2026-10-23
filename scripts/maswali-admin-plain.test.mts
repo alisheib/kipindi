@@ -26,7 +26,9 @@
  *      9.6 (MASWALI-BUILD FLOW 1, the GUIDE lane's finding, the lead's word of 2026-10-23) the void-deadline alert states the
  *      binding rule — seal from the source a result it gave by the deadline; void only a question with no result by then,
  *      on the two grounds the deadline opens — and 9.6b the scheduler's audit note says the same. 9.7 (FLOW 2) the seal
- *      table marks such a question "past its void deadline", never "void proposed".
+ *      table marks such a question "past its void deadline", never "void proposed". 9.3b–d (FLOW 8) the release-wait
+ *      alert states the real time since the window closed (hours, then days from 48), never the setting's threshold, and
+ *      while an objection still stands sends the reader to Compliance on the integrity page.
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
@@ -42,7 +44,7 @@ import { FROZEN_RULES_GROUPS, RULES_FIELDS, frozenRulesFormValues } from "../src
 import { ControlLocked, CONTROL_WHO } from "../src/components/admin/control-locked.tsx";
 import { ROLE_LABEL } from "../src/lib/server/roles.ts";
 import { CATEGORY_LABEL } from "../src/lib/ai/poll-vocabulary.ts";
-import { EVENT_KIND_LABEL, VOID_DEADLINE_PASSED, eatInText, officerHandle } from "../src/lib/maswali-admin-format.ts";
+import { EVENT_KIND_LABEL, VOID_DEADLINE_PASSED, agoInText, eatInText, officerHandle } from "../src/lib/maswali-admin-format.ts";
 import { MILLIONEA_STRIP_LINKS, millioneaStripLink, millioneaStripMore } from "../src/lib/maswali-strip-link.ts";
 import { canViewPath } from "../src/lib/server/rbac.ts";
 import { releaseWaitAlertText, voidDeadlineAlertText } from "../src/lib/server/maswali-console.ts";
@@ -249,11 +251,32 @@ const pageWords = (path: string) => decomment(read(path)).replace(/&ldquo;/g, "�
     RULE_9_2);
 
   // 9.3 · the release-wait alert's words, rendered: "Finance", the console's one word for the role that releases.
-  const said = releaseWaitAlertText("MLN-2026-W44", 4);
+  const H = 3_600_000;
+  const said = releaseWaitAlertText("MLN-2026-W44", 4 * H);
   ok("9.3 · ⭐ the release-wait alert says Finance releases it — the role's own label, never \"Accounting\"",
     said === `MLN-2026-W44: its results are final and its window closed 4 h ago, and it is not settled. ${ROLE_LABEL.FINANCE} releases it.`
-      && ROLE_LABEL.FINANCE === "Finance" && !/Accounting releases/.test(consoleCode) && alertsFn.includes("text: releaseWaitAlertText(w.code, cfg.releaseAlertHours)"),
+      && ROLE_LABEL.FINANCE === "Finance" && !/Accounting releases/.test(consoleCode)
+      && alertsFn.includes("text: releaseWaitAlertText(w.code, nowMs - Date.parse(w.objectionsCloseAt), standing)"),
     said);
+  // 9.3b–d · FLOW 8 (the lead's rulings of 2026-10-23): the real time since the window closed, never the setting's
+  // threshold (GUIDE's finding: "closed 4 h ago" a week later), hours under 48 and days from 48 in the console's own wording
+  // (`agoInText`, the house console's "N h ago" / "N d ago"); and while an objection stands, Compliance — never Finance.
+  ok("9.3b · ⭐ the alert says the time since the window closed — 30 hours after it, \"30 h ago\" — never the alert setting's threshold",
+    releaseWaitAlertText("MLN-2026-W44", 30 * H).includes("its window closed 30 h ago,")
+      && !alertsFn.includes("releaseWaitAlertText(w.code, cfg.releaseAlertHours") && alertsFn.includes("nowMs - Date.parse(w.objectionsCloseAt)"),
+    releaseWaitAlertText("MLN-2026-W44", 30 * H));
+  const agoSays = [agoInText(47 * H + 59 * 60_000), agoInText(48 * H), agoInText(7 * 24 * H + 3 * H), agoInText(-5)];
+  ok("9.3c · ⭐ whole hours under 48, whole days from 48 — \"47 h ago\", \"2 d ago\", \"7 d ago\" — and a clock behind never reads as a future",
+    JSON.stringify(agoSays) === JSON.stringify(["47 h ago", "2 d ago", "7 d ago", "0 h ago"])
+      && releaseWaitAlertText("MLN-2026-W44", 7 * 24 * H + 3 * H).includes("its window closed 7 d ago,"),
+    JSON.stringify(agoSays));
+  const one = releaseWaitAlertText("MLN-2026-W44", 30 * H, 1), two = releaseWaitAlertText("MLN-2026-W44", 3 * 24 * H, 2);
+  ok("9.3d · ⭐ while an objection still stands, the alert says the week cannot be settled and Compliance rules on it on the integrity page — never \"Finance releases it\"",
+    one === "MLN-2026-W44: its window closed 30 h ago and an objection still stands, so it cannot be settled. Compliance rules on it on the integrity page."
+      && two === "MLN-2026-W44: its window closed 3 d ago and 2 objections still stand, so it cannot be settled. Compliance rules on them on the integrity page."
+      && ![one, two].some((s) => /Finance releases/.test(s))
+      && alertsFn.includes("const standing = w.marketId ? await countOpenObjections(w.marketId).catch(() => 0) : 0;"),
+    `${one} | ${two}`);
 
   // 9.4 · the move-close dialog names only what the move checks: the free-cancel window and the first event (moveClose,
   // maswali-service.ts — its two refusals); no notice period, which nothing checks.
@@ -316,7 +339,7 @@ const pageWords = (path: string) => decomment(read(path)).replace(/&ldquo;/g, "�
       && !home.includes(">Open the weeks</Link>") && !home.includes("more on the weeks page</li>"));
 }
 
-const FLOOR = 44; // the count the first green run printed: 28 at S6-ADMIN 6 (run 39824239196); 41 with §9 (S6-SHIP 6); 43 with 9.6 (FLOW 1); 44 with 9.7 (FLOW 2)
+const FLOOR = 47; // the count the first green run printed: 28 at S6-ADMIN 6 (run 39824239196); 41 with §9 (S6-SHIP 6); 43 with 9.6 (FLOW 1); 44 with 9.7 (FLOW 2); 47 with 9.3b–d (FLOW 8)
 ok(`floor · at least ${FLOOR} checks ran before this one`, passed + failed >= FLOOR, `${passed + failed} ran`);
 console.log(`\nmaswali-admin-plain: ${passed} passed, ${failed} failed`);
 if (failed) process.exitCode = 1;

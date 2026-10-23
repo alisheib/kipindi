@@ -42,7 +42,7 @@ import { MAIN_COUNT, settlementGate, weekVoidCertain } from "@/lib/maswali-score
 import { guaranteeRequirement } from "@/lib/maswali-money";
 import type { RolloutState } from "@/lib/millionea-rollout";
 import { formatTzs } from "@/lib/utils";
-import { eatInText, fmtEat } from "@/lib/maswali-admin-format";
+import { agoInText, eatInText, fmtEat } from "@/lib/maswali-admin-format";
 import { MASWALI_VOID_REASON_LABEL } from "@/lib/maswali-void-reason";
 import { parseWeekListQuery, selectWeekPage, type WeekListQuery } from "@/lib/maswali-week-list";
 import { parseIntegrityListQuery, selectHeldShares, selectWinnerTickets, selectSealWeeks, selectVoidableWeeks, type IntegrityListQuery } from "@/lib/maswali-integrity-list";
@@ -188,9 +188,17 @@ export type ConsoleAlert = { level: "critical" | "warning"; text: string; weekId
 
 /** The alert for a week whose release waits past the live "Alert when a release waits (hours)" (`releaseAlertHours`, read
  *  for every week at once). ⭐ S6-SHIP 6 (the lead's ruling of 2026-10-23): "Finance" — the console's one word for the
- *  role that releases (`ROLE_LABEL.FINANCE`), never "Accounting". `test:maswali-admin-plain` §9.3. */
-export function releaseWaitAlertText(weekCode: string, hours: number): string {
-  return `${weekCode}: its results are final and its window closed ${hours} h ago, and it is not settled. Finance releases it.`;
+ *  role that releases (`ROLE_LABEL.FINANCE`), never "Accounting". `test:maswali-admin-plain` §9.3.
+ *  ⭐ FLOW 8 (the lead's rulings of 2026-10-23): (a) the time since the window closed is the REAL elapsed time (`agoInText`:
+ *  hours under 48, days from 48) — it printed the setting's threshold, "closed 4 h ago" a week after the close (GUIDE's
+ *  finding); (b) while an objection still stands the week cannot be settled — a release is refused until every objection
+ *  is decided — so the alert says so and sends the reader to Compliance, never "Finance releases it" (FLOW's finding). */
+export function releaseWaitAlertText(weekCode: string, elapsedMs: number, standing = 0): string {
+  const ago = agoInText(elapsedMs);
+  if (standing > 0) {
+    return `${weekCode}: its window closed ${ago} and ${standing === 1 ? "an objection still stands" : `${standing} objections still stand`}, so it cannot be settled. Compliance rules on ${standing === 1 ? "it" : "them"} on the integrity page.`;
+  }
+  return `${weekCode}: its results are final and its window closed ${ago}, and it is not settled. Finance releases it.`;
 }
 
 /**
@@ -249,7 +257,12 @@ export async function consoleAlerts(
       // only one with no result by then voids, on a ground from the closed list, sealed by an officer.
       if (proposed.length) out.push({ level: "warning", weekId: w.id, text: voidDeadlineAlertText(w.code, proposed.length) });
       if (w.objectionsCloseAt && Date.parse(w.objectionsCloseAt) + cfg.releaseAlertHours * HOUR < nowMs) {
-        out.push({ level: "critical", weekId: w.id, text: releaseWaitAlertText(w.code, cfg.releaseAlertHours) });
+        // FLOW 8 · the real time since the window closed, and whether an objection still holds the week (an OPEN one
+        // freezes its settlement). A failed count keeps the release's words; the release re-checks and refuses while one stands.
+        // (Loaded at the use, as market-service loads it: objections-service imports market-service.)
+        const { countOpenObjections } = await import("./objections-service");
+        const standing = w.marketId ? await countOpenObjections(w.marketId).catch(() => 0) : 0;
+        out.push({ level: "critical", weekId: w.id, text: releaseWaitAlertText(w.code, nowMs - Date.parse(w.objectionsCloseAt), standing) });
       }
     }
   }

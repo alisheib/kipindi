@@ -189,4 +189,32 @@ export const MUTATIONS = [
     to: "<span className=\"block text-body-sm text-warning\">void proposed</span>}",
     failure: /FAIL 9[.]7 /,
   },
+  {
+    name: "(AP27) 9.3b · the release-wait alert prints the alert setting's threshold as the time since the window closed again",
+    file: "src/lib/server/maswali-console.ts",
+    from: "text: releaseWaitAlertText(w.code, nowMs - Date.parse(w.objectionsCloseAt), standing) });",
+    to: "text: releaseWaitAlertText(w.code, cfg.releaseAlertHours * HOUR, standing) });",
+    failure: /FAIL 9[.]3b /,
+  },
+  {
+    name: "(AP28) 9.3c · a week-old close is counted in hours again (\"168 h ago\")",
+    file: "src/lib/maswali-admin-format.ts",
+    from: "  return hours < 48 ? `${hours} h ago` : `${Math.floor(hours / 24)} d ago`;",
+    to: "  return `${hours} h ago`;",
+    failure: /FAIL 9[.]3c /,
+  },
+  {
+    name: "(AP29) 9.3d · the alert stops reading whether an objection still stands",
+    file: "src/lib/server/maswali-console.ts",
+    from: "const standing = w.marketId ? await countOpenObjections(w.marketId).catch(() => 0) : 0;",
+    to: "const standing = 0;",
+    failure: /FAIL 9[.]3d /,
+  },
+  {
+    name: "(AP30) 9.3d · an objection that still stands is told to Finance again",
+    file: "src/lib/server/maswali-console.ts",
+    from: "so it cannot be settled. Compliance rules on ${standing === 1 ? \"it\" : \"them\"} on the integrity page.`;",
+    to: "so it cannot be settled. Finance releases it.`;",
+    failure: /FAIL 9[.]3d /,
+  },
 ];

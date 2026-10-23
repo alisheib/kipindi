@@ -1724,6 +1724,21 @@ toward a void the rule may not allow: it reads "past its void deadline", the fac
 the new label. Held by `test:maswali-admin-plain` 9.6 (the rendered alert and its wiring), 9.6b (the note) and 9.7 (the
 mark, and no console page saying "void proposed"), with the plants (AP22)–(AP26) of `red:maswali-admin-plain`.
 
+#### ✅ GD.3 · the release-wait alert printed its threshold as the elapsed time, and sent Finance to release a week an objection held — fixed by FLOW 8 (the lead's rulings of 2026-10-23)
+
+Two findings on one alert. The GUIDE lane's: `consoleAlerts` called `releaseWaitAlertText(w.code, cfg.releaseAlertHours)`, so
+the alert always said "its window closed 4 h ago" — the "Alert when a release waits (hours)" setting — even a week after the
+window closed. FLOW's: an objection filed in the window and still OPEN after it closes freezes the week (settlement and the
+week void refuse while one stands), yet the alert said "Finance releases it", a release Finance cannot make. THE RULE: the
+alert states the REAL time since the window closed, in the console's own relative wording (`agoInText`,
+`maswali-admin-format.ts`: whole hours under 48, whole days from 48 — "30 h ago", "7 d ago" — the house console's
+"N h ago" / "N d ago"), never a setting; and while an objection still stands it says "…its window closed 30 h ago and an
+objection still stands, so it cannot be settled. Compliance rules on it on the integrity page." (plural: "2 objections
+still stand … on them"), never "Finance releases it" (`releaseWaitAlertText`, the count read with `countOpenObjections`
+on the week's market; a failed count keeps the release's words, and the release re-checks). Held by
+`test:maswali-admin-plain` 9.3 (re-pinned), 9.3b (elapsed, never the threshold), 9.3c (the days form) and 9.3d (the
+objection variant and its read), with the plants (AP27)–(AP30) of `red:maswali-admin-plain`.
+
 ## §9d · MASWALI MILLIONEA — the final flow evaluation's fixes (FLOW, 2026-10-23)
 
 Ali, 2026-10-23: *"evaluate the final redirections and workflow of maswali … fix anything you notice not in place
