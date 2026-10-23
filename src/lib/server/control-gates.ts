@@ -237,6 +237,10 @@ export const CONTROL_DOMAIN = {
   /** S7-OB · a ruling on a player's objection to one question (MR-16), on /integrity: the platform's ruling act, and
    *  the service asks the same roles (`requireRulingOfficer`: ADMIN or COMPLIANCE). */
   ruleMaswaliObjection: "compliance",
+  /** S6-MONEY · OD-13 ("a Compliance officer pays to the registered number at the holder's request"): one payment of a
+   *  winning share whose holder's account cannot sign in, through the self-exclusion, never around another hold (on
+   *  /integrity, typed `PAY SHARE`; `maswali-share-payout.ts`). */
+  payLockedWinnerShare: "compliance",
   fundMaswaliGuarantee: "ops",
   returnMaswaliGuarantee: "ops",
   sunsetMaswali: "ops",

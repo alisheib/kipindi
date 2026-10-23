@@ -18,8 +18,9 @@
  * floor counted as 0, the rules form storing a percentage as typed) and S7-F9's (a winner's account taken over after its
  * payout seen by no one, a deposit contradicted after its winner was paid leaving the share free, held twice, or held for
  * money that cannot have bought it, and the shares read before the chain lock) — runs the memory child that mutation names
- * (`test:maswali-purchase`, `test:maswali-settle`, `test:maswali-close-race`, `test:maswali-void` or
- * `test:maswali-adversarial`, the last on the plant's own sections), and requires it to go red ON THAT MUTATION'S OWN
+ * (`test:maswali-purchase`, `test:maswali-settle`, `test:maswali-close-race`, `test:maswali-void`,
+ * `test:maswali-adversarial` — the last on the plant's own sections — `test:maswali-notify`, and S6-MONEY's
+ * `test:maswali-share-payout` and `test:maswali-integrity`), and requires it to go red ON THAT MUTATION'S OWN
  * ASSERTION. Then it puts every file back byte for byte.
  *
  * Built on `red-maswali-engine.mjs`: a lock file against a concurrent run, a refusal to start when a target differs from
@@ -48,6 +49,10 @@ const SUITES = {
   adversarial: "npx tsx scripts/lib/maswali-adversarial-child.mts",
   // MASWALI-BUILD S6 (lane N, review round 2): the notices' witness and their own key.
   notify: "npx tsx scripts/lib/maswali-notify-child.mts",
+  // MASWALI-BUILD S6-MONEY · OD-13: a share paid by an officer to a winner whose account cannot sign in.
+  sharepay: "npx tsx scripts/lib/maswali-share-payout-child.mts",
+  // MASWALI-BUILD S6-MONEY · MB-35: a connected group holding a winner, alerted to Compliance before the week pays.
+  integrity: "npx tsx scripts/lib/maswali-integrity-child.mts",
 };
 /**
  * A mutation's suite, as a command. `<suite>:<ids>` runs that child on those sections alone (`--only <ids>`, which the

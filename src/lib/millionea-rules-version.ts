@@ -3,10 +3,11 @@
  * version a player reads and the version a ticket records cannot diverge (`terms-version.ts`'s lesson: two literals in two
  * files drifted twice, once live).
  *
- * ⭐ WHAT A TICKET RECORDS. OD-18: the Millionea rules bind only on purchase, with the version stamped on each ticket.
- *    `MaswaliTicket.rulesVersion` is written by the purchase (`maswali-money-service.ts`) as the week's code and the instant
- *    its figures froze; the binding text a ticket was bought under is the version printed here at that instant. ⏳ The
- *    stamp takes this constant beside the week's mark when the lead wires it (MASWALI-BUILD S6, the lane's report).
+ * ⭐ WHAT A TICKET RECORDS (MB-69, OD-18: the Millionea rules bind only on purchase, with the version stamped on each
+ *    ticket). `MaswaliTicket.rulesVersion` is written by the purchase (`maswali-money-service.ts`) through
+ *    `millioneaTicketRulesStamp`: this version — the binding text the ticket was bought under — beside the week's own
+ *    mark, its code and the instant its figures froze (the figures the text is filled with). Held on both stores by
+ *    `test:maswali-purchase` 2.14 (MASWALI-BUILD S6-MONEY 1).
  * ⭐ `MILLIONEA_RULES_TEXT_SHA` pins a hash of the binding bodies (`millioneaContent` in
  *    `src/app/legal/rules/_content-millionea.tsx`, all three locales) and of `LEGAL_BINDING_LANGUAGE`: the text cannot move
  *    without the hash moving, and the hash cannot be updated without the editor being in THIS file, with the version in
@@ -25,6 +26,15 @@
 //    Version 2026-10-18 was read by staff only and bound no ticket. COMPLIANCE-DECISIONS § "2026-10-23 · The Maswali
 //    Millionea rules are published as version 2026-10-23 …".
 export const MILLIONEA_RULES_VERSION = "2026-10-23";
+
+/**
+ * ⭐ MB-69 · THE STAMP A TICKET CARRIES (`MaswaliTicket.rulesVersion`), written once, by the purchase: the binding rules'
+ * version in force at that instant, then the week's mark — its code and the instant its figures froze, `<code>@<frozenAt>`.
+ * e.g. `2026-10-18 · MLN-2026-W45@2026-11-03T06:00:00.000Z`. A ticket bought under a later version records that one.
+ */
+export function millioneaTicketRulesStamp(weekCode: string, frozenAt: string): string {
+  return `${MILLIONEA_RULES_VERSION} · ${weekCode}@${frozenAt}`;
+}
 
 /** The first 12 hex of `sha256` over the whitespace-normalised `millioneaContent` bodies, then `LEGAL_BINDING_LANGUAGE`. */
 // 2026-10-18 · the hash's history under version 2026-10-18, every value with the lane round that made it and what its move

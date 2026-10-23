@@ -679,6 +679,17 @@ that voids (on the closed list of grounds) is replaced by the first unused reser
 - **No winner (k = 0): the whole of S rolls to the jackpot**, R stays carried, nothing is charged. The rollover is real money
   only and has **no cap**.
 - The winner floor of Invariant 1 does **not** apply: a Millionea share is a share of a jackpot, not a return on a stake.
+- **The payout float never stops or shrinks a payout** (MB-11; the build lead's ruling of 2026-10-23). At a release the
+  disbursement float is read once, before any hold or credit, against the week's shares and the headroom kept for
+  withdrawals; short, or unreadable, it is recorded for Compliance and shown on the console's front page to Finance and
+  Compliance as well as to the weeks' officers — and the releasing officer read the same comparison beside the button.
+  The winners are credited in full all the same: the credit is their entitlement in the platform's own books, the float
+  matters only to the withdrawals that ask their rail themselves, and an external read must never stall a settlement.
+- **A winner whose account cannot sign in** (self-excluded, closed or suspended) is paid by a Compliance officer at the
+  holder's request, to the number registered on the account, through the platform's own withdrawal — the identity and
+  email rules unchanged, the self-exclusion's freeze kept, any other hold still stopping it, one payment at a time and
+  each exactly once (OD-13; `docs/COMPLIANCE-DECISIONS.md` § "2026-10-23 · Maswali Millionea — a winner whose account
+  cannot sign in is paid by a Compliance officer").
 
 **The sunset** (MR-30). The product retires through a final week, in one of three ways: a planned final week, named at
 least one full week before its sales open, announced on the hub and the home card from then on and never opened early; a
@@ -726,10 +737,10 @@ week, never the week as a whole:
 | | |
 |---|---|
 | **Decided** | Ali, 2026-10-16 — `docs/COMPLIANCE-DECISIONS.md` § "2026-10-16 · Maswali Millionea"; the rule set and its corrections are `docs/MASWALI-PLAN.md` §2 (MR-1…MR-32) and §9 |
-| **Enforced** | ⏳ in code from S3 (MASWALI-BUILD): `maswali-money.ts` computes the week (S2); `ledger.ts → maswaliSettlementEntries` refuses any group whose pool does not end at exactly 0 or whose winners differ (S1); `payout.ts` refuses to price a `jackpot-payout` week as a pool fee (S1); objections: `maswali-objections.ts` (S7-OB) — the filing, the ruling and its separation of duties, the re-grade and the one restart, each under the chain lock |
+| **Enforced** | ⏳ in code from S3 (MASWALI-BUILD): `maswali-money.ts` computes the week (S2); `ledger.ts → maswaliSettlementEntries` refuses any group whose pool does not end at exactly 0 or whose winners differ (S1); `payout.ts` refuses to price a `jackpot-payout` week as a pool fee (S1); objections: `maswali-objections.ts` (S7-OB) — the filing, the ruling and its separation of duties, the re-grade and the one restart, each under the chain lock; the payout float read before any credit, never a block (`maswali-settlement.ts`, S6-MONEY); a locked winner's payment (`maswali-share-payout.ts` through `withdraw`, S6-MONEY) |
 | **Configured** | `maswali.config` (`src/lib/server/maswali-config.ts`, S1) — price, floor, fee, cap, open, close, buffer, void deadline, objection window, question rules; the Owner-only `maswali.licenceBasis` (`maswali-licence.ts`) gates any week opening |
 | **Stated** | ⏳ `/legal/rules/millionea` (S6 — binding, in en/sw/zh, version 2026-10-23 and the hash of its text in `src/lib/millionea-rules-version.ts`; published with the S6 release: §6 the objection door as built, §11 the final week's rule in `finalWeekRule`'s words, §12 the hold on a reversed payment's shares), the slip and the week page, `/help`'s Millionea block, the help assistant's Millionea section (at the global ACTIVE only) and `/fairness`'s commitments — every figure read from the week's frozen rules, or the config's for the week to come. `/legal/terms` §4 carries its Maswali Millionea paragraph above the ceiling (OD-18; Terms v2026-10-23, `TERMS_VERSION_WITH_MILLIONEA`, the version registration stamps there) — below it the Terms are v2026-10-14's text. The objection door: the ticket's page (the player's) and `/admin/maswali/integrity` (Compliance's rulings) |
-| **Guarded by** | `npm run test:maswali-law` (+ `red:maswali-law`) · `npm run test:maswali-config` · `npm run test:maswali-ledger` · `npm run test:maswali-fence` · `npm run test:house-solvency` §3b · `npm run test:fee-model` · `npm run test:maswali-fairness` (the binding text's version, hash and figures; the assistant's passage) · `npm run test:terms-cancellation` §4 · `npm run test:maswali-objections` (+ `red:maswali-objections`) · `npm run load:maswali-objection-cross-instance` |
+| **Guarded by** | `npm run test:maswali-law` (+ `red:maswali-law`) · `npm run test:maswali-config` · `npm run test:maswali-ledger` · `npm run test:maswali-fence` · `npm run test:house-solvency` §3b · `npm run test:fee-model` · `npm run test:maswali-fairness` (the binding text's version, hash and figures; the assistant's passage) · `npm run test:terms-cancellation` §4 · `npm run test:maswali-objections` (+ `red:maswali-objections`) · `npm run load:maswali-objection-cross-instance` · `npm run test:maswali-adversarial` §6 (the float: FL.1, FL.2b, FL.5b, FL.6) · `npm run test:maswali-share-payout` · `npm run load:maswali-cross-instance` §6c · `red:maswali-money-path` (SM2)–(SM21) |
 
 ---
 

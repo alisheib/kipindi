@@ -8,6 +8,8 @@
  *   · adversarial — `test:maswali-adversarial` (`scripts/lib/maswali-adversarial-child.mts`, MASWALI-BUILD S7), named
  *     `adversarial:<ids>` so the drive runs only the plant's own sections (`--only <ids>`)
  *   · notify   — `test:maswali-notify`   (`scripts/lib/maswali-notify-child.mts`, MASWALI-BUILD S6 lane N round 2)
+ *   · sharepay — `test:maswali-share-payout` (`scripts/lib/maswali-share-payout-child.mts`, MASWALI-BUILD S6-MONEY, OD-13)
+ *   · integrity — `test:maswali-integrity` (`scripts/lib/maswali-integrity-child.mts`, MASWALI-BUILD S6-MONEY, MB-35)
  * DATA, so `test:red-anchors` can audit that every `from` still resolves exactly once without running the harness.
  *
  * `expect` is the start of (or a phrase in) the case's own label: any other red is WRONG-ASSERTION.
@@ -20,6 +22,12 @@ const VOID = "src/lib/server/maswali-void.ts";
 /** A line break, built from its code point: an anchor spanning two lines joins them with it (the resolver matches either ending). */
 const LF = String.fromCharCode(10);
 const NOTIFY = "src/lib/server/maswali-notify.ts";
+/** S6-MONEY · OD-13: the platform's withdrawal (its `lockedWinnerShare` path) and the act that pays a locked winner's share. */
+const WALLET = "src/lib/server/wallet-service.ts";
+const SHAREPAY = "src/lib/server/maswali-share-payout.ts";
+/** S6-MONEY · MB-11 and MB-35: the console's alerts and their audience; the cluster report's alert sentence. */
+const CONSOLE = "src/lib/server/maswali-console.ts";
+const INTEGRITY = "src/lib/server/maswali-integrity.ts";
 /** The close's one notice hook (S6 lane N, round 3), which (N1) and (N3) each rewrite. */
 const CLOSE_HOOK = '      afterCommit(currentLockTx(), () => { const at = hookContext(); runOutsideLock(() => { void import("./maswali-notify").then((m) => m.noticeSalesClosed(week.id, at)).catch(() => {}); }); });';
 /** The week void's one post-commit line (R10d's push), which (6), (6b) and (14) each rewrite. */
@@ -1006,5 +1014,177 @@ export const MUTATIONS = [
     to: "    const restarted = false;",
     expect: "OM.3 · ⛔",
     suite: "adversarial:OM",
+  },
+  /* ── MASWALI-BUILD S6-MONEY · the binding rules' version on each ticket (MB-69) ─────────────────────────────────── */
+  {
+    name: "(SM1) MB-69 · the purchase stamps the week's mark alone: the binding rules' version a ticket was bought under is never recorded (OD-18)",
+    file: MONEY,
+    from: "              rulesVersion: millioneaTicketRulesStamp(week.code, rules.frozenAt), score: null, won: null, payout: null, frozenReason: null,",
+    to: "              rulesVersion: `${week.code}@${rules.frozenAt}`, score: null, won: null, payout: null, frozenReason: null,",
+    expect: "2.14 · ⭐ MB-69",
+    suite: "purchase",
+  },
+  /* ── MASWALI-BUILD S6-MONEY · OD-13 · a share paid to a winner whose account cannot sign in (`test:maswali-share-payout`) ─ */
+  {
+    name: "(SM2) OD-13 · withdraw's hold phase pays without asking the share again inside the locks: a share forfeited between the act's read and its money is paid",
+    file: WALLET,
+    from: "      const refused = await lockedShare.recheck(tx);",
+    to: "      const refused = null;",
+    expect: "B.4 · ⭐",
+    suite: "sharepay",
+  },
+  {
+    name: "(SM3) OD-13 · a locked winner's payment passes any freeze, not only the self-exclusion's: an officer's do-not-pay hold is paid around",
+    file: WALLET,
+    from: '      && currentFreezeReasons(w).every((r) => r === "SELF_EXCLUSION");',
+    to: "      && true;",
+    expect: "B.6b · ⭐",
+    suite: "sharepay",
+  },
+  {
+    name: "(SM4) OD-13 · the payment's money hold takes the wallet lock alone: it moves while another act holds the Millionea chain (the platform's chain → wallet order broken)",
+    file: WALLET,
+    from: "  const inOuterLock = <T>(fn: () => Promise<T>): Promise<T> => (lockedShare ? withLock(lockedShare.outerLock, fn) : fn());",
+    to: "  const inOuterLock = <T>(fn: () => Promise<T>): Promise<T> => fn();",
+    expect: "B.8 · ⭐",
+    suite: "sharepay",
+  },
+  {
+    name: "(SM5) OD-13 · one withdrawal key for every attempt: a payment the rail refused is replayed for ever, and the share is never paid",
+    file: SHAREPAY,
+    from: "export const paymentKey = (ticketId: string, attempt: number): string => `mlnpay:${ticketId}:${attempt}`;",
+    to: "export const paymentKey = (ticketId: string, attempt: number): string => `mlnpay:${ticketId}:0`;",
+    expect: "C.2c · ⭐",
+    suite: "sharepay",
+  },
+  {
+    name: "(SM6) OD-13 · a share held for Compliance's decision (or forfeited) is paid as if it were free",
+    file: SHAREPAY,
+    from: "  if (ticket.frozenReason) {",
+    to: "  if (false) {",
+    expect: "B.2 · ⛔",
+    suite: "sharepay",
+  },
+  {
+    name: "(SM7) OD-13 · the act pays a winner whose account can sign in: an officer moves a player's money the player can move themselves",
+    file: SHAREPAY,
+    from: "  if (!CANNOT_SIGN_IN.has(String(user.status))) {",
+    to: "  if (false) {",
+    expect: "B.5 · ⛔",
+    suite: "sharepay",
+  },
+  {
+    name: "(SM8) OD-13 · the payment is never recorded, while the act answers that its record landed",
+    file: SHAREPAY,
+    from: "  const rec = await audit({",
+    to: "  const rec = await (async (_e: unknown) => ({ recorded: true }))({",
+    expect: "A.8 · ⭐",
+    suite: "sharepay",
+  },
+  {
+    name: "(SM9) OD-13 · the identity rule waived for the officer's payment (\"identity and email rules are unchanged\")",
+    file: WALLET,
+    from: "  } else if (!withdrawGate.eligible) {",
+    to: "  } else if (!withdrawGate.eligible && !lockedShare) {",
+    expect: "A.3 · ⛔",
+    suite: "sharepay",
+  },
+  {
+    name: "(SM10) OD-13 · the confirmed-email rule waived for the officer's payment",
+    file: WALLET,
+    from: "  if (!refundReturn && !user.emailVerifiedAt) {",
+    to: "  if (!refundReturn && !lockedShare && !user.emailVerifiedAt) {",
+    expect: "A.4 · ⛔",
+    suite: "sharepay",
+  },
+  {
+    name: "(SM11) OD-13 · the officer's payment is charged to the holder's own withdrawal attempts: a holder who used them up is never paid",
+    file: WALLET,
+    from: "  if (!refundReturn && !lockedShare) {",
+    to: "  if (!refundReturn) {",
+    expect: "C.4 · ⭐",
+    suite: "sharepay",
+  },
+  {
+    name: "(SM12) OD-13 · a share above the per-withdrawal maximum is sent whole: the rail's cap refuses it, and the share is never paid",
+    file: SHAREPAY,
+    from: "  if (left <= WITHDRAW_MAX_TZS) return left;",
+    to: "  return left;",
+    expect: "C.1 · ⭐",
+    suite: "sharepay",
+  },
+  {
+    name: "(SM13) OD-13 · the console offers a payment the identity rule will refuse (the E-18 lesson: no act the server refuses)",
+    file: SHAREPAY,
+    from: "      : !identity.eligible ? \"The holder's identity has never been verified. The withdrawal rules are unchanged: they verify it before this share can be paid.\"",
+    to: "      : false ? \"\"",
+    expect: "A.1 · the console lists the share",
+    suite: "sharepay",
+  },
+  /* ── MASWALI-BUILD S6-MONEY · MB-11 · the payout float read before any credit, never a block (the lead's ruling of 2026-10-23) ─ */
+  {
+    name: "(SM14) MB-11 · the release reads the payout float only after the winners are credited: the finding is never the read made before the money",
+    file: SETTLE,
+    from: "  const floatBefore = pays > 0 ? await readFloatCover(pays, input.readFloat) : null;",
+    to: "  const floatBefore = null;",
+    expect: "FL.2b · ⭐",
+    suite: "adversarial:GU",
+  },
+  {
+    name: "(SM15) MB-11 · a short payout float stops the release: the winners' credit waits on an external figure (the reading the lead ruled out)",
+    file: SETTLE,
+    from: "  const floatBefore = pays > 0 ? await readFloatCover(pays, input.readFloat) : null;",
+    to: "  const floatBefore = pays > 0 ? await readFloatCover(pays, input.readFloat) : null;" + LF + "  if (floatBefore && floatBefore.state === \"short\") return refuse(\"The payout float is short of this week's shares; nothing was paid.\");",
+    expect: "FL.1 · ⭐",
+    suite: "adversarial:GU",
+  },
+  {
+    name: "(SM16) MB-11 · Finance and Compliance are shown no payout float alert on the overview's strip",
+    file: CONSOLE,
+    from: "  else out.push(...await floatShortAlerts(deps.readFloat));",
+    to: "  else void floatShortAlerts;",
+    expect: "FL.6 · ⭐",
+    suite: "adversarial:GU",
+  },
+  {
+    name: "(SM17) MB-11 · the overview's strip speaks to every staff role, not only to those its alerts are for",
+    file: CONSOLE,
+    from: "  if (!trading && !accounting && !compliance) return null;",
+    to: "  if (false) return null;",
+    expect: "FL.6b · ⛔",
+    suite: "adversarial:GU",
+  },
+  /* ── MASWALI-BUILD S6-MONEY · MB-35 · a connected group holding a winner, alerted before the week pays (`test:maswali-integrity`) ─ */
+  {
+    name: "(SM18) MB-35 · the connected-group alert reaches the trading officer who seals, and Finance (MR-14)",
+    file: CONSOLE,
+    from: "  if (compliance) out.push(...await clusterWinnerAlerts(now));",
+    to: "  out.push(...await clusterWinnerAlerts(now));",
+    expect: "4.12 · ⭐ ⛔ MB-35",
+    suite: "integrity",
+  },
+  {
+    name: "(SM19) MB-35 · a connected group holding a winner raises no alert before the week pays: only the page's order shows it",
+    file: INTEGRITY,
+    from: "  if (report.weekState === \"SETTLED\" || report.weekState === \"VOIDED\" || !report.resultsFinal || !(report.groupsWithWinner > 0)) return null;",
+    to: "  return null;",
+    expect: "4.9 · ⭐ MB-35",
+    suite: "integrity",
+  },
+  {
+    name: "(SM20) MB-35 · the alert stands after the week has paid, when nothing is left to decide before the money moves",
+    file: INTEGRITY,
+    from: "  if (report.weekState === \"SETTLED\" || report.weekState === \"VOIDED\" || !report.resultsFinal || !(report.groupsWithWinner > 0)) return null;",
+    to: "  if (!report.resultsFinal || !(report.groupsWithWinner > 0)) return null;",
+    expect: "4.11 · CONTROL",
+    suite: "integrity",
+  },
+  {
+    name: "(SM21) MB-35 · a deciding week whose connected-accounts report cannot be read raises nothing: silence (fail open)",
+    file: CONSOLE,
+    from: "    if (!report || !report.readable) {",
+    to: "    if (!report || !report.readable) { continue;",
+    expect: "4.13 · ⭐ MB-35",
+    suite: "integrity",
   },
 ];

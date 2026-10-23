@@ -824,7 +824,10 @@ if (runs("GU")) {
     pools.pendingPayout === 2 * 869_995 && pools.float === null, J({ pending: pools.pendingPayout, float: pools.float }));
   await drainTo((ab?.U ?? 0) + (ac?.U ?? 0) - 1);
   const balB = await Promise.all(wB.map(bal));
-  const rB = pb.ok ? await settle.settleMaswaliWeek({ weekId: b.id, releasedBy: RELEASER, digest: pb.preview.digest, now: atB, readFloat: async () => ({ balance: 0 }) }) : pb;
+  // S6-MONEY · MB-11 · the float reader B's release is handed notes, each time it is asked, every winner's wallet as it stands.
+  const floatReadsB: number[][] = [];
+  const rB = pb.ok ? await settle.settleMaswaliWeek({ weekId: b.id, releasedBy: RELEASER, digest: pb.preview.digest, now: atB,
+    readFloat: async () => { floatReadsB.push(await Promise.all(wB.map(bal))); return { balance: 0 }; } }) : pb;
   ok("GU.6 · ⭐ the first week takes its whole top-up and settles; the second's top-up is now one shilling short",
     rB.ok && rB.week.state === "SETTLED" && (await guarantee()) === (ac?.U ?? 0) - 1, errOf(rB));
   ok("FL.1 · ⭐ a float of 0 never stops or shrinks a payout: every one of the seven credited the full share, the held one included (MB-11: a read, never a block)",
@@ -832,6 +835,9 @@ if (runs("GU")) {
   const floatRows = await weekAudit(b.id, "maswali.settlement.float_low");
   ok("FL.2 · ⭐ the float alert names the paid total the settlement committed — 869,995, the held share counted in it (MB-11)",
     floatRows.length === 1 && floatRows[0].payload?.paid === 869_995, J(floatRows.map((e: any) => e.payload)));
+  ok("FL.2b · ⭐ S6-MONEY · MB-11 · the float was read ONCE, BEFORE any credit — it saw every winner's wallet as the release found it — and that read is the payout's one record (read before crediting), still never a block",
+    floatReadsB.length === 1 && J(floatReadsB[0]) === J(balB) && floatRows[0]?.payload?.read === "before crediting",
+    J({ reads: floatReadsB.length, sawBefore: J(floatReadsB[0]) === J(balB), read: floatRows[0]?.payload?.read }));
   const floatB = await floatAlertFor(b.id, atB, 0);
   ok("FL.4 · ⭐ the console's alerts carry the short float after the release, beside its week, with the payout and the amount short (MB-11: alert the Owner and Finance; MB-63's 'float short')",
     !!floatB && floatB.level === "critical" && floatB.text.includes(formatTzs(869_995)) && /short of the payout/.test(floatB.text), J(floatB ?? "no float alert"));
@@ -846,6 +852,29 @@ if (runs("GU")) {
     !!blind && blind.level === "critical" && /cannot be read/.test(blind.text), J(blind ?? "no float alert"));
   ok("FL.4b · ⭐ …and it clears once the float covers the payout and its headroom — a top-up ends it, never the next week alone",
     Number.isFinite(headroom) && !(await floatAlertFor(b.id, atB, 869_995 + headroom)), `headroom ${headroom}`);
+  // ⭐ S6-MONEY · MB-11 · BESIDE THE RELEASE BUTTON (the lead's ruling of 2026-10-23): the officer reads the float against the
+  //    week's shares before pressing — a human gate, never the system's refusal.
+  const poolsSrc = (await import("node:fs")).readFileSync("src/app/admin/maswali/pools/page.tsx", "utf8");
+  const shortCover = settle.floatCover(869_995, 0), shortLine = settle.releaseFloatLine(shortCover);
+  const coveredLine = settle.releaseFloatLine(settle.floatCover(869_995, 869_995 + headroom));
+  const unreadLine = settle.releaseFloatLine(settle.floatCover(869_995, null));
+  ok("FL.5b · ⭐ S6-MONEY · MB-11 · beside each release the float is set against that week's shares in words — short, by how much, and that the release still credits every winner in full; covered and unreadable said too — and the pools page draws it on every paying week's row",
+    shortCover.state === "short" && shortCover.short === 869_995 + headroom && shortLine.tone === "warning" && shortLine.text.includes(formatTzs(869_995 + headroom))
+      && /still credits every winner in full/.test(shortLine.text) && coveredLine.tone === "ok" && /covers these shares/.test(coveredLine.text)
+      && unreadLine.tone === "warning" && /cannot be read now/.test(unreadLine.text)
+      && poolsSrc.includes("releaseFloatLine(floatCover(a.paid, v.float))") && poolsSrc.includes("{floatLine && <p data-release-float={w.row.code}"),
+    J({ shortLine, coveredLine, unreadLine }));
+  // ⭐ S6-MONEY · MB-11 · THE OVERVIEW STRIP'S AUDIENCE: Finance and Compliance see the payout float's alerts too.
+  const stripFor = async (role: string) => consoleRead.millioneaStripAlerts(role as never, atB, { readFloat: async () => ({ balance: 0 }) });
+  const floatOfB = (xs: any[] | null) => (xs ?? []).filter((x) => x.weekId === b.id && x.topic === "float");
+  const [sOwner, sTrading, sFinance, sCompliance, sAuditor, sGrowth, sSupport] = await Promise.all(
+    ["ADMIN", "MODERATOR", "FINANCE", "COMPLIANCE", "AUDITOR", "GROWTH", "SUPPORT"].map(stripFor));
+  ok("FL.6 · ⭐ S6-MONEY · MB-11 · the overview strip carries B's short float to Finance and Compliance as well as to the weeks' officers, the Owner and the Auditor — and Finance is shown the payout float's alerts alone",
+    floatOfB(sFinance).length === 1 && floatOfB(sCompliance).length === 1 && floatOfB(sTrading).length === 1 && floatOfB(sOwner).length === 1
+      && floatOfB(sAuditor).length === 1 && (sFinance ?? []).length > 0 && (sFinance ?? []).every((x: any) => x.topic === "float"),
+    J({ finance: (sFinance ?? []).map((x: any) => x.topic ?? "ops"), compliance: floatOfB(sCompliance).length, trading: floatOfB(sTrading).length }));
+  ok("FL.6b · ⛔ …and to no one else: a role that reads none of Millionea's weeks, money or integrity is shown no strip",
+    sGrowth === null && sSupport === null, J({ growth: sGrowth, support: sSupport }));
   // ⭐ S7-F3 · THE COVERED FINDING STAYS ENDED BY THE WINNERS' OWN WITHDRAWALS (the review of S7-F2, MEDIUM): the float is
   //    there for them to withdraw, and their withdrawals take it back down by what they withdrew. ⚠️ A FIXTURE, DECLARED:
   //    the six free winners' completed withdrawals of their shares are CONFIRMED rows on their accounts (the held one

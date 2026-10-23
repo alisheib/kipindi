@@ -20,6 +20,7 @@ import { fmtRate, formatTzs } from "@/lib/utils";
 import { fmtEat, weekStateChip } from "@/lib/maswali-admin-format";
 import { openState, poolsLine, poolsSearchParams, queryOpenWeeks, queryRolloverTrail, type OpenSort, type TrailSort } from "@/lib/maswali-admin-pools-query";
 import { lacksText } from "@/lib/server/maswali-week-record";
+import { floatCover, releaseFloatLine } from "@/lib/server/maswali-settlement";
 import { GuaranteeCeremony, LicenceCeremony, ReleaseControl, RolloutCeremony, SunsetCeremony } from "./pools-controls";
 import { StandingAuditWarning } from "../audit-warning";
 
@@ -149,6 +150,10 @@ async function Content({ searchParams }: PoolsPageProps) {
                     {openPageRows.map((w) => {
                       const chip = weekStateChip(w.row.state);
                       const a = w.preview?.arithmetic;
+                      // ⭐ S6-MONEY · MB-11 · the payout float against THIS week's shares, read beside the button: Finance tops it
+                      //    up before a release when it is short — the officer decides; the release never refuses (the lead's
+                      //    ruling of 2026-10-23), and the release reads the float again before any credit and records it.
+                      const floatLine = a?.kind === "PAYOUT" && a.paid > 0 ? releaseFloatLine(floatCover(a.paid, v.float)) : null;
                       return (
                         <tr key={w.row.id}>
                           <td className="text-left tabular">{w.row.code}{w.row.visibility === "DRIVE" ? " · drive" : ""}</td>
@@ -164,6 +169,7 @@ async function Content({ searchParams }: PoolsPageProps) {
                                 <p className="text-body-sm">{a?.kind === "ROLLOVER" ? <>No 10 of 10: <span className="font-mono tabular-nums">{formatTzs(w.preview.sales)}</span> rolls to the jackpot.</>
                                   : <>{a?.k} winner{a?.k === 1 ? "" : "s"} · <span className="font-mono tabular-nums">{formatTzs(a && a.kind === "PAYOUT" ? a.share : 0)}</span> each · fee <span className="font-mono tabular-nums">{formatTzs(a && a.kind === "PAYOUT" ? a.F : 0)}</span> · top-up <span className="font-mono tabular-nums">{formatTzs(w.preview.guaranteeNeeded)}</span>{w.preview.basis === "TOP_SCORE" ? ` · final week, top score ${w.preview.winningScore} of 10` : ""}</>}</p>
                                 {w.preview.held > 0 && <p className="text-body-sm text-warning">{w.preview.held} winner(s) will be paid and held for Compliance.{/* MB-43 */}</p>}
+                                {floatLine && <p data-release-float={w.row.code} className={floatLine.tone === "warning" ? "text-body-sm text-warning" : "text-body-sm text-text-secondary"}>{floatLine.text}</p>}
                                 {canRelease ? <ReleaseControl weekId={w.row.id} code={w.row.code} digest={w.preview.digest} />
                                   : <ControlLocked what="Release" need={CONTROL_DOMAIN.releaseMaswaliSettlement} />}
                               </div>

@@ -134,13 +134,15 @@ it to the end. When asked about a week, read that week's own figures.</p>
   <tr><th style="width:21%">Menu (Millionea)</th><th>What it holds</th><th style="width:22%">Opens it</th><th style="width:21%">Acts there</th></tr>
   <tr><td><b class="ui" data-screen="nav">Weeks</b></td><td>Every week, its drafting, opening, close and seals; the rules and holiday list the Owner keeps.</td><td>Trading, Auditor, Owner</td><td>Trading; the Owner (rules, holidays)</td></tr>
   <tr><td><b class="ui" data-screen="nav">Pools</b></td><td>The jackpot, the guarantee, the payout float, each open week's settlement, the rollover trail; the Owner's controls.</td><td>Finance, Compliance, Auditor, Owner</td><td>Finance (release); the Owner</td></tr>
-  <tr><td><b class="ui" data-screen="nav">Integrity</b></td><td>The sales pause, objections, weeks that void whole, refunds, letters, winners, held shares, the seal log.</td><td>Compliance, Auditor, Owner</td><td>Compliance</td></tr>
+  <tr><td><b class="ui" data-screen="nav">Integrity</b></td><td>The sales pause, objections, weeks that void whole, refunds, letters, winners, held shares, winners who cannot sign in, the seal log.</td><td>Compliance, Auditor, Owner</td><td>Compliance</td></tr>
   <tr><td><b class="ui" data-screen="nav">Evidence</b></td><td>Each final week's evidence pack.</td><td>Compliance, Auditor, Owner</td><td>Nobody: downloads only</td></tr>
   <tr><td><b class="ui" data-screen="nav">Ticket lookup</b></td><td>One ticket at a time, and the desk's scripts.</td><td>Support, Compliance, Owner</td><td>Support</td></tr>
 </table>
 <p>These are the default grants; the Owner changes them on Roles. The Owner opens and acts everywhere. The Auditor reads
 every Millionea screen but Ticket lookup, and acts on none. Millionea's alerts also appear on the console's front page,
-under <b class="ui" data-screen="home">Open the weeks</b>, for Trading and the Owner.</p>
+under <b class="ui" data-screen="home">Open the weeks</b>: every alert for Trading and the Owner; the payout float's for
+Finance and Compliance too; and, for Compliance, the Auditor and the Owner alone, a group of connected accounts holding a
+winning ticket before its week pays.</p>
 
 <h4>How every control behaves</h4>
 <ul>
@@ -168,6 +170,7 @@ under <b class="ui" data-screen="home">Open the weeks</b>, for Trading and the O
   <tr><td>Void a week whole</td><td><b class="ui" data-screen="integrity">VOID</b></td><td>Compliance · Integrity</td></tr>
   <tr><td>Hold a winner's share</td><td><b class="ui" data-screen="integrity">HOLD</b></td><td>Compliance · Integrity</td></tr>
   <tr><td>Release or forfeit a held share</td><td><b class="ui" data-screen="integrity">RELEASE</b> · <b class="ui" data-screen="integrity">FORFEIT SHARE</b></td><td>Compliance · Integrity</td></tr>
+  <tr><td>Pay a share to a winner who cannot sign in</td><td><b class="ui" data-screen="integrity">PAY SHARE</b></td><td>Compliance · Integrity</td></tr>
   <tr><td>Record a call that reached a winner</td><td><b class="ui" data-screen="integrity">REACHED</b></td><td>Compliance · Integrity</td></tr>
   <tr><td>Record a check of letters</td><td><b class="ui" data-screen="integrity">CHECKED</b></td><td>Compliance · Integrity</td></tr>
   <tr><td>Pay into or take back the guarantee</td><td><b class="ui" data-screen="pools">FUND GUARANTEE</b> · <b class="ui" data-screen="pools">RETURN GUARANTEE</b></td><td>Owner · Pools</td></tr>
@@ -502,8 +505,10 @@ question.</p>
     Settle the earlier week first. A disagreement in sales goes to engineering.</dd>
 </dl>
 <p class="note">A winner the settlement cannot pay freely — a staff account, a suspended or closed account, a deposit under
-review — is paid and held for Compliance; the row says how many (B15). Before releasing, compare
-<b class="ui" data-screen="pools">Payout float</b> with its prepared payouts; Finance tops the float up when short. An
+review — is paid and held for Compliance; the row says how many (B15). Beside each release the row sets the payout float
+against that week's shares and the headroom kept for withdrawals: when it is short, or cannot be read, ask Finance to top it
+up or check it first. The release never refuses for the float — it credits every winner in full, and some may wait to
+withdraw. <b class="ui" data-screen="pools">Payout float</b> sits beside all the prepared payouts at the top. An
 alert fires when a week waits too long for its release. Find an open week with
 <b class="ui" data-screen="pools">Find an open week by code</b> and <b class="ui" data-screen="pools">Find week</b>, the
 <b class="ui" data-screen="pools">All lines</b> · <b class="ui" data-screen="pools">Public</b> · <b class="ui" data-screen="pools">Drive</b>
@@ -549,8 +554,29 @@ shows the fee its week froze, under <b class="ui" data-screen="pools">Fee at pay
 </dl>
 </section>
 
+<section class="step" id="pay-locked">
+<h3>B16 · Pay a winner who cannot sign in</h3>
+<dl class="f4">
+  <dt>Who</dt><dd>Compliance, when the holder asks to be paid.</dd>
+  <dt>Where</dt><dd>Integrity → <b class="ui" data-screen="integrity">Winners who cannot sign in</b>: each share owed to a
+    winner whose account is self-excluded, closed or suspended, with what is paid and what is left, until it is paid in
+    full. When the holder asks, press <b class="ui" data-screen="integrity">Pay…</b>, choose
+    <b class="ui" data-screen="integrity">The holder&apos;s mobile-money network</b>, write
+    <b class="ui" data-screen="integrity">How and when the holder asked to be paid</b>, type PAY SHARE and press
+    <b class="ui" data-screen="integrity">Pay to the registered number</b>. The money goes only to the number registered
+    on the account, at the usual withdrawal fee and within the most one withdrawal may send: a larger share is paid in
+    equal parts, one press each. The account&apos;s own hold stays, and nothing else leaves the wallet.</dd>
+  <dt>Refused when</dt><dd>The holder has never verified their identity or has no confirmed email address (the
+    withdrawal rules do not change for this); the share is held or forfeited; the wallet carries another hold; a payment
+    of the share is still in flight; the payout rail is not taking requests; the account can sign in (its holder
+    withdraws the share); the share is your own.</dd>
+  <dt>If refused</dt><dd>The row says why before you press. Ask the holder to verify their identity or confirm an email
+    address, decide the other hold on its own control, or wait for the payment in flight, then pay again.</dd>
+</dl>
+</section>
+
 <section class="step" id="reach">
-<h3>B16 · Reach every winner</h3>
+<h3>B17 · Reach every winner</h3>
 <dl class="f4">
   <dt>Who</dt><dd>Compliance.</dd>
   <dt>Where</dt><dd>Integrity → <b class="ui" data-screen="integrity">Winners not yet reached</b>: recent winners whom no
@@ -565,7 +591,7 @@ shows the fee its week froze, under <b class="ui" data-screen="pools">Fee at pay
 </section>
 
 <section class="step" id="letters">
-<h3>B17 · Letters not known to have gone</h3>
+<h3>B18 · Letters not known to have gone</h3>
 <dl class="f4">
   <dt>Who</dt><dd>Compliance.</dd>
   <dt>Where</dt><dd>Integrity → <b class="ui" data-screen="integrity">Letters not known to have gone</b>: a week's win or
@@ -578,7 +604,7 @@ shows the fee its week froze, under <b class="ui" data-screen="pools">Fee at pay
 </section>
 
 <section class="step" id="void-week">
-<h3>B18 · Void a whole week <a class="ref" href="https://github.com/alisheib/kipindi/blob/main/docs/MASWALI-PLAN.md#f--grading">MR-18</a></h3>
+<h3>B19 · Void a whole week <a class="ref" href="https://github.com/alisheib/kipindi/blob/main/docs/MASWALI-PLAN.md#f--grading">MR-18</a></h3>
 <dl class="f4">
   <dt>Who</dt><dd>Compliance — or the platform by itself.</dd>
   <dt>Where</dt><dd>Integrity → <b class="ui" data-screen="integrity">Weeks that void whole</b>: a week whose sealed record
@@ -597,7 +623,7 @@ shows the fee its week froze, under <b class="ui" data-screen="pools">Fee at pay
 </section>
 
 <section class="step" id="evidence">
-<h3>B19 · Download a week's evidence</h3>
+<h3>B20 · Download a week's evidence</h3>
 <dl class="f4">
   <dt>Who</dt><dd>Compliance, the Auditor, the Owner.</dd>
   <dt>Where</dt><dd>Evidence: every week that has opened, newest first. Find a week by its code, filter
@@ -616,7 +642,7 @@ shows the fee its week froze, under <b class="ui" data-screen="pools">Fee at pay
 </section>
 
 <section class="step" id="lookup">
-<h3>B20 · Look up a ticket for a player</h3>
+<h3>B21 · Look up a ticket for a player</h3>
 <dl class="f4">
   <dt>Who</dt><dd>Support. Compliance reads the page.</dd>
   <dt>Where</dt><dd>Ticket lookup → <b class="ui" data-screen="lookup">Ticket serial</b> and
@@ -632,7 +658,7 @@ shows the fee its week froze, under <b class="ui" data-screen="pools">Fee at pay
 </section>
 
 <section class="step" id="reports">
-<h3>B21 · The money reports</h3>
+<h3>B22 · The money reports</h3>
 <dl class="f4">
   <dt>Who</dt><dd>Finance; Compliance and the Auditor read.</dd>
   <dt>Where</dt><dd>Pools → <b class="ui" data-screen="pools">Rollover trail</b>: every settled week — search
@@ -654,7 +680,7 @@ shows the fee its week froze, under <b class="ui" data-screen="pools">Fee at pay
 </section>
 
 <section class="step" id="stop">
-<h3>B22 · Stop Millionea <a class="ref" href="https://github.com/alisheib/kipindi/blob/main/docs/MASWALI-PLAN.md#i--end-of-life-and-launch">MR-30</a></h3>
+<h3>B23 · Stop Millionea <a class="ref" href="https://github.com/alisheib/kipindi/blob/main/docs/MASWALI-PLAN.md#i--end-of-life-and-launch">MR-30</a></h3>
 <dl class="f4">
   <dt>Who</dt><dd>The Owner.</dd>
   <dt>Where</dt><dd>Pools → Owner → <b class="ui" data-screen="pools">Stop the product</b>: <b class="ui" data-screen="pools">The final week</b>
@@ -686,7 +712,7 @@ are three different acts.</p>
   <tr><td><i>The guarantee holds …; the unsettled weeks need …</i></td><td>The floor is not fully backed.</td><td>The Owner pays in (A2). No week opens until then.</td></tr>
   <tr><td><i>No licence basis is recorded</i></td><td>No week can open.</td><td>The Owner records it (A1).</td></tr>
   <tr><td><i>Sales are paused: …</i></td><td>A pause stands.</td><td>Compliance resumes once its reason is resolved (B6).</td></tr>
-  <tr><td><i>had no notice reach them</i> … <i>since the settlement</i></td><td>A winner is unreached.</td><td>Call them (B16).</td></tr>
+  <tr><td><i>had no notice reach them</i> … <i>since the settlement</i></td><td>A winner is unreached.</td><td>Call them (B17).</td></tr>
   <tr><td>A winning account may have been taken over since its week's payout</td><td>Its owner must be confirmed.</td><td>Compliance reviews it, and may hold the share (B14).</td></tr>
   <tr><td>The payout float holds less than a paid week's winners can still withdraw, or cannot be read</td><td>Withdrawals may fail.</td><td>Finance checks the float and tops it up.</td></tr>
   <tr><td>A balance, a week's frozen rules, or a watch <i>could not be read</i></td><td>The figure is unknown.</td><td>Engineering. Nothing that depends on it proceeds.</td></tr>
@@ -753,7 +779,7 @@ are three different acts.</p>
 <table class="gl">
   <tr><td><b class="ui" data-screen="integrity">Selling normally.</b> · Paused since …</td><td>The sales pause's state.</td></tr>
   <tr><td><b class="ui" data-screen="integrity">Seals from a new device</b></td><td>A seal made from a device its officer had not sealed from before; confirm it with the officer.</td></tr>
-  <tr><td><b class="ui" data-screen="integrity">Connected accounts</b></td><td>For each recently closed week, groups of accounts to look at before its winners are paid. Decide on the records, never on a group alone.</td></tr>
+  <tr><td><b class="ui" data-screen="integrity">Connected accounts</b></td><td>For each recently closed week, groups of accounts to look at before its winners are paid. Once its results are final and until it pays, a group holding a winning ticket is also an alert above the report and on the front page. Decide on the records, never on a group alone.</td></tr>
   <tr><td><b class="ui" data-screen="integrity">What ties them</b> · <b class="ui" data-screen="integrity">Ways covered</b></td><td>Why the report grouped the accounts; how many answer combinations their tickets cover.</td></tr>
   <tr><td><b class="ui" data-screen="integrity">Winning tickets</b></td><td>The group's winners; <b class="ui" data-screen="integrity">Not final yet</b> before settlement.</td></tr>
   <tr><td><b class="ui" data-screen="integrity">Bell</b> · <b class="ui" data-screen="integrity">Email</b> · <b class="ui" data-screen="integrity">SMS</b> · <b class="ui" data-screen="integrity">Desk</b></td><td>What was sent to an unreached winner, and the desk's call control.</td></tr>
@@ -808,6 +834,8 @@ are three different acts.</p>
   <tr><td class="mono">maswali.share.held</td><td>A winning share was held.</td></tr>
   <tr><td class="mono">maswali.share.released</td><td>A held share was released to its player.</td></tr>
   <tr><td class="mono">maswali.share.forfeited</td><td>A held share went back to the jackpot.</td></tr>
+  <tr><td class="mono">maswali.share.paid_locked</td><td>Compliance paid a share to a winner who cannot sign in.</td></tr>
+  <tr><td class="mono">maswali.share.paid_locked_self_blocked</td><td>A payment of a share was refused: it was the officer&apos;s own.</td></tr>
   <tr><td class="mono">maswali.share.reversal_holds_healed</td><td>Shares paid for by a reversed deposit were held by the nightly check.</td></tr>
   <tr><td class="mono">maswali.share.stray_holds_lifted</td><td>A wallet hold with no held share behind it was lifted.</td></tr>
   <tr><td class="mono">maswali.tickets.bought</td><td>A player bought tickets.</td></tr>

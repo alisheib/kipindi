@@ -91,6 +91,8 @@ function codeOnly(src: string): string {
 }
 
 const wallet = read("src/lib/server/wallet-service.ts");
+/** withdraw's Phase A as it opens (OD-13, S6-MONEY: the wallet lock inside `inOuterLock`). */
+const PHASE_A = "const hold = await inOuterLock(() => withLock(`wallet:${userId}`,";
 const dal = read("src/lib/server/prisma-dal.ts");
 const locks = read("src/lib/server/locks.ts");
 
@@ -120,8 +122,11 @@ console.log("\n§1 · the premise — prisma-dal resolves its client from the AR
 // silently going blind — the difference between a gate that is wrong and a gate that is off.
 console.log("\n§0 · the scanned blocks reach the END of their function");
 {
+  // 2026-10-22 · MASWALI-BUILD S6-MONEY (OD-13): Phase A's wallet lock now runs inside `inOuterLock` — the Millionea chain
+  // first for an officer's payment of a locked winner's share, nothing for every other withdrawal — so its opening reads
+  // `inOuterLock(() => withLock(…`. The block, its writes and their `tx` are unchanged.
   const bounded: Array<[string, string, string]> = [
-    ["withdraw Phase A", "const hold = await withLock(`wallet:${userId}`,", "}, tx);"],
+    ["withdraw Phase A", PHASE_A, "}, tx);"],
     ["settleWithdrawalFailed", "export async function settleWithdrawalFailed", "}"],
     ["creditInternal", "export async function creditInternal", "}"],
     ["settleWithdrawalConfirmed", "async function settleWithdrawalConfirmed", "}"],
@@ -134,16 +139,16 @@ console.log("\n§0 · the scanned blocks reach the END of their function");
   }
   // ⛔ CONTROL · the truncation test must be able to FAIL, or §0 is decoration. A 200-char
   // window over Phase A cannot reach `}, tx);`, and that is exactly the old bug's shape.
-  const truncated = wallet.slice(wallet.indexOf("const hold = await withLock(`wallet:${userId}`,"), wallet.indexOf("const hold = await withLock(`wallet:${userId}`,") + 200);
+  const truncated = wallet.slice(wallet.indexOf(PHASE_A), wallet.indexOf(PHASE_A) + 200);
   ok("0.5  control · a deliberately truncated block IS detected", !truncated.includes("}, tx);"));
 }
 
 // ── §2 · withdraw's Phase A takes the tx and hands it to BOTH writes ─────────
 console.log("\n§2 · wallet-service.withdraw Phase A enrols its writes in the lock transaction");
 {
-  const phaseA = blockAfter(wallet, "const hold = await withLock(`wallet:${userId}`,");
+  const phaseA = blockAfter(wallet, PHASE_A);
   ok("2.1  the lock callback NAMES its transaction",
-    /await withLock\(`wallet:\$\{userId\}`,\s*async \(tx\)/.test(phaseA),
+    /await inOuterLock\(\(\) => withLock\(`wallet:\$\{userId\}`,\s*async \(tx\)/.test(phaseA),
     "callback is `async () =>` — the writes below autocommit outside the lock");
   ok("2.2  the balance→hold move is passed the tx",
     /db\.wallet\.adjust\([^;]*requireBalanceGte: amount \}, tx\)/.test(phaseA),

@@ -84,6 +84,10 @@ const withLine = integrityListParams(query({ hpage: "2", cpage: "3", cgroup: "ml
 ok("the cluster report's page, opened line and line page — and the unreached winners' page (S6-INT 14) — survive every list's links",
   withLine.hpage === "2" && withLine.cpage === "3" && withLine.cgroup === "mlw_x.0123456789abcdef" && withLine.gpage === "4" && withLine.npage === "5"
   && integrityListParams(query({})).cgroup === undefined && integrityListParams(query({})).npage === undefined && query({ cgroup: "x".repeat(200) }).cluster.group.length === 80);
+// S6-MONEY · OD-13 · the page of shares owed to winners who cannot sign in rides every list's links the same way.
+const lockedPageKept = (params: typeof integrityListParams) => params(query({ hpage: "2", ppage: "6" })).ppage === "6" && params(query({ hpage: "2", ppage: "6" })).hpage === "2"
+  && params(query({})).ppage === undefined && params(query({ ppage: "1" })).ppage === undefined && query({ ppage: "-4" }).locked.page === 1;
+ok("the page of shares owed to winners who cannot sign in (S6-MONEY) survives every list's links, and only from page 2", lockedPageKept(integrityListParams));
 ok("all four kit searches reset only their own pager", ["h", "w", "s", "v"].every((prefix) => page.includes(`param="${prefix}q" pageParam="${prefix}page"`)) && searchBox.includes("sp.delete(pageParam)"));
 const formIds = { v: "maswali-voidable-filters", h: "maswali-held-filters", w: "maswali-winners-filters", s: "maswali-seals-filters" };
 const allSearchFormsWired = (source: string) => Object.entries(formIds).every(([prefix, id]) =>
@@ -242,6 +246,10 @@ if (process.argv.includes("--prove-red")) {
   const unfilteredVoidable = helper.replace('const ordered = sorted(filtered, (week) => query.sort === "tickets" ? week.ticketCount : week.seq, query.dir);',
     'const ordered = sorted([...all], (week) => query.sort === "tickets" ? week.ticketCount : week.seq, query.dir);');
   if (unfilteredVoidable === helper) throw new Error("Voidable full-set lookup plant target missing");
+  const lockedPageDropped = helper.replace("    ppage: query.locked.page > 1 ? String(query.locked.page) : undefined,", "");
+  if (lockedPageDropped === helper) throw new Error("Locked-share page plant target missing");
+  ok("red: a list link that drops the locked shares' page fails its survival guard",
+    !lockedPageKept((mutated(lockedPageDropped) as unknown as { integrityListParams: typeof integrityListParams }).integrityListParams));
   ok("red: paging unfiltered voidable weeks fails the beyond-page code lookup",
     mutated(unfilteredVoidable).selectVoidableWeeks(voidable, query({ vq: "MW-01" }).voidable, 20).rows[0]?.seq !== 1);
 }

@@ -56,8 +56,9 @@ export const EVIDENCE_WEEK_ACTIONS = [
 ] as const;
 /** Every act on one of the fifteen questions. */
 export const EVIDENCE_QUESTION_ACTIONS = ["maswali.question.sealed", "maswali.question.confirmed", "maswali.question.corrected", "maswali.question.void_proposed"] as const;
-/** Compliance's decisions on a winning share (MB-43, OD-07). */
-export const EVIDENCE_SHARE_ACTIONS = ["maswali.share.held", "maswali.share.released", "maswali.share.forfeited"] as const;
+/** Compliance's decisions on a winning share (MB-43, OD-07) — and (S6-MONEY, OD-13) each payment of a share owed to a
+ *  winner whose account cannot sign in (`maswali-share-payout.ts`): how that share's money left. */
+export const EVIDENCE_SHARE_ACTIONS = ["maswali.share.held", "maswali.share.released", "maswali.share.forfeited", "maswali.share.paid_locked"] as const;
 /** The most rows one audit read returns; a read that reaches it says so (`complete: false`), it never cuts in silence. */
 const AUDIT_READ_LIMIT = 5_000;
 

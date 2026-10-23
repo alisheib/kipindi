@@ -1,8 +1,9 @@
 "use client";
 
 /**
- * The integrity page's acts (MASWALI-BUILD S4): the sales pause, the week void, and Compliance's decisions on a share.
- * ⭐ Each is a typed confirmation in the kit dialog (S4 item 6); `FORFEIT SHARE` is the service's own word.
+ * The integrity page's acts (MASWALI-BUILD S4): the sales pause, the week void, and Compliance's decisions on a share —
+ * and (S6-MONEY, OD-13) one payment of a share owed to a winner whose account cannot sign in.
+ * ⭐ Each is a typed confirmation in the kit dialog (S4 item 6); `FORFEIT SHARE` and `PAY SHARE` are the services' own words.
  * ⛔ Three acts kept apart (MB-78): the pause stops sales only, the week void refunds and leaves the carry where it is,
  *    and stopping the product is the Owner's sunset on the pools page.
  */
@@ -15,15 +16,25 @@ import { ConfirmModal } from "@/components/ui/modal";
 import { UnsavedChangesGuard } from "@/components/ui/unsaved-changes";
 import { ControlLocked } from "@/components/admin/control-locked";
 import { useMayAct, ActReadOnly } from "@/components/admin/act-gate";
+import { Select } from "@/components/ui/select";
 import { validShareDecision } from "@/lib/maswali-admin-form-validation";
 import { MASWALI_REASON_MIN, MASWALI_REASON_MAX, pauseReasonLengthOk, reasonLengthOk } from "@/lib/maswali-ceremony-bounds";
+import { RETURN_PROVIDERS, RETURN_PROVIDER_LABEL } from "@/lib/refused-funds-outcomes";
+import { formatTzs } from "@/lib/utils";
 import {
   clearUnresolvedLetterAction, forfeitMaswaliShareAction, holdMaswaliShareAction, markMillioneaWinnerReachedAction, pauseMaswaliSalesAction,
-  releaseMaswaliShareAction, resumeMaswaliSalesAction, voidMaswaliWeekAction,
+  payLockedWinnerShareAction, releaseMaswaliShareAction, resumeMaswaliSalesAction, voidMaswaliWeekAction,
 } from "./actions";
 import { raiseAuditWarning } from "../audit-warning";
 
 const FORFEIT_WORD = "FORFEIT SHARE";
+/** The server's `PAY_SHARE_WORD` (maswali-share-payout.ts), restated here: this client file imports no server module. */
+const PAY_SHARE_WORD = "PAY SHARE";
+/** OD-13 · the networks a payment can go out on: the payout rail's own list, by their owners' spellings. */
+const NETWORKS = RETURN_PROVIDERS.map((p) => ({ value: p, label: RETURN_PROVIDER_LABEL[p] }));
+/** The page's standing slot for a payment that was started without its record — the page's `StandingAuditWarning` names
+ *  the same slot (a server page cannot import a value from this client file). */
+const SHARE_PAYMENT_WARNING_SLOT = "integrity:sharePayment";
 /** The server's `WINNER_REACHED_WORD` (maswali-console.ts), restated here: this client file imports no server module. */
 const REACHED_WORD = "REACHED";
 /** The server's `LETTERS_CLEARED_WORD` (maswali-console.ts), restated here for the same reason. */
@@ -167,6 +178,61 @@ export function HoldShareControl({ ticketId, serial }: { ticketId: string; seria
         onConfirm={() => {
           if (!validShareDecision(reason)) { setTried(true); return; }
           run(() => holdMaswaliShareAction(fd({ ticketId, reason })), () => { setOpen(false); setReason(""); setTried(false); });
+        }} />
+    </span>
+  );
+}
+
+/**
+ * ⭐ S6-MONEY · OD-13 · ONE PAYMENT OF A SHARE OWED TO A WINNER WHOSE ACCOUNT CANNOT SIGN IN, to the number registered on
+ * the account, at the holder's request: the network chosen (no number-prefix table infers it), the request written down
+ * (the record's reason), typed `PAY SHARE`. What the payment sends, its fee and what arrives are the server's figures,
+ * shown before the press. The answer is read back: a payment started without its record raises the page's standing
+ * warning (it stands, and is never repeated by it). A request typed and not paid is guarded on leaving.
+ */
+export function PayLockedShareControl({ ticketId, serial, holder, amount, fee, net, left, last4, network }: {
+  ticketId: string; serial: string; holder: string; amount: number; fee: number; net: number; left: number; last4: string; network: string | null;
+}) {
+  const mayAct = useMayAct();
+  const { pending, error, note, run } = useAct();
+  const [request, setRequest] = useState("");
+  const [provider, setProvider] = useState(network ?? "");
+  const [open, setOpen] = useState(false);
+  const [tried, setTried] = useState(false);
+  if (!mayAct) return <ActReadOnly />;
+  const requestOk = request.trim().length >= 5 && request.trim().length <= 300;
+  const networkOk = NETWORKS.some((n) => n.value === provider);
+  return (
+    <span className="inline-flex flex-col gap-1 items-start">
+      <Button size="sm" variant="primary" disabled={pending} onClick={() => setOpen(true)}>Pay…</Button>
+      {!open && error && <span role="alert" className="text-body-sm text-danger-fg">{error}</span>}
+      {note && <span role="status" className="text-body-sm text-success">{note}</span>}
+      <UnsavedChangesGuard dirty={request.trim() !== ""} body="A holder's request to be paid has been typed but no payment was made. Leaving now discards it." />
+      <ConfirmModal open={open} onClose={() => { setOpen(false); setTried(false); }} loading={pending} tone="brand" tier="hard" typedWord={PAY_SHARE_WORD}
+        title={`Pay the share on ${serial}?`} confirmLabel="Pay to the registered number"
+        body={
+          <div className="space-y-2 text-left">
+            <p>
+              {formatTzs(amount)} goes to the number registered on {holder}&apos;s account, ending {last4}: {formatTzs(net)} arrives after
+              the {formatTzs(fee)} withdrawal fee. {left > amount ? `${formatTzs(left - amount)} of the share stays owed, for a further payment.` : "This pays the share in full."}
+              {" "}The account&apos;s own hold stays: nothing else leaves the wallet.
+            </p>
+            <Field label="The holder's mobile-money network" required
+              error={tried && !networkOk ? "Choose the network of the registered number." : undefined}>
+              <Select ariaLabel="The holder's mobile-money network" placeholder="Choose the network" value={provider} onChange={setProvider} options={NETWORKS} />
+            </Field>
+            <Field label="How and when the holder asked to be paid" required hint="5–300 characters"
+              error={tried && !requestOk ? "Write how and when the holder asked to be paid (5–300 characters)." : undefined}>
+              <Textarea rows={2} maxLength={300} value={request} onChange={(e) => setRequest(e.target.value)} />
+            </Field>
+            {error && <p role="alert" className="text-body-sm text-danger-fg">{error}</p>}
+          </div>
+        }
+        onConfirm={() => {
+          if (!requestOk || !networkOk) { setTried(true); return; }
+          run(() => payLockedWinnerShareAction(fd({ ticketId, typed: PAY_SHARE_WORD, request, provider })),
+            () => { setOpen(false); setRequest(""); setTried(false); },
+            (warning) => raiseAuditWarning(SHARE_PAYMENT_WARNING_SLOT, warning));
         }} />
     </span>
   );

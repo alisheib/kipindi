@@ -1057,8 +1057,21 @@ if (STORE === "memory") {
     // the printed list of run 39826898317 on 71ded2939: maswali-money-service.ts 455→456 and 580→581,
     // maswali-settlement.ts 451→453 and 816→818, each nine-line write SHA-256-identical (CR stripped) to 75c6c203e's.
     // No other site moves.
+    // 2026-10-22 · MASWALI-BUILD S6-MONEY 1 (MB-69): the purchase's rules-version stamp — its import above the buy and one
+    // comment line inside the ticket's write, below the buy's own transaction row — moves maswali-money-service.ts's two
+    // sites 455→456 and 580→582, read from the run's printed list (`marked`); each nine-line write is SHA-256-identical
+    // (CR stripped) to its line at d97266317. No other site moves.
+    // 2026-10-23 · MASWALI-BUILD S6-MONEY 6 · re-derived, never added by hand. The S6 release (085c68445) had moved its own
+    // sites past this pin and was red on it before this lane (run s6mn-m5 printed the lane's tree): its two
+    // maswali-money-service.ts sites stand at 456/581 and its two maswali-settlement.ts sites at 453/818. Merged with
+    // S6-MONEY 1's stamp the purchase's two sites are 457/583; MB-11's float read before any credit (nine lines above the
+    // chain lock) and its comparison's functions (between the release and the forfeit) move the settlement's two sites
+    // 453→462 and 818→869. Each nine-line write is SHA-256-identical, CR stripped, to its line at 085c68445, d97266317
+    // and 7823a9685 (44aac49e…, df7d74d7…, b7690b8f…, 50a65b4f…; the void's 36bc47d4… stays at 140). No other site moves.
+    // S6-SHIP 3 (the MONEY merge): the four files carrying these sites are byte-identical to S6-MONEY 7's (ce082dd5a),
+    // whose run printed this list; the release itself had not moved them since 085c68445.
     ok("0.232.2 · …and the twelve marked sites are exactly the twelve line numbers this pin was written against — a site that MOVES is reported here (the pin is line-pinned on purpose; the money anchors match by text and cannot rot from a line move)",
-      j(marked) === j(["market-service.ts:1878", "market-service.ts:3170", "market-service.ts:3661", "market-service.ts:4189", "market-service.ts:4327", "market-service.ts:4476", "market-service.ts:5157", "maswali-money-service.ts:456", "maswali-money-service.ts:581", "maswali-settlement.ts:453", "maswali-settlement.ts:818", "maswali-void.ts:140"]), j(marked));
+      j(marked) === j(["market-service.ts:1878", "market-service.ts:3170", "market-service.ts:3661", "market-service.ts:4189", "market-service.ts:4327", "market-service.ts:4476", "market-service.ts:5157", "maswali-money-service.ts:457", "maswali-money-service.ts:583", "maswali-settlement.ts:462", "maswali-settlement.ts:869", "maswali-void.ts:140"]), j(marked));
 
     /**
      * ⛔ **THE ANCHORS FILE IS OPENED, BECAUSE THE LABEL SAID IT WAS AND IT WAS NOT** (C5-7's review, low). 0.232.2

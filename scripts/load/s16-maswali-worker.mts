@@ -30,6 +30,11 @@
  *   reversal — a week's group as the reversals left it: shares and marks, wallets and holds, hold records, deposit marks.
  *   release — S7-F8 options: `failAtCommit` (a TEST-FAULT at its last statement: rolled back, every hold lifted again) and
  *             `stopAfterLiftSections` + `crashFile` (the process ENDS between two lift sections — a crash, declared).
+ *   lockprep — S6-MONEY · OD-13: each account of `group` given its identity and confirmed email (fixtures, declared), then
+ *             self-excluded through its own door; answers the group's winning tickets on `weekId` and their wallets;
+ *   paylocked — `payLockedWinnerShare` by `officerId` on `ticketId`;  holdshare — `holdMaswaliShare` of `ticketId`;
+ *   paidlocked — one share as its payments left it: the withdrawals under the act's own keys, the holder's withdrawals,
+ *             wallet and ticket, and the act's records.
  * ⛔ Not run directly. ⛔ The orchestrator refuses any database it did not create.
  * ⚠️ This file carries no backslash: line breaks are built from their code points.
  */
@@ -382,6 +387,63 @@ try {
       records: records.map((x: any) => ({ ticketId: x.targetId, deposit: x.payload?.deposit ?? null })),
       deposits,
     });
+  } else if (job.kind === "lockprep") {
+    // S6-MONEY · OD-13 · ⚠️ FIXTURES, DECLARED: each account of `group` gets its identity approved (the KYC row an officer's
+    // approval leaves) and its email confirmed (the account's stamp) — the withdrawal rules' two gates, unchanged by OD-13 —
+    // and is then self-excluded through the product's own door; answers each account's winning ticket on `weekId`.
+    const rg = await import("../../src/lib/server/responsible-gambling.ts");
+    const users = players[String(job.group)] ?? [];
+    const at = new Date().toISOString();
+    for (const [i, u] of users.entries()) {
+      await W.db.kyc.upsert({
+        id: `kyc_s16_${u}`, userId: u, status: "APPROVED", rejectReason: null, rejectNote: null, idType: "NIDA",
+        idNumber: `19900101${String(process.pid % 100_000).padStart(5, "0")}${String(i).padStart(7, "0")}`, idExpiry: null, idVerifiedAt: at,
+        fullName: "S16 Winner", dob: "1990-01-01", documents: [], reviewerId: null, reviewedAt: at, submittedAt: at, approvedAt: at, createdAt: at, updatedAt: at,
+      } as never);
+      await W.setUserFields(u, { email: `${u}@s16.test`, emailVerifiedAt: at });
+      await rg.selfExclude(u, "6m");
+    }
+    const tickets: any[] = (await W.dal.ticketStore.listForWeek(job.weekId)).filter((t: any) => users.includes(t.userId) && t.won === true);
+    const wallets: any[] = [];
+    for (const u of users) { const w: any = await W.bal(u); wallets.push({ userId: u, balance: w?.balance ?? null, status: w?.status ?? null, reasons: w?.freezeReasons ?? null }); }
+    say({ ok: true, tickets: tickets.map((t) => ({ id: t.id, userId: t.userId, payout: t.payout, frozenReason: t.frozenReason })), wallets });
+  } else if (job.kind === "paylocked") {
+    // S6-MONEY · OD-13 · one officer's payment of a locked winner's share, through the act itself (the role is the action's).
+    const pay = await import("../../src/lib/server/maswali-share-payout.ts");
+    const t = await started();
+    let r: any;
+    try {
+      r = await pay.payLockedWinnerShare({ ticketId: job.ticketId, officerId: job.officerId, typed: pay.PAY_SHARE_WORD,
+        request: "The holder phoned the desk and asked to be paid to their registered number.", provider: "MPESA" });
+    } catch (e) { r = { ok: false, error: `THREW: ${String((e as Error)?.message ?? e).slice(0, 600)}` }; }
+    say({ ok: r.ok === true, already: r.ok ? r.already === true : false, replayed: r.ok ? r.replayed === true : false, status: r.ok ? r.status ?? null : null,
+      amount: r.ok ? r.amount ?? null : null, error: errOf(r), t, ms: Date.now() - t });
+  } else if (job.kind === "holdshare") {
+    // S6-MONEY · OD-13 · Compliance's hold of the same share, raced against its payment.
+    const settle = await import("../../src/lib/server/maswali-settlement.ts");
+    const t = await started();
+    let r: any;
+    try { r = await settle.holdMaswaliShare({ ticketId: job.ticketId, officerId: job.officerId, reason: "a finding raised while the payment was asked" }); }
+    catch (e) { r = { ok: false, error: `THREW: ${String((e as Error)?.message ?? e).slice(0, 600)}` }; }
+    say({ ok: r.ok === true, error: errOf(r), t, ms: Date.now() - t });
+  } else if (job.kind === "paidlocked") {
+    // S6-MONEY · OD-13 · what the payments left on one share: its withdrawals by the act's own keys, the holder's wallet and
+    // the ticket, and the act's records.
+    const pay = await import("../../src/lib/server/maswali-share-payout.ts");
+    const pc = W.prisma()!;
+    const payments: any[] = [];
+    for (let n = 0; n < 20; n++) {
+      const x: any = await W.db.txn.findByIdempotencyKey(pay.paymentKey(job.ticketId, n));
+      if (!x) break;
+      payments.push({ key: x.idempotencyKey, type: x.type, status: x.status, amount: x.amount, fee: x.fee, userId: x.userId });
+    }
+    const all = await pc.transaction.findMany({ where: { userId: job.userId, type: "WITHDRAWAL" }, select: { id: true } });
+    const w: any = await W.bal(job.userId);
+    const ticket: any = await W.dal.ticketStore.get(job.ticketId);
+    const records = await pc.auditLog.findMany({ where: { action: pay.SHARE_PAID_LOCKED_ACTION, targetType: "MaswaliTicket", targetId: job.ticketId }, select: { actorId: true, payload: true } });
+    say({ ok: true, payments, withdrawals: all.length, wallet: { balance: w?.balance ?? null, status: w?.status ?? null, reasons: w?.freezeReasons ?? null },
+      ticket: { payout: ticket?.payout ?? null, frozenReason: ticket?.frozenReason ?? null },
+      records: records.map((x: any) => ({ actorId: x.actorId, txnId: x.payload?.txnId ?? null, amount: x.payload?.amount ?? null })) });
   } else {
     say({ ok: false, threw: `unknown job kind "${job.kind}"` });
     process.exitCode = 2;

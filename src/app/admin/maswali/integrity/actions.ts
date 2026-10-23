@@ -10,6 +10,8 @@
  *   · clearUnresolvedLetter — S6 · an officer records that a week's letters not known to have gone were checked.
  *   · ruleMaswaliObjection — Compliance rules on a player's objection to one question (MR-16; S7-OB): REJECT, or uphold
  *     with REVERSE, VOID or REINSTATE, by an officer other than the question's sealer (the service refuses the rest).
+ *   · payLockedWinnerShare — S6-MONEY · OD-13: one payment of a winning share whose holder's account cannot sign in, to
+ *     the registered number at the holder's request (`maswali-share-payout.ts`); its record read back (`recorded`).
  * Three acts are kept apart on purpose (MB-78): the pause (sales only), the week void (refund, carry untouched) and the
  * product stop (the Owner's sunset, on the pools page).
  */
@@ -23,10 +25,13 @@ import { forfeitMaswaliShare, holdMaswaliShare, releaseMaswaliShare } from "@/li
 import { noteMaswaliPoolChanged } from "@/lib/server/maswali-pool-feed";
 import { clearUnresolvedLetter, recordMillioneaWinnerReached } from "@/lib/server/maswali-console";
 import { decideMillioneaObjection, MILLIONEA_OBJECTION_REMEDIES, type MillioneaRuling } from "@/lib/server/maswali-objections";
+import { payLockedWinnerShare } from "@/lib/server/maswali-share-payout";
 
 type ActionResult = { ok: true; note?: string; auditWarning?: string | null } | { ok: false; error: string };
 /** S5-FIX-SRV · a landed week void whose audit row was not written (the void and its refunds stand). */
 const WEEK_VOID_AUDIT_WARNING = "The week void landed, but its audit record could not be fully written. Tell an administrator; do not repeat the void.";
+/** S6-MONEY · OD-13 · a payment that was started, whose record was not written (the payment stands, and is not repeated). */
+const SHARE_PAYMENT_AUDIT_WARNING = "The payment was started, but its record could not be written. Tell an administrator; do not pay it again.";
 
 const refresh = () => {
   revalidatePath("/admin/maswali");
@@ -126,6 +131,30 @@ export async function releaseMaswaliShareAction(formData: FormData): Promise<Act
     return { ok: true };
   } catch (err) {
     return { ok: false, error: safeError(err, "The share could not be released") };
+  }
+}
+
+/**
+ * ⭐ OD-13 · one payment of a locked winner's share. A payment the rail refused (its money back in the wallet) is answered
+ * as the refusal it is, with its record; one started is answered with what was sent and what is still owed — and when its
+ * record did not land, the console raises a standing warning (the payment stands and is never repeated by the warning).
+ */
+export async function payLockedWinnerShareAction(formData: FormData): Promise<ActionResult> {
+  const session = await requireStaff(CONTROL_DOMAIN.payLockedWinnerShare, "payLockedWinnerShare");
+  try {
+    const r = await payLockedWinnerShare({
+      ticketId: str(formData, "ticketId"), officerId: session.userId, typed: str(formData, "typed"), request: str(formData, "request"),
+      provider: str(formData, "provider"),
+    });
+    if (!r.ok) return { ok: false, error: r.error };
+    revalidatePath("/admin/maswali/integrity");
+    revalidatePath("/admin");
+    if (r.already) return { ok: true, note: r.note };
+    const unrecorded = r.recorded === false ? SHARE_PAYMENT_AUDIT_WARNING : null;
+    if (r.status === "FAILED" || r.status === "REVERSED" || r.status === "CANCELLED") return { ok: false, error: unrecorded ? `${r.note} ${unrecorded}` : r.note };
+    return { ok: true, note: r.note, auditWarning: unrecorded };
+  } catch (err) {
+    return { ok: false, error: safeError(err, "The share could not be paid") };
   }
 }
 

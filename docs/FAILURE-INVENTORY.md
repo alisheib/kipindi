@@ -1440,6 +1440,50 @@ derives its window from the larger, in whole days (`HARM_WATCH_CANDIDATE_DAYS`);
 value (the public-repository rule). Held by `test:harm-watch` H.10f (the derivation by value and in source, with a
 planted typed window caught), H.2 (the count equals Player Safety's full walk, both stores) and H.10e.
 
+#### ✅ SM.1 · MB-69 · a ticket did not record the rules version it was bought under
+
+OD-18 binds the Millionea rules on purchase, "with the version stamped on each ticket". The purchase wrote only the
+week's code and the instant its figures froze, and the module that holds the version said the stamp was still to be
+wired. Fixed in S6-MONEY 1: every ticket records `MILLIONEA_RULES_VERSION` beside its week's mark, through one function
+(`millioneaTicketRulesStamp`). Guard: `test:maswali-purchase` 2.14 (both stores); plant (SM1).
+
+#### ✅ SM.2 · MB-44 · OD-13 · a winner whose account cannot sign in was promised a payment no code could make
+
+A self-excluded, closed or suspended winner's share sat in a wallet nobody could withdraw from: a self-exclusion freezes
+the wallet, and the holder cannot sign in. OD-13 decided "a Compliance officer pays to the registered number at the
+holder's request. Identity and email rules are unchanged", and no act did it. **Closed** (S6-MONEY 2–5; the lead's ruling
+(k)): Compliance's `payLockedWinnerShare` on the integrity page pays the share through the platform's own withdrawal, to
+the registered number only, through the self-exclusion's freeze and never around another hold, exactly once, in the chain
+→ wallet lock order, recorded and read back (§ "2026-10-23 · Maswali Millionea — a winner whose account cannot sign in is
+paid by a Compliance officer" in `COMPLIANCE-DECISIONS.md`). THE RULE: a locked winner's money leaves only by this act,
+only to the account's own number, only under the withdrawal rules every player meets. Guards: `test:maswali-share-payout`
+§A–§C (both stores), `load:maswali-cross-instance` §6c, `test:maswali-rbac` §2 and §10; plants (SM2)–(SM13) and
+(SM-rbac-1)–(SM-rbac-3).
+
+#### ✅ SM.3 · MB-11 · the payout float was compared only after the winners were credited, and only the weeks' officers saw its alert
+
+The settlement compared a week's shares with the disbursement float after its commit, and the console strip that
+carried the finding was drawn only for a viewer of the weeks (trading) and the Owner: Finance, who tops the float up, and
+Compliance never saw it. **Closed** (S6-MONEY 6; the build lead's ruling of 2026-10-23, which also ruled out the S6-MONEY
+brief's "a short or unread float stops the crediting"). THE RULE: at a release the float is read once, before any hold
+or credit and outside every lock, against the week's shares and the headroom kept for withdrawals; a short or unreadable
+float is that payout's one record (`read: "before crediting"`), written after the commit and before any winner is told,
+and is never a block — the credit is the winners' entitlement in the platform's books, and an external read must never
+stall a settlement. The releasing officer reads the same comparison beside the button on Pools (`releaseFloatLine`), so
+Finance's top-up before a release is a human gate. The console's front page shows the float's alerts to Finance and
+Compliance too (`millioneaStripAlerts`), and to no role that reads none of Millionea. Guards: `test:maswali-adversarial`
+FL.1 (a float of 0 never stops or shrinks a payout), FL.2b, FL.5b, FL.6, FL.6b (both stores); plants (SM14)–(SM17).
+
+#### ✅ SM.4 · MB-35 · a connected group holding a winning ticket was an order on the integrity page, never an alert
+
+The cluster report counted the lines of a week holding a winning ticket once its results were final and put them first,
+but nothing told Compliance before the week paid. **Closed** (S6-MONEY 6). THE RULE: from the moment a week's results are
+final until it pays, a line of its connected-accounts report holding a winning ticket raises a critical alert naming the
+week — above the report on the integrity page, and on the console's front page for Compliance, the Auditor and the
+Owner, never for the trading officer who seals (MR-14) nor Finance; a report that cannot be read for such a week is its
+own critical alert. The words say what the control enforces, never what ties the accounts. Guards:
+`test:maswali-integrity` 4.9–4.13 (both stores); plants (SM18)–(SM21).
+
 ## §9c · MASWALI MILLIONEA — the admin console, walked and made plain (S6, 2026-10-22)
 
 Ali, 2026-10-22: "admin make sure full control with the right sorting etc. and management", and his admin guide must be
