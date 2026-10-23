@@ -21,7 +21,9 @@ const checks = {
       && (s.route.match(/<QuestionGhost \/>/g) ?? []).length === 2;
   },
   viewer(s) {
-    return s.shell.includes('viewer={journeyShown && !session ? "guest" : undefined}')
+    // RE-PINNED (MASWALI-BUILD S5 round 2 · PLATFORM, 2026-10-22): the switch marks every signed-out reader (classic too,
+    // for the Millionea hub's guest door); a journey reader — the only one this ghost is drawn for — exactly as before.
+    return s.shell.includes('viewer={!session ? "guest" : undefined}')
       && s.shell.includes('data-viewer={viewer}')
       && s.css.includes('.kp-qghost__guest, .kp-qghost__aside { display: none; }')
       && s.css.includes(':root [data-viewer="guest"] .kp-qghost__guest,')

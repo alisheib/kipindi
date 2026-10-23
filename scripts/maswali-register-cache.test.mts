@@ -22,9 +22,11 @@ function sourceChecks(w: World) {
   return {
     // ⚠️ RE-PINNED IN THE OPEN 2026-10-21 (S5-DESIGN-REGISTER, the lead's H2 ruling): the page reads ONE record by its code —
     // a final week through this cache, a public week still running from the store — and still only after its gate.
-    pageGate: w.page.includes("const gate = await millioneaGate();")
+    // ⚠️ RE-PINNED IN THE OPEN 2026-10-22 (S5-DESIGN-REGISTER, round 2): the gate is asked for its 404 alone — the preview
+    // mark it fed is the shell's bar now (D12), so the page keeps no binding.
+    pageGate: w.page.includes("  await millioneaGate();\n")
       && w.page.includes("const rec = await millioneaRegisterRecord(code);")
-      && w.page.indexOf("const gate = await millioneaGate();") < w.page.indexOf("const rec = await millioneaRegisterRecord(code);")
+      && w.page.indexOf("  await millioneaGate();\n") < w.page.indexOf("const rec = await millioneaRegisterRecord(code);")
       && w.player.includes("const week = await cachedMillioneaRegisterWeek(want);"),
     publicRead: w.player.includes("return readCachedMillioneaRegisterWeek(")
       && w.player.includes("() => weekStore.getByCode(want)")
@@ -109,7 +111,7 @@ check("an in-flight invalidation cannot refill an old projection", raced?.value 
 if (process.argv.includes("--prove-red")) {
   const plants: Array<{ name: string; file: keyof World; from: string; to: string; fails: keyof typeof guards }> = [
     { name: "page skips cache", file: "player", from: "const week = await cachedMillioneaRegisterWeek(want);", to: "const week = await millioneaRegisterWeek(want);", fails: "pageGate" },
-    { name: "page reads before its gate", file: "page", from: "const gate = await millioneaGate();", to: "const gateLater = await millioneaGate();", fails: "pageGate" },
+    { name: "page reads before its gate", file: "page", from: "  await millioneaGate();\n", to: "  await Promise.resolve();\n", fails: "pageGate" },
     { name: "no PUBLIC check", file: "cache", from: 'head.visibility === "PUBLIC"', to: "true", fails: "failClosed" },
     { name: "cache outlives TTL", file: "cache", from: "current.expiresAt > now()", to: "true", fails: "bounded" },
     { name: "pending refunds cached", file: "cache", from: "!value.refundsPending", to: "true", fails: "bounded" },

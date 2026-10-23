@@ -448,11 +448,18 @@ section("3 · R5-3 R5-4 no line ends on a connective — legal titles, page titl
       && reg("zh").includes('<span class="kp-gbt-name">坦桑尼亚'), j([reg("sw"), reg("en")]));
   const unit = interKerned("ya Bodi ya Michezo ya Kubahatisha Tanzania.", 13, -0.05);
   const rules = css();
-  const cq = (name: string) => Number(new RegExp(`@container ${name} \\(min-width: (\\d+)px\\) \\{ \\.kp-gbt-name:lang\\(sw\\)`).exec(rules)?.[1]);
-  const { OFFLINE_GBT_FROM } = req("../src/lib/offline-document.ts") as { OFFLINE_GBT_FROM: Record<Loc, number> };
-  ok(`3.11 · its sw condition is the run's own width (${unit.toFixed(1)}px in Inter 13px) + 3px: 281 for the footer's line, 321 for the trust row (+ its 40px roundel and gap), and the offline document's copy says 281`,
-    Math.abs(unit - 277.4) < 0.5 && cq("kp-gbt") === Math.ceil(unit + 3) && cq("kp-gbt-row") === Math.ceil(unit + 3) + 40 && OFFLINE_GBT_FROM.sw === cq("kp-gbt") && OFFLINE_GBT_FROM.en === 168,
+  const cq = (name: string, r = rules) => Number(new RegExp(`@container ${name} \\(min-width: (\\d+)px\\) \\{ \\.kp-gbt-name:lang\\(sw\\)`).exec(r)?.[1]);
+  const { OFFLINE_GBT_FROM } = req("../src/lib/offline-document.ts") as { OFFLINE_GBT_FROM: Partial<Record<Loc, number>> };
+  // ⚠️ PIN MOVED 2026-10-22 (MASWALI-BUILD S5 round 2 · PLATFORM, the lead's ruling on K34): round 7 held the sw run whole
+  // from a 281px line (321 for the trust row), and that drew "Leseni" alone above the name wherever the line held the run but
+  // not the sentence — on all four of its lines (PLATFORM r2's Chromium sweep). The sw name is now held by its connectives
+  // alone. No sw condition is left in globals.css or in the offline document's copy; en keeps its 168.
+  const noSw = (r: string, off: Partial<Record<Loc, number>>) => Number.isNaN(cq("kp-gbt", r)) && Number.isNaN(cq("kp-gbt-row", r)) && off.sw === undefined;
+  ok(`3.11 · the sw run (${unit.toFixed(1)}px in Inter 13px) is held by its connectives alone: no sw condition on the footer's line, the trust row or the offline document's copy (round 7's 281/321 taken out); the offline copy keeps en's 168`,
+    Math.abs(unit - 277.4) < 0.5 && noSw(rules, OFFLINE_GBT_FROM) && OFFLINE_GBT_FROM.en === 168,
     j({ unit, footer: cq("kp-gbt"), row: cq("kp-gbt-row"), offline: OFFLINE_GBT_FROM }));
+  ok("3.11′ PLANT · round 7's sw condition put back (globals.css's 281, or the offline copy's sw: 281) is reported",
+    !noSw(`${rules}@container kp-gbt (min-width: 281px) { .kp-gbt-name:lang(sw) { white-space: nowrap; } }`, OFFLINE_GBT_FROM) && !noSw(rules, { ...OFFLINE_GBT_FROM, sw: 281 }));
   const offSrc = code("src/lib/offline-document.ts");
   ok("3.12 · the offline document draws the same: the connective inside the name's span, the name's connectives held (`.kp-nw`)",
     /const \[before, lead\] = splitLeadConnective\(cut\[0\]\);/.test(offSrc) && /heldConnectives\(lead \+ cut\[1\]\)/.test(offSrc) && offSrc.includes("`.kp-nw{white-space:nowrap}`"));

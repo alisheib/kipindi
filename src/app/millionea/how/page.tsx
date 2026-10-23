@@ -47,7 +47,7 @@ import { fill, formatTzs, pctNum } from "@/lib/utils";
 import { durationHours } from "@/lib/duration-phrase";
 import type { Dict, Locale } from "@/lib/i18n-dict";
 import type { WeekPhases } from "@/components/maswali/maswali-week-strip";
-import { MillioneaPreviewMark, MillioneaReadingLinks } from "../millionea-parts";
+import { MillioneaReadingLinks } from "../millionea-parts";
 import { HowExample } from "./how-example";
 
 export const dynamic = "force-dynamic";
@@ -97,7 +97,7 @@ function WorkedWeek({ t, locale, id, title, h, ex }: { t: Dict; locale: Locale; 
   });
   return (
     <article aria-labelledby={id} className="mat-flat flex max-w-receipt flex-col gap-3 rounded-card p-3">
-      <h3 id={id} className="font-display text-body-lg font-semibold text-text">{title}</h3>
+      <h3 id={id} className="font-display text-body-lg font-semibold text-text text-balance">{title}</h3>
       <MaswaliLedger rows={rows} />
     </article>
   );
@@ -145,12 +145,12 @@ export default async function MillioneaHowPage() {
     // confirm sheet's own key, after the stop's announcement.
     keepFact(locale, fill(t.millionea.ruleSunset, { rule: t.millionea.finalWeekRule })),
   ];
-  const H2 = "font-display text-title-sm font-bold text-text";
+  const H2 = "font-display text-title-sm font-bold text-text text-balance";
   return (
     <PageContainer tier="reading" className="kp-mln-zh">
       <div className="flex flex-col gap-6" data-testid="millionea-how">
         <PageHeader eyebrow={t.millionea.productTitle} title={t.millionea.howToPlay} />
-        {gate.preview && <MillioneaPreviewMark t={t} />}
+        {/* The staff preview is marked once, above the page, by the shell's bar (PLATFORM D12) — never in the page's column. */}
         {/* Each step keeps its phrases whole (S5 VIS P6, A1): "5 reserve", "A1–A5", "13% fee" never torn at a line's end. */}
         <ol className="flex max-w-[68ch] flex-col gap-3">
           {steps.map((s, i) => (
@@ -169,7 +169,7 @@ export default async function MillioneaHowPage() {
         <section aria-labelledby="mln-how-examples" className="flex flex-col gap-3">
           <h2 id="mln-how-examples" className={H2}>{t.millionea.examplesTitle}</h2>
           <article aria-labelledby="mln-how-ex-swap" className="mat-raised flex max-w-receipt flex-col gap-3 rounded-card p-3">
-            <h3 id="mln-how-ex-swap" className="font-display text-body-lg font-semibold text-text">{t.millionea.exampleSwapTitle}</h3>
+            <h3 id="mln-how-ex-swap" className="font-display text-body-lg font-semibold text-text text-balance">{t.millionea.exampleSwapTitle}</h3>
             <HowExample before={before} after={after} caption={caption} />
           </article>
           {h.examples.shared && <WorkedWeek t={t} locale={locale} id="mln-how-ex-shared" title={t.millionea.exampleWinnersTitle} h={h} ex={h.examples.shared} />}

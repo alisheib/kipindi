@@ -16,7 +16,7 @@ import { counted, eatWeekdayClock, weekNumberOf, weekWord } from "@/components/m
 import { millioneaLedgerRows, ticketSalesRuns, type MillioneaLedgerRow } from "@/components/maswali/maswali-ledger";
 import { playerStatusChip } from "@/lib/status-tone";
 import { formatEatDateTime } from "@/lib/eat-day";
-import { fill, formatNumber, formatTzs, pctNum } from "@/lib/utils";
+import { cn, fill, formatNumber, formatTzs, pctNum } from "@/lib/utils";
 import { moneyRuns } from "@/lib/fill-nodes";
 import type { WeekState } from "@/lib/maswali-week-label";
 import type { MillioneaRegisterLiveWeek, MillioneaWeekMoney, MillioneaWeekSummary } from "@/lib/server/maswali-player";
@@ -82,7 +82,7 @@ export function kept(text: string, runs: readonly string[]): ReactNode {
  * A FINAL WEEK'S FACTS, AFTER ITS STATE (R9: "Week 48 · Voided" and "Week 45: 1 ticket won" were two grammars for one kind
  * of row) — a voided week's refunds ("every ticket refunded" only once every refund landed: the read model's
  * `refundsPending`, MR-18, never a refund stated before it happened), a won week's winners and jackpot, or a week nobody
- * won: "no 10/10", what it carried forward and its fee 0 (the critic's L1 — the hub's last-week line says "no 10/10"
+ * won: "no 10/10", what it carried forward and its fee, TZS 0 (the critic's L1 — the hub's last-week line says "no 10/10"
  * too). Every amount is the read model's; each one is a single unbroken run.
  */
 export function weekFacts(t: Dict, w: MillioneaWeekSummary): ReactNode[] {
@@ -98,8 +98,12 @@ export function weekFacts(t: Dict, w: MillioneaWeekSummary): ReactNode[] {
   // of its own — a line of its own on a phone — so each opens with a capital, as every other fact of a row does. Its amount
   // is drawn as every amount is (`.amount`, the jackpot's face), inside its kept run: the tile read of 2026-10-21 found
   // "TZS 18,000 carried forward" in the body face beside "Jackpot TZS 50,000" in the figure face.
-  const fact = (f: string) => keepConnectives(f, runAndDashRanges(f, [amount]), (part) => moneyRuns(part));
-  return [...factsOf(fill(t.millionea.settledRollover, { amount })).map((f) => fact(factCase(f))), factCase(t.millionea.feeZero)];
+  // ⭐ ONE WORDING WITH THE HUB (the lead's ruling, 2026-10-22): the fee is an amount like every other — "Fee TZS 0", never
+  // the bare "fee 0" the row alone said without its currency — its figure the money face, kept whole (HUB's lastWeekRolled
+  // fills its "fee {fee}" with the same `formatTzs(0)`).
+  const fee = formatTzs(0);
+  const fact = (f: string, figure: string) => keepConnectives(f, runAndDashRanges(f, [figure]), (part) => moneyRuns(part));
+  return [...factsOf(fill(t.millionea.settledRollover, { amount })).map((f) => fact(factCase(f), amount)), fact(factCase(fill(t.millionea.feeZero, { fee })), fee)];
 }
 
 /** A fact's first letter as a list item's: a capital (a no-op for a figure or an ideograph). */
@@ -109,13 +113,16 @@ function factCase(s: string): string {
 
 /**
  * A RUNNING WEEK'S FACTS, AFTER ITS CHIP (H2) — the hub's own lines, so the two say a week one way: a selling week's close
- * ("Sales close Friday 18:00"; nothing while its sales are paused — the chip says so, and nothing can be bought before
+ * ("Sales close: Friday 18:00 EAT"; nothing while its sales are paused — the chip says so, and nothing can be bought before
  * that close); a week being graded, its results so far and, while it is open, its objection window's end.
+ * ⭐ ONE WORDING FOR THE SALES CLOSE (the lead's ruling, 2026-10-22): `salesCloseColon`, the words the slip and the ticket
+ * draw, with its zone — never a second spelling of the same moment. Its clock is a `.mono` numeral (§T5) and the weekday,
+ * the clock and the zone one kept run ("Ijumaa 18:00 EAT"), both `keepFact`'s own (`numeralRuns`, the CLOCK run).
  */
 export function liveWeekFacts(t: Dict, locale: Locale, w: MillioneaRegisterLiveWeek, nowMs: number): ReactNode[] {
   if (w.state === "OPEN") {
     const closes = msOf(w.closesAt);
-    return w.paused || closes === null ? [] : [keepFact(locale, fill(t.millionea.salesCloseAt, { when: eatWeekdayClock(t, closes) }))];
+    return w.paused || closes === null ? [] : [keepFact(locale, fill(t.millionea.salesCloseColon, { when: eatWeekdayClock(t, closes) }))];
   }
   const facts: ReactNode[] = [keepFact(locale, fill(t.millionea.resultsOut, { n: formatNumber(w.resultsOut) }))];
   const until = millioneaWeekPhase(w, nowMs).objectionsUntil;
@@ -162,6 +169,24 @@ export function WeekRow({ t, code, chip, facts }: { t: Dict; code: string; chip:
 export function registerWhen(t: Dict, locale: Locale, iso: string | null, nowMs: number): string | null {
   const ms = msOf(iso);
   return ms === null ? null : formatEatDateTime(ms, nowMs, t.common.monthsShort, locale);
+}
+
+/** Han, by the ranges Millionea's Chinese rules read (How to play's `spacedDuration`). */
+const HAN = /[㐀-䶿一-鿿豈-﫿]/;
+
+/**
+ * A QUESTION'S EVENT, AS THE REGISTER PRINTS IT — "Event 27 Nov, 09:00", its date one kept run. ⭐ Millionea's Chinese at
+ * the fill's edge (the lead's zh ruling, 2026-10-21: a space where a Han character meets a digit or a Latin letter, never
+ * between two Han characters): the shared "事件{when}" is written for the hub's and the slip's weekday ("事件周五 09:00",
+ * S5-DESIGN-DOORS 8), and the register's date opens on its year — so here the edge takes the space, "事件 2026年11月27日
+ * 09:00", never "事件2026年…". The words are the shared key's; the edge is set by what meets it.
+ */
+export function registerEventAt(t: Dict, locale: Locale, iso: string | null, nowMs: number): ReactNode | null {
+  const when = registerWhen(t, locale, iso, nowMs);
+  if (when === null) return null;
+  const at = t.millionea.eventAt.indexOf("{when}");
+  const edge = locale === "zh" && at > 0 && HAN.test(t.millionea.eventAt[at - 1]) && /^[0-9A-Za-z]/.test(when) ? " " : "";
+  return keepFact(locale, fill(t.millionea.eventAt, { when: `${edge}${when}` }), [when]);
 }
 
 /**
@@ -240,11 +265,16 @@ const EYEBROW = "font-mono text-micro uppercase eyebrow text-text-subtle";
  * dressed as an eyebrow. The HUB lane prints the same commitments in its week section (round 2), from these words
  * (`stubHash`, `commitTicketsAtClose`, `commitPublished`, `commitFixed`, `commitExplainer` — the lead's keys).
  * ⛔ Never a hash that is not stamped: an absent one is not drawn (AGENTS.md §6).
+ * Its card fills the column it stands in — on the hub, the fifteen questions' width (capped at the receipt's measure it
+ * ended 9–64px short of them at 1024–1920; HUB's read, round 2); a page that sets it at the receipt's measure, as the
+ * register's week page does under its ledger, says so (`className`).
  */
-export function WeekCommitments({ t, locale, nowMs, hash, publishedAt, root, closedAt, tickets }: {
+export function WeekCommitments({ t, locale, nowMs, hash, publishedAt, root, closedAt, tickets, className }: {
   t: Dict;
   locale: Locale;
   nowMs: number;
+  /** The section's own measure, when the page sets one (the register's week page: `max-w-receipt`). */
+  className?: string;
   /** The question set's hash, published at the open. */
   hash: string | null;
   publishedAt: string | null;
@@ -259,9 +289,9 @@ export function WeekCommitments({ t, locale, nowMs, hash, publishedAt, root, clo
     ? counted(tickets, t.millionea.commitFixedOne, t.millionea.commitFixed, { when: fixed })
     : null;
   return (
-    <section aria-labelledby="mln-reg-commit" className="flex flex-col gap-2" data-testid="millionea-commitments">
+    <section aria-labelledby="mln-reg-commit" className={cn("flex flex-col gap-2", className)} data-testid="millionea-commitments">
       <h2 id="mln-reg-commit" className="font-display text-title-sm font-bold text-text text-balance">{t.millionea.commitTitle}</h2>
-      <div className="mat-flat flex max-w-receipt flex-col gap-4 rounded-card p-3">
+      <div className="mat-flat flex flex-col gap-4 rounded-card p-3">
         {hash && (
           <div className="flex flex-col gap-1">
             {/* Both commitments wear the commitment glyph — one left edge for the two eyebrows (the tile read of 2026-10-21:

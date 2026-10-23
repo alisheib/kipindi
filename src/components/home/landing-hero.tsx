@@ -3,11 +3,12 @@
  * 2026-09-27 from `specs/hero-v3.md` under the owner's rulings R7, R8 and R9 (INHERIT-MANIFEST).
  *
  * ── THE ORDER, AND WHY ───────────────────────────────────────────────────────────────────────
- * claim → h1 → lede → trust rows → featured card → CTAs → sign-off. What 50pick is (the claim,
+ * claim → h1 → lede → trust rows → featured card → CTAs → door row → sign-off. What 50pick is (the claim,
  * "Tanzania's first licensed prediction market"), the question it asks in the reader's own
  * language (the h1, "NDIO au HAPANA?"), what you do and what happens (the lede, two designed
  * lines), why to trust it (18+ · the Board's licence; the wallets that pay out),
- * then a live market, then what to press, then the brand line as a sign-off. The trust rows sit
+ * then a live market, then what to press, then the quiet doors (Live; Millionea's line while it is
+ * offered — `HeroDoors`, R19, 2026-10-22), then the brand line as a sign-off. The trust rows sit
  * ABOVE the card since R7: after the card and the CTAs they never reached a phone's first screen
  * (ACCEPTANCE K29). They are the same rows for a visitor and a player. The proof rail and the
  * conviction bar keep every rule they had in their own section directly below (`LandingProof`), and
@@ -82,6 +83,7 @@ import { Cash } from "@/components/ui/cash";
 import { DotSeq } from "@/components/ui/dot-seq";
 import { keepFigures, splitLeadConnective } from "@/components/ui/keep-words";
 import type { LandingPicks } from "@/lib/server/landing-picks";
+import { MaswaliLandingLine } from "@/components/maswali/maswali-landing-line";
 
 /**
  * What the signed-in hero knows about the player (landing v3 · WP14 part 2). Each part is null when
@@ -119,6 +121,12 @@ type Props = {
    * /positions takes the journey tab's own name (see `SignedInAct`). Omitted, today's words.
    */
   journey?: boolean;
+  /**
+   * MASWALI-BUILD S5 landing door (Ali, 2026-10-22): Millionea's line is offered to this request (`millioneaLandingOffered`,
+   * millionea-doors.ts — the card's answer and the hub's week on sale to this reader; DESIGN_AUTHORITY §M8a item 21). Handed
+   * only while true; omitted, the door row (`HeroDoors`, R19) holds Live alone.
+   */
+  millionea?: true;
 };
 
 /** Escape a word for use inside a RegExp — the side words are data, not patterns. */
@@ -279,7 +287,7 @@ function QuestionRow({ row, t, locale, nowMs }: { row: HeroRow; t: Dict; locale:
   );
 }
 
-export function LandingHero({ figures, t, locale, isAuthed, nowMs, cards, mine, rails, journey = false }: Props) {
+export function LandingHero({ figures, t, locale, isAuthed, nowMs, cards, mine, rails, journey = false, millionea }: Props) {
   const { featured } = figures;
   const chart = featured ? cards.charts.get(featured.id) : undefined;
 
@@ -371,6 +379,9 @@ export function LandingHero({ figures, t, locale, isAuthed, nowMs, cards, mine, 
                   {fill(t.home.heroBrowseAll, { n: formatNumber(figures.openCount) })}
                 </Link>
               </div>
+              {/* THE DOOR ROW (R19, Ali 2026-10-22): Live, and Millionea's line while it is offered — under the two CTAs,
+                  never a third CTA (`HeroDoors`). */}
+              <HeroDoors t={t} locale={locale} millionea={millionea === true} />
               {/* THE SIGN-OFF — the brand line, which was the h1 until R7(3) (2026-09-27). The mark is
                   the logo used as a logo, not decoration (R4(1) untouched), and it is aria-hidden: the
                   line is the sign-off's text. `lang="en"`: the brand line is English in every locale,
@@ -382,9 +393,39 @@ export function LandingHero({ figures, t, locale, isAuthed, nowMs, cards, mine, 
               </p>
             </>
           )}
+          {/* …and a player's, under their block (its two doors stay the block's own, R17). Millionea's line, as every
+              invitation in that block, is never drawn to a frozen wallet or a player on a break (the doors' answer holds
+              the break already; the block's own reads hold both); Live stays. */}
+          {isAuthed && <HeroDoors t={t} locale={locale} millionea={millionea === true && !mine?.held && !mine?.breakEnd} />}
         </div>
       </div>
     </section>
+  );
+}
+
+/**
+ * THE HERO'S DOOR ROW (Ali, 2026-10-22 — the landing's ruling R19, `docs/design-system/v4-2026-09-26-landing-ten/
+ * INHERIT-MANIFEST.md` §2; the Millionea door's own rule is DESIGN_AUTHORITY §M8a item 21). One row of the hero's quiet links
+ * under its own actions — a visitor's two CTAs, a player's block — for EVERY reader of the classic landing:
+ *   · Live, ALWAYS and FIRST: the platform's live page by its nav name (`t.nav.live`, the one wording) after the family's
+ *     live glyph, its ink on the row's start edge, under the CTA's. It keeps its place whether or not Millionea shows, and
+ *     alone it is the row (what a reader sees while Millionea is dark). ⛔ No count (the CTA states the book's; a second
+ *     figure beside it would be a different one), no motion, no colour of its own: the link blue, the glyph in it.
+ *   · Millionea's line, SECOND and only while offered (`millionea`, handed only true: `millioneaLandingOffered`, and for a
+ *     player never to a frozen wallet or a break) — `MaswaliLandingLine`. While it is dark the row holds Live alone.
+ * The block's own row idiom (`.kp-mine__links`: it wraps only BETWEEN its doors, 8 / 20 apart) and link (`.kp-mine__limits`:
+ * the link ink of §B4c, its dim underline, the 44px reach — the box is padded, never the type). Each door is one line at
+ * 320 in every language; both share one line where they fit (measured: sw from a 412 phone, en and zh from 320).
+ */
+function HeroDoors({ t, locale, millionea }: { t: Dict; locale: Locale; millionea: boolean }) {
+  return (
+    <div className="kp-mine__links" data-testid="landing-doors">
+      <Link href={"/live" as never} className="kp-mine__limits" data-testid="landing-live">
+        <I.live s={14} edge="start" />
+        {t.nav.live}
+      </Link>
+      {millionea && <MaswaliLandingLine t={t} locale={locale} />}
+    </div>
   );
 }
 

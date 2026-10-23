@@ -1727,7 +1727,10 @@ The platform's hardest-won rules. Most were bought with an incident.
    ⛔ No mascots. ⛔ **No baked-in text in reusable art** — it cannot be translated.
 8. **During a break, nothing a break pauses is offered — and no offer to earn or recruit.** While a player's
    cooling-off or self-exclusion is running, the interface offers neither what the break stops (R4-I and R6-A,
-   2026-10-09: no bet panel or one-tap stake, no first-bet invitation, no deposit door) nor, by the owner's ruling (4)
+   2026-10-09: no bet panel or one-tap stake, no first-bet invitation, no deposit door — in the classic shell too since
+   MASWALI-BUILD S5 round 2 · PLATFORM, 2026-10-22, the lead's approval of the hub lane's reader finding: the rail's centre
+   coin is the Wallet door, drawn exactly as for a held wallet, the bar's deposit pill is withheld and the balance capsule's
+   Wallet drops its Deposit; `test:millionea-shell` §5) nor, by the owner's ruling (4)
    of 2026-10-10 (owner items 16 and 56), any door to the three programmes that pay for activity: **Alika**
    (`/profile/invite` — a player's invite and an agent's dashboard alike), **Mapendekezo / Propose & earn**
    (`/proposals`) and **Kuwa wakala / Become an agent** (`/agent`). Their doors are not drawn in either shell — the
@@ -3060,6 +3063,16 @@ its branches in the same change or it does not land. The delivery named only the
 gates; this product has three (E-125) — our target device is exactly the one the third
 covers. Guard: `npm run test:reduce-motion`. Maswali Millionea's three motions (N1–N3) obey all three gates: §M8a.
 
+The same holds for every entrance of the kit's motion vocabulary (`motion.css`: `.m-in`, `.m-dialog-in`, `.m-sheet-in`,
+`.m-scrim`, `.m-seal`, `.m-axis-reveal`, `.m-draw` and the rest), every one a Millionea surface wears, and the route
+entrance (`.route-enter`): the clamp zeroes time, not the first frame, so a clamped entrance without its branch paints its
+first keyframe once — measured 2026-10-22: a seal, a reveal and a drawn line, every dialog, sheet and menu invisible for a
+frame, and every route change's first frame blank. With its branch (`animation: none`; a keyframe that names no first
+frame also writes its last) the end frame is the first one painted. An exit is not branched: it opens on the surface as it
+stands, and the kit unmounts a leaving surface at once under both clamps (`exitBeatMs`). `test:reduce-motion` rule 3
+derives the set from the keyframes (MASWALI-BUILD S5 round 2 · PLATFORM, the motion critic's "Reduced-motion parity" row;
+every reader who asked for reduced motion, on every page).
+
 A countdown hairline that a script draws is held to the same clamps as one the stylesheet draws: under either clamp it
 stands FULL for its whole dwell — "still here", true until the timer closes the surface — never draining (E-269, the
 toast's `.toast-countdown`). Since Ali 2026-10-21 10/10 pass (the lead's ruling on the motion critic's L6) that includes
@@ -3146,8 +3159,24 @@ Millionea's own surfaces ONLY; everywhere else the laws above stand unchanged.*
     link of the classic top bar (while it shows, Results moves into More, as its first row, at every width — measured
     2026-10-19: the bar's room is capped at `--w-board`, 1280px, and with both inline the Swahili bar of a signed-in
     player at TZS 999,999 needs 12px more and loses its account menu, E-190's failure; ~~"inline again from 1280"~~,
-    struck the same day). The classic phone rail keeps its five tracks around the centre coin, so there Millionea stays
-    More's first row, beside Results, which has lived in that More since the coin.
+    struck the same day), and a track of the classic phone rail, in Live's place (the sub-point below). ~~The classic
+    phone rail keeps its five tracks around the centre coin, so there Millionea stays More's first row, beside Results,
+    which has lived in that More since the coin.~~ (struck 2026-10-22 by Ali's ruling below)
+    - **The classic phone rail: Millionea's track in Live's place (Ali, 2026-10-22: *"ok replace live please … keep live
+      in more"*, and *"make sure it takes the perfect design and the whole navbar is tested, visually and logically
+      still appealing"*; recorded with his rulings of the day in `docs/COMPLIANCE-DECISIONS.md`, "2026-10-22 · Maswali
+      Millionea — build done, launch later", item 4).** Six tracks cannot be made perfect: the centred coin needs two
+      tracks on each side, and Swahili labels do not fit ~53px. So while Millionea's door is drawn for the reader (the
+      shell's one answer: the rollout admits the request and the reader is not on a break), the rail reads Markets · Up
+      & Down · Deposit · Millionea · More — its five equal tracks, the coin optically centred — and Live becomes More's
+      FIRST row, above Results, for a player and a guest alike. The track is its siblings' own: slot, pip, lit pill,
+      label metrics, glyph size and baseline; only its label's ink differs, and its glyph rests in gold, as on the
+      journey rail's pip (a lit track takes the siblings' Fill on the pill). Millionea's pages light the track;
+      `/millionea/tickets` and a ticket light Positions, Tiketi zangu's classic destination, a row of the rail's More
+      (`classicMillioneaLit`, `src/lib/nav/active-tab.ts`); `/live` lights More, Live's row current. While the door is
+      not drawn (WITHDRAWN, a reader the rollout does not admit, a break) the rail is the one it was, byte for byte:
+      Live in its track, and on a break D13's lighting below. Guards: `test:millionea-shell` §6 (every composition and
+      every destination's lit slot, in sw/en/zh, with plants), `qa:classic-rail` (the whole bar in a browser).
     `/millionea` and its pages light Millionea's tab; `/millionea/tickets` and a ticket light Tiketi zangu. Where the
     four tabs are drawn (Millionea not visible to the reader), Millionea's pages light Maswali, the tab whose home carries
     its card. On a break (Millionea visible, its door not drawn) the classic bar and rail light the same destination —
@@ -3157,7 +3186,10 @@ Millionea's own surfaces ONLY; everywhere else the laws above stand unchanged.*
     line; its page, its title and the desktop link keep the full words; Chinese keeps 我的注单). The full Swahili "Juu na
     Chini" wraps on the five-tab rail below 416 with all pips aligned, then fits one line (§K 8b). No two of the five
     labels stand closer than their pips (8px at 320): below 337px English's labels close their tracking by 0.04em
-    (S5-FIX-PLATFORM D14, `test:visual-pass-r9c` §4c). From 1024 to 1279,
+    (S5-FIX-PLATFORM D14, `test:visual-pass-r9c` §4c). Nor do two of the four, the rail every reader is served while
+    Millionea does not show: from 332.8px, where Swahili's "Juu na Chini" and "Tiketi zangu" first fit one line, to 348.8px,
+    where they clear 8px untouched, those labels close their tracking by the same 0.04em (they stood 4.0px apart at 333;
+    S5 round 2 · PLATFORM, 2026-10-22 — a change every Swahili journey reader sees at those widths). From 1024 to 1279,
     while five destinations show, the journey bar's
     nav gives up its own leading 12px (the Swahili row otherwise ran 5.1px into the page's gutter at 1024 for a signed-in
     player — measured, `qa:journey-header-fit`), and takes it back from 1280.
@@ -3171,9 +3203,10 @@ Millionea's own surfaces ONLY; everywhere else the laws above stand unchanged.*
     still gradient fill at its siblings' size and weight, and persistent navigation must not animate, WCAG 2.2.2).
     Forced colours draw plain system text. One class, `.kp-millionea-ink` (`globals.css`, beside the rail rules), worn by
     every nav that draws Millionea. Its mark, Millionea's own glyph (`millionea`) in gold (a lit tab draws the siblings'
-    Fill on the pill), is drawn only where every sibling carries one: on the journey rail's pip. The classic bar's core
-    link and the classic phone rail's More row are its words in the ink alone, so every row of a More list starts its
-    words at one x (the lead's tile read, 2026-10-19: the row's mark had set its words ~28px right of every other row's).
+    Fill on the pill), is drawn only where every sibling carries one: on both phone rails' pips (the journey's tab, and
+    the classic rail's track since 2026-10-22). The classic bar's core link is its words in the ink alone, as its
+    siblings are, and no More list draws Millionea; every row of a More list starts its words at one x (the lead's tile
+    read, 2026-10-19: the classic rail's former Millionea row, marked, had set its words ~28px right of every other row's).
     More's two panels are opaque, the kit's elevated surface whole (`bg-bg-elevated`, the language menu's): the bar's
     was 95% under a backdrop blur, and at 1280 the page's own words read through it. ⚠️ The bar's panel is opaque for
     EVERY reader, Millionea shown or not: the first change to the classic chrome this item rules (the lead's tile read,
@@ -3182,10 +3215,17 @@ Millionea's own surfaces ONLY; everywhere else the laws above stand unchanged.*
     that shows the chat: the bubble at rest over a line of text or a figure YIELDS — it fades to `--state-yield-opacity`,
     never moves, stays live (a pointer's hover and a keyboard's focus bring it back whole; its taps are kept) — and is
     whole again once the content clears (MASWALI-BUILD S5-FIX-PLATFORM D15, the register critic's M5; lead 2026-10-21, the
-    10/10 pass; globals.css D15, `test:chat-yield`, `qa:chat-yield`). This gold is the
+    10/10 pass; globals.css D15, `test:chat-yield`, `qa:chat-yield`). ⚠️ And D11's, every reader's on every page: a
+    hover is a pointer's — on a touch screen, where `:hover` sticks to the last element tapped, no tapped control keeps
+    what a pointer's hover gives it. The kit button's lift (`.btn:hover`), struck gilt's sheen (`.gilt-metal:hover`) and
+    every kit button's fill — L17's solid fills (2026-09-27) and, in round 2, the ghost, claret and aqua-ghost tints —
+    stand inside `@media (hover: hover)`; a mouse still lifts, sheens and tints (MASWALI-BUILD S5-FIX-PLATFORM D11, the
+    motion critic's M1 and L6, 2026-10-21; the tints the lead's round 2, 2026-10-22; `test:hover-touch`,
+    `qa:hover-touch`). This gold is the
     Owner's label for a destination, not money: item 7 is untouched.
     The other doors stand: one card on the journey home after the head (the How-to card and the headline) and before the
-    topic chips; on classic, one card at the head of `/markets`; and a third switch in Tiketi zangu. Placing the card
+    topic chips; on classic, one card at the head of `/markets` and, while a week is on sale to the reader, the landing
+    hero's line (item 21); and a third switch in Tiketi zangu. Placing the card
     there deviates from the sponsor deck's home (recorded in `docs/COMPLIANCE-DECISIONS.md`, 2026-10-17).
     ~~"Millionea takes no rail slot … the first row of More", never an inline link~~ (O-7, 2026-10-17): struck on
     2026-10-19 by the ruling above.
@@ -3197,7 +3237,9 @@ Millionea's own surfaces ONLY; everywhere else the laws above stand unchanged.*
     shows (one More, current on /results). A journey not-found page's first paint puts the lit
     Millionea tab's word and glyph back to their resting values with the rest of R4-J's (`test:visual-pass-r4j` 5.12).
     More keeps no slot for a mark and both its panels paint the whole surface (`test:maswali-ui` §5c).
-    One answer drives all four navs: AppShell's `millioneaRow` (the rollout, and no break).*
+    One answer drives all four navs: AppShell's `millioneaRow` (the rollout, and no break).
+    Build, 2026-10-22 (MASWALI-BUILD S5 round 2 · PLATFORM, Ali's ruling above): the classic rail's fourth track is
+    Millionea's while the door is drawn (`bottom-nav.tsx`; Live leads its More), and S5-TAB 1's More row went with it.*
 12. **Icons are Phosphor (§0 item 7 of the plan, Ali 2026-10-17).** No hand-drawn glyph: the delivery's `sealNil`, `sealX`
     and coronet are replaced by the Phosphor keys of `docs/MASWALI-PLAN.md` §10c, reached only through `I`. Where the
     delivery's motion notes name `sealCheck` / `sealX` / `sealNil` on a socket, the build shows `checkCircle` / `xCircle`
@@ -3226,6 +3268,21 @@ Millionea's own surfaces ONLY; everywhere else the laws above stand unchanged.*
     register reads it inside its own PUBLIC refusal and its cache, a DRIVE week's own ticket reads it after the holder's
     check — so the two ledgers of one week are the same rows; a DRIVE week's carries name their weeks without a link
     (`registerLedgerRows(…, { links: false })`), the public register having no page for them.
+    ⭐ ITS LINES, ITS RHYTHM, ITS EDGE (the lead's rulings of 2026-10-22, from HUB's sw/en/zh readers of the hub's pool
+    card; MASWALI-BUILD S5-R2-REGISTER). A figure inside a sentence keeps the word before it — "refunded TZS 1,000",
+    "itarejeshwa TZS 1,000", "每张彩票退款 TZS 1,000" (`priceRun`) — and never stands alone on a line (a sentence that
+    opens on its figure keeps the figure alone); an "at least" figure is one run ("angalau TZS 57,000"); the sales note
+    counts one ticket in the singular ("1 ticket at TZS 1,000", `regTicketsSoldOne`); a carry still waiting on its week
+    has no figure: its state is the row's note, on its own line under the label ("Not yet settled"). ONE RHYTHM: every
+    row stands the list's one gap apart, a total set apart by its hairline alone — no step of space after it (round 1's
+    stood ~46px under "Jumla ya bwawa" against the rows' 26px pitch) — and a carry's link row is as tall as its line, as
+    every row is: its TARGET reaches the tap floor out of flow (`.kp-mln-hit`, a `--tap-min` box centred on the row, the
+    register's recipe for its source links), never a 44px box with its line centred in it (~30px of air over the hub
+    card's first row against ~20px under its last). ONE EDGE: every value is right-aligned (the kit row's `alignEnd`), so
+    a value that wraps ends each line at the figures' edge. Guards: `test:maswali-design-register` 2.13–2.20, each with its
+    plant; in the browser, `qa:maswali-register-shots`' LEDGER judge on every page that draws a ledger (a final week's
+    page, How's worked weeks) — no row steps, every figure's lines end at the edge, every carry row answers a tap 19.5px
+    above and below its middle (hit-tested) — each with its in-page control.
 15. **A ticket's moments play where its owner sees them, once (Ali, 2026-10-21 10/10 pass — the R1 tickets critic's M8,
     the motion critic's H3, H4 and L2; `components/maswali/maswali-moment.tsx`).** Item 5 holds, and a ticket page adds
     WHERE: each moment — the cut (N3) and its reverse, a result's press (N2), the stamp line's reveal, the receipt's
@@ -3255,12 +3312,22 @@ Millionea's own surfaces ONLY; everywhere else the laws above stand unchanged.*
     register critic's H2 and the lead's ruling).** `/millionea/register/[week]` serves an OPEN, CLOSED or RESOLVING public
     week (`millioneaRegisterRecord`): its two commitments the moment each is stamped — the question set's hash at the
     open; the tickets' root at the close with its time and count, "Fixed {when} · {n} tickets" (MR-13) — under a titled
-    section of nouns (`WeekCommitments`, the hub's too); its fifteen questions, each with its criterion, its event and its
-    source as /fairness links it; and each CONFIRMED outcome with how it was attested (one officer or two, never a name).
+    section of nouns (`WeekCommitments`, the hub's too), its card as wide as the column it stands in (on the hub, the
+    fifteen questions' — capped at the receipt's measure it ended 8–176px short of them; the register's week page holds
+    it at the receipt's measure under its ledger, `className="max-w-receipt"`); its fifteen questions, each with its
+    criterion, its event and its source as /fairness links it; and each CONFIRMED outcome with how it was attested (one
+    officer or two, never a name).
     ⛔ No money before the week is final: the ledger's place says when the ledger comes; the index lists the weeks still
     running first, each the one row with its phase chip and no figure. ⛔ How a question counted ("↪ A1", "↪ 4", "Not
     used") is drawn from the FINAL record only — an objection can still reinstate a question while its window is open
     (item 1: never an un-carry); before that a voided main says it waits for its reserve, or that the week is due to void.
+    ⭐ ONE WORDING PER MOMENT, EVERY AMOUNT IN ITS CURRENCY (the lead's rulings of 2026-10-22). A selling week's fact is
+    its close in the slip's words, "Sales close: Friday 18:00 EAT" / "Mauzo yanafungwa: Ijumaa 18:00 EAT" / "销售截止：
+    周五 18:00 EAT" (`salesCloseColon` — ONE wording for that moment on every surface: the slip, the ticket, the
+    register's row and head; its clock a `.mono` numeral, §T5; the weekday, the clock and the zone one kept run). A week
+    nobody won says its fee as an amount, "Fee TZS 0" / "Ada TZS 0" / "费用 TZS 0" (`feeZero` "fee {fee}" filled with
+    `formatTzs(0)`, its figure an `.amount` kept whole — the hub's `lastWeekRolled` says it the same way), never the bare
+    "fee 0". Guards: `test:maswali-register` 7.7 and 7.8 with their plants; `test:maswali-design-register` 2.17.
 18. **A dialog's way back never moves the page (lead 2026-10-21, the 10/10 pass; MASWALI-BUILD S5-DESIGN-SLIP).** When a
     dialog closes, focus returns to the control that opened it WITHOUT scrolling (`modal.tsx` `PAGE.focus`:
     `focus({ preventScroll: true })`, Safari 15+). Why: while a dialog is open `useModalLock` sets `overflow: hidden` on
@@ -3296,6 +3363,45 @@ Millionea's own surfaces ONLY; everywhere else the laws above stand unchanged.*
     "Millionea inakaribia kufikia mwisho. Wiki 52 itakuwa wiki ya mwisho.", zh "Millionea 即将结束。第52周将为最后一周。").
     Why: "It opens 30 Nov." read on 30 Nov at 09:00, of a week no one has opened, promises a moment already gone. Guards:
     `test:maswali-hub` §13 (with its plant) and `test:maswali-design` 2.F1d.
+21. **The classic landing's line (Ali, 2026-10-22 — MASWALI-BUILD S5 landing door).** *Ali: "a small line … 'Be this week's
+    winner?' — with a clickable link to Millionea, the same colour as the animation in the Millionea tab; make it perfect
+    visually and logically".* **Where:** the second door of the classic landing hero's door row, after Live — under a
+    visitor's two CTAs, under a player's block. The row and its first door are the landing's own (its ruling R19,
+    `docs/design-system/v4-2026-09-26-landing-ten/INHERIT-MANIFEST.md` §2: Live, which every classic reader sees). **Words:**
+    "Kuwa mshindi wa wiki hii?" · "Be this week's winner?" · "成为本周赢家？" (`millionea.landingInvite`), then the product's
+    name as every nav draws it (`t.millionea.productLabel`), then the family's chevron — the words one run of text (a space
+    in Swahili and English, none after the full-width ？), the whole line ONE link to the hub (`/millionea`); ⛔ no figure (a
+    jackpot here would go stale between renders and owe the headline's facts — the hub states it). **Ink:** the name wears
+    item 11's ink, `.kp-millionea-ink` itself — its gradient, halo, one-tint lift on the link's hover and forced-colours
+    fallback, never moving; the question and the chevron are the hero's quiet link (`.kp-mine__limits`: the link blue of
+    §B4c, its dim underline, a 44px box at the 13px type). One line at 320 in every language. **Visibility:** drawn only
+    while `millioneaLandingOffered` (`lib/server/millionea-doors.ts`) answers true — the card's own answer (the product
+    visible to the request, the reader on no break) AND the hub's own week on sale to this reader (`week.selling`: at
+    STAFF_PREVIEW only a staff drive week sells) — and, to a player, never with a frozen wallet. Otherwise NOTHING is drawn:
+    no slot, no link, no word, and nothing written into the page (the server hero is handed the answer only while true —
+    `maswali-doors` §5's census; `qa:maswali-door-dark` plants it open at WITHDRAWN and catches it). Guards:
+    `test:landing-doors` and `red:landing-doors`, `qa:landing-doors`.
+22. **A loading picture is the page being opened (the lead's ruling of 2026-10-22; MASWALI-BUILD S5-R2-REGISTER, the
+    hub's and the tickets' segments alike).** Next wraps every page under a segment in that segment's `loading.tsx`, so a
+    hop from the register to a week drew the register's index, and a hop into any Millionea page the hub's. A segment
+    with pages under it picks the DESTINATION's own drawing by its path (`RoutePick`) inside ONE client component
+    (`MillioneaRegisterGhostPick` — the hub's and the tickets' picks the same way): its server `loading.tsx` hands over
+    that one client reference, never a pick of its own (on the server every drawing was serialised into the payload,
+    `test:visual-pass-r5h` 1.2/1.3/5.1). Each drawing names its page (`data-ghost-page`), and `qa:millionea-ghost-hops`
+    holds every Millionea hop to it on a throttled network — only the destination's own drawing, or none, is ever up; its
+    `--prove-red` undoes the register's pick and must catch it. A drawing is drawn in the page's own type — a line of
+    words is the kit's bar inside the very line box those words fill (`GhostTextLine`, the hub's L7 rule), its lines per
+    language from the page's measured tables — and lands where the page puts each band (`qa:maswali-register-shots`'
+    how-ghost and register-ghosts hops, within 1px, each drawing read once the route's entrance — `.route-enter`, 10px
+    rising over `--t-move` — has settled).
+23. **A fact list spaces its marks as a typed " · " does (the lead's SEP ruling, 2026-10-22 — measured, no CSS change).**
+    `MaswaliFacts` draws each fact as one wrap unit, its separators never opening or ending a line, at `--mln-sep`: 0.9em
+    in the body face; inside a tracked mono eyebrow `calc(3ch + 0.42em)`, 3ch in Chinese (the hub's L1 rule,
+    `globals.css`). Measured on the register at 320–1280 in three languages, every eyebrow list equals the same words
+    typed with " · " to 0.1px (en/sw "Reserves · A1–A5" 24.4 = 24.4px; zh "备选题 · A1–A5" 21.6 = 21.6px); a body-face list
+    runs 0.8–0.9px roomier than typed (11.7 against 10.9px at 13px; 12.6 against 11.7px at 14px), never tighter — kept.
+    Guard: `qa:maswali-register-shots`' `separators()` judge, with its in-page control (the eyebrow rule undone, the
+    round-1 0.9em: 9.9 against 24.4px, reported).
 24. **Facts are drawn whole, struck to their ink, and seeded on the product's own clock (the lead's rulings of
     2026-10-22, S5 round 2; MASWALI-BUILD S5-FACTS).**
     - **The fact line** (`MaswaliFacts`, `.kp-mln-facts`). Facts joined by "·" are one flex item each: facts that fit

@@ -626,6 +626,9 @@ const sameMargin = (a: Margin, b: Margin) => !!a && !!b && a.side === b.side && 
     ['src/components/maswali/maswali-ledger.tsx', '<I.chevronRight s={14} edge="end" text="body-400" className="shrink-0" />', 1, "text", "a ledger carry row's door to its week: the end of its 13px body/400 label"],
     // S5-DESIGN-DOORS (2026-10-21): the /positions door ends as every other Millionea door — it was the only arrow among them.
     ['src/app/positions/page.tsx', '<I.chevronRight s={16} edge="end" className="shrink-0 text-text-subtle" />', 1, "row", "classic /positions' Millionea row: a door's end on its content edge (D-13 (c)), the register's and /results' row end"],
+    // MASWALI-BUILD S5 landing door (2026-10-22; the landing's R19, DESIGN_AUTHORITY §M8a item 21): Millionea's line in the
+    // hero's door row ends as the hero's quiet links do — the family's mark after its 13px body/600 words.
+    ['src/components/maswali/maswali-landing-line.tsx', '<I.chevronRight s={14} edge="end" text="body-600" />', 1, "text", "the classic landing's Millionea line: its end after the hero's quiet-link words (13px body/600)"],
   ];
   const MARK = new RegExp("<I[.](?:chevronRight|chevronLeft|chevronsRight|chevronsLeft|arrowRight|ext|externalLink)(?![A-Za-z])(?:[^<>{}]|[{](?:[^{}]|[{][^{}]*[}])*[}])*?/>", "g");
   const marksSeen = (source: (f: string) => string = code) => {

@@ -174,6 +174,20 @@ export function classicMillioneaStandIn(pathname: string | null | undefined): "/
 }
 
 /**
+ * ⭐ THE CLASSIC PHONE RAIL'S LIT DESTINATION ON A MILLIONEA PAGE WHILE ITS DOOR IS DRAWN (Ali, 2026-10-22; DESIGN_AUTHORITY
+ * §M8a item 11 — Millionea's track takes Live's place on that rail). The journey's table answers over the five tabs:
+ * every Millionea page lights Millionea's own track, and its tickets light Tiketi zangu, whose classic destination is
+ * Positions, a row of the rail's More (the destination D13's stand-in names on a break). Null off Millionea's pages.
+ * ⛔ The rail asks only while the shell hands it `millionea` (the door drawn): a dark Millionea address lights nothing.
+ */
+export function classicMillioneaLit(pathname: string | null | undefined): "/millionea" | "/positions" | null {
+  const row = tabRouteFor(pathname);
+  if (row === null || !routeMatches(row.prefix, { prefix: "/millionea" })) return null;
+  const tab = rowTabIn(row, WITH_MILLIONEA);
+  return tab === "millionea" ? "/millionea" : tab === "tickets" ? "/positions" : null;
+}
+
+/**
  * The tab's `aria-current` (A12), among the drawn `tabs`: "page" only on its own href, "true" when the page belongs to
  * its section, and nothing otherwise.
  */

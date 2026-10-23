@@ -271,11 +271,17 @@ section("3 · E38 · the journey's loading ghosts (tiles 277 280 290 293 296: on
   // RE-PINNED (MASWALI-BUILD S5 pages, deliberately): Maswali Millionea's journey pages — the hub, the slip, Tiketi zangu's
   // Millionea kind — and a ticket, the second pattern.
   const SURFACES = ["/updown/history", "/wallet/deposit", "/wallet/deposit/return", "/millionea", "/millionea/slip", "/millionea/tickets"];
-  const want = [...tabs, ...SURFACES].sort();
+  // RE-PINNED (MASWALI-BUILD S5 round 2 · PLATFORM, 2026-10-22, the lead's item from the hub lane's finding): Millionea's
+  // reading pages too — How to play, the register and a week (the third pattern) — so a journey reader moving in meets the
+  // page's own drawing, not the unknown page's spinner. They stay OFF surfaces.ts (a reading page keeps every overlay); the
+  // ghost draws them only while Millionea is visible (`test:millionea-dark-edge` §6 derives every Millionea loading page).
+  const MILLIONEA_READING = ["/millionea/how", "/millionea/register"];
+  const want = [...tabs, ...SURFACES, ...MILLIONEA_READING].sort();
   const covers = (k: string[], p: string[]) => JSON.stringify([...k].sort()) === JSON.stringify(want)
-    && JSON.stringify(p) === JSON.stringify(["^/markets/[^/]+$", "^/millionea/tickets/[^/]+$"])
-    && [...SURFACES, "/markets/mkt_x"].every((s) => isJourneySurface(s)) && SURFACES.every((s) => k.includes(s));
-  ok(`3.3 · the ghost picks a page for each of the four tabs (${tabs.join(" ")}) and each of the journey's own pages (surfaces.ts: ${SURFACES.join(" ")} and a question), exactly, and draws a frameless spinner for every other page`,
+    && JSON.stringify(p) === JSON.stringify(["^/markets/[^/]+$", "^/millionea/tickets/[^/]+$", "^/millionea/register/[^/]+$"])
+    && [...SURFACES, "/markets/mkt_x"].every((s) => isJourneySurface(s)) && SURFACES.every((s) => k.includes(s))
+    && MILLIONEA_READING.every((s) => !isJourneySurface(s));
+  ok(`3.3 · the ghost picks a page for each of the four tabs (${tabs.join(" ")}), each of the journey's own pages (surfaces.ts: ${SURFACES.join(" ")} and a question) and Millionea's reading pages (${MILLIONEA_READING.join(" ")} and a week), exactly, and draws a frameless spinner for every other page`,
     covers(keys, patterns) && squash(ghost).includes("other={<AnyPageGhost />}") && !/rounded-lg border/.test(ghost.slice(ghost.indexOf("function AnyPageGhost"))),
     JSON.stringify({ keys, patterns }));
   ok("3.3′ PLANT · a tab without its ghost (Juu/Chini back to the box) is reported", !covers(keys.filter((k) => k !== "/updown"), patterns));
@@ -303,6 +309,13 @@ section("3 · E38 · the journey's loading ghosts (tiles 277 280 290 293 296: on
     // beside the list's drawing in tickets-ghost.tsx) — on the list the list's drawing; test:maswali-tickets 25.1 renders each.
     ['"/millionea/tickets": <MillioneaTicketsGhost journeyHead={<TicketsHeadGhost t={t} kinds={3} />} />', 'import { MillioneaTicketsGhost } from "@/app/millionea/tickets/tickets-ghost";', "src/app/millionea/tickets/loading.tsx", "return <MillioneaTicketsGhostPick />;"],
     ['["^/millionea/tickets/[^/]+$", <MillioneaTicketGhost />]', 'import { MillioneaTicketGhost } from "@/app/millionea/tickets/[serial]/ticket-ghost";', "src/app/millionea/tickets/[serial]/loading.tsx", "return <MillioneaTicketGhost />;"],
+    // RE-PINNED (S5 round 2 · PLATFORM, 2026-10-22): Millionea's reading pages, each its loading file's own drawing.
+    ['"/millionea/how": <MillioneaHowGhost />', 'import { MillioneaHowGhost } from "@/app/millionea/how/how-ghost";', "src/app/millionea/how/loading.tsx", "return <MillioneaHowGhost />;"],
+    // RE-PINNED (S5 round 2 integration — REGISTER × PLATFORM, 2026-10-22): the register's segment loading file draws the
+    // page being opened (`MillioneaRegisterGhostPick`, beside the index's drawing in register-ghost.tsx; DESIGN_AUTHORITY
+    // §M8a item 22) — on the index the index's drawing, a week's own on a week, as Tiketi zangu's above.
+    ['"/millionea/register": <MillioneaRegisterGhost />', 'import { MillioneaRegisterGhost } from "@/app/millionea/register/register-ghost";', "src/app/millionea/register/loading.tsx", "return <MillioneaRegisterGhostPick />;"],
+    ['["^/millionea/register/[^/]+$", <MillioneaRegisterWeekGhost />]', 'import { MillioneaRegisterWeekGhost } from "@/app/millionea/register/[week]/register-week-ghost";', "src/app/millionea/register/[week]/loading.tsx", "return <MillioneaRegisterWeekGhost />;"],
   ];
   const oneDrawing = (g: string) => own.filter(([use, imp, file, renders]) => !(g.includes(use) && g.includes(imp) && read(file).includes(renders)));
   ok("3.4 · each ghost is its page's own: Tiketi zangu's journey ghost, the hero's intro components, and every other page's own drawing — the one its loading file renders — imported, never redrawn",
@@ -422,13 +435,15 @@ section("3 · E38 · the journey's loading ghosts (tiles 277 280 290 293 296: on
     && /\n:root \[data-viewer="guest"\] \.kp-hubghost--member \{ display: none; \}/.test(css)
     && /\n:root \[data-viewer="guest"\] p\.kp-hubghost--guest \{ display: block; \}/.test(css)
     && /\n:root \[data-viewer="guest"\] \.kp-hub__grid\.kp-hubghost--guest \{ display: grid; \}/.test(css)
-    && shell.includes('<MainLandmark viewer={journeyShown && !session ? "guest" : undefined}>')
+    // RE-PINNED (MASWALI-BUILD S5 round 2 · PLATFORM, 2026-10-22): written for every signed-out reader (classic too, for the
+    // Millionea hub's guest door); a journey reader is marked exactly when its header shows the pills, as before.
+    && shell.includes('<MainLandmark viewer={!session ? "guest" : undefined}>')
     && shell.includes('<main id="main-content" className="flex-1" data-viewer={viewer}>') && shell.includes("isAuthed: true,")
     && count(b, "kp-jhdr__auth") === 2 && b.includes("{state.authPills && (")
     && read("src/lib/journey/header-state.ts").includes("authPills: !i.isAuthed");
   ok("3.12 · a guest is drawn a guest's hub, chosen by the shell's own answer — `data-viewer=\"guest\"` on the main landmark exactly when the journey header shows its sign-in pills (both in the first HTML)", guestBy(CSS, bar, shellSrc));
   ok("3.12′ PLANT · the switch written for a signed-in reader instead (every guest drawn a member's hub) is reported",
-    !guestBy(CSS, bar, shellSrc.replace('journeyShown && !session ? "guest"', 'journeyShown && session ? "guest"')));
+    !guestBy(CSS, bar, shellSrc.replace('<MainLandmark viewer={!session ? "guest"', '<MainLandmark viewer={session ? "guest"')));
 }
 {
   const live = read(LIVE_LOADING);

@@ -15,8 +15,9 @@
  *      unless it is listed with the reason it cannot wrap
  *   §4 B4 · FooterLink holds connectives in the journey's footer (tile 299 reproduced); the classic footer keeps its
  *      bytes, and none of its links ends on a connective in any column
- *   §5 B5 · the comments that quoted the Board's old lines say what renders, and globals.css's F18 record of the journey
- *      footer's columns (B4's other columns at 1024/1280) is derived from the source: from 768 on, none holds the sw name
+ *   §5 B5 · the comments that quoted the Board's old lines say what renders, and the journey footer's columns are derived
+ *      from the source; since 2026-10-22 (5.4, MASWALI-BUILD S5 round 2, the lead's ruling on K34) no licence line — the
+ *      journey footer, the opt-out page, the offline document, the hero's trust row — leaves a word alone at any width
  *   §6 the words: no dictionary string changed; no helper inserts or drops a character
  * ⛔ It reads, renders and runs in memory; it writes nothing. The on-disk mutation proof is S/r9/b/mutation-r9b.py.
  * The models: S/r9/b/tools (Python, HarfBuzz over the served fonts). This file carries R7-A's port of Chromium's balance
@@ -609,23 +610,26 @@ section("4 · B4 FooterLink holds connectives in the journey's footer; the class
 /* ══ §5 · B5 ═════════════════════════════════════════════════════════════════════════════════════════════════════════ */
 section("5 · B5 the comments that quoted the Board's old lines say what renders");
 {
+  // ⚠️ PINS MOVED 2026-10-22 (MASWALI-BUILD S5 round 2 · PLATFORM, the lead's ruling on K34): the Swahili name is never held
+  // whole (5.4 says why), so each record that described round 7's stub now says what renders.
   const intro = raw("src/components/home/hero-intro.tsx");
-  ok("5.1 · hero-intro.tsx: the trust row's comment no longer says it reads \"Leseni ya\" / \"Bodi…\"; it records sw 320, 360–390 (the stub, K34) and 412+",
-    !intro.includes('it now reads "Leseni ya" / "Bodi ya Michezo ya Kubahatisha Tanzania."') && intro.includes('sw 360–390: "Leseni" / "ya Bodi ya Michezo ya Kubahatisha Tanzania."')
-      && intro.includes('sw 320 (a 288px row, under 321): "Leseni ya Bodi ya Michezo" / "ya Kubahatisha Tanzania."') && intro.includes("sw 412 and wider: one line."));
+  ok("5.1 · hero-intro.tsx: the trust row's comment records what renders — sw 320–395 at its held connectives, one line from 396 — and that the stub at 353–395 is gone",
+    !intro.includes('it now reads "Leseni ya" / "Bodi ya Michezo ya Kubahatisha Tanzania."') && !intro.includes('sw 360–390: "Leseni" / "ya Bodi ya Michezo ya Kubahatisha Tanzania."')
+      && intro.includes('sw 320–395: "Leseni ya Bodi ya Michezo" / "ya Kubahatisha Tanzania." (each connective held);') && intro.includes("sw 396 and wider: one line;")
+      && squash(intro).includes("the Swahili name is never held whole (globals.css)"));
   const shell = raw("src/components/layout/app-shell.tsx"), off = raw("src/lib/offline-document.ts");
-  ok("5.2 · the opt-out shell's footer and the offline document: since round 7 the stub runs from 351 (281 + 70), no record says the name holds from 333 now",
-    shell.includes('"Leseni" / "ya Bodi ya Michezo ya Kubahatisha Tanzania." at sw 351–390') && !shell.includes('and "Leseni ya" / "Bodi ya Michezo ya Kubahatisha Tanzania."; a line narrower')
-      && off.includes("(sw under 333 then; under 351 since round 7, below)") && off.includes('"Leseni ya Bodi ya Michezo" / "ya Kubahatisha Tanzania." under 351'));
-  // 5.3 — the responsive footer now has two columns on tablets and four from 1024. Read each column's actual width
-  // from the source, so the regulator-name wrapping record cannot drift unnoticed.
+  ok("5.2 · the opt-out shell's footer and the offline document: their records say the sw name is never held whole since 2026-10-22, and no record says it still reads \"Leseni\" alone",
+    squash(shell).includes('the Swahili name is never held whole (globals.css): sw reads "Leseni ya Bodi ya Michezo" / "ya Kubahatisha Tanzania." up to 390')
+      && !squash(shell).includes('at sw 351–390 (the one-word first line is the owner\'s question K34), one line from 391')
+      && squash(off.replace(/\n\s*\*\s?/g, " ")).includes("the Swahili name is never held whole, as in globals.css, so sw has no entry below") && !off.includes("(sw under 333 then; under 351 since round 7, below)"));
+  // 5.3 — the responsive footer has two columns on tablets and four from 1024. Read each column's actual width from the
+  // source, so the regulator-name wrapping record cannot drift unnoticed.
   const cssRaw = raw("src/app/globals.css"), cssCode = decommentCss(cssRaw);
   const tw = code("tailwind.config.ts");
   const spacingAt = tw.indexOf("spacing: {"), spacing = tw.slice(spacingAt, tw.indexOf("}", spacingAt));
   const pxOf = (re: RegExp, s: string) => Number((s.match(re) ?? [])[1]);
   const s3 = pxOf(/"3":\s*"(\d+)px"/, spacing), s6 = pxOf(/"6":\s*"(\d+)px"/, spacing);
   const board = pxOf(/--w-board:\s*(\d+)px/, cssCode);
-  const swNeed = pxOf(/@container kp-gbt \(min-width: (\d+)px\) \{ \.kp-gbt-name:lang\(sw\)/, cssCode);
   const footer = "src/components/layout/public-footer.tsx";
   const gridOk = has(footer, 'className="mx-auto max-w-board px-3 lg:px-6 pt-2 pb-7 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 text-[12px]"')
     && !/col-span/.test(code(footer)) && code(footer).includes('${journeyShown ? " kp-gbt" : ""}');
@@ -633,12 +637,131 @@ section("5 · B5 the comments that quoted the Board's old lines say what renders
     const n = W >= 1024 ? 4 : 2;
     return (Math.min(W, board) - 2 * (W >= 1024 ? s6 : s3) - (n - 1) * s6) / n;
   };
-  const widestFour = Math.max(...Array.from({ length: 2561 - 1024 }, (_, i) => col(1024 + i)));
   ok("5.3′ CONTROL · the footer's grid read from source gives 352px columns at 768, then 216px at 1024 and 280px at 1280",
     gridOk && col(768) === 352 && col(1024) === 216 && col(1280) === 280, j({ gridOk, s3, s6, board, c768: col(768), c1024: col(1024), c1280: col(1280) }));
-  ok("5.3 · globals.css's F18 record says what renders: tablet columns hold the Swahili name; four-column widths stay below its 281px no-wrap condition",
-    swNeed > 0 && col(768) >= swNeed && widestFour < swNeed && cssRaw.includes("From 768 to 1023 the two columns hold the Swahili name")
-      && cssRaw.includes(`caps the four columns at ${widestFour}px; ${swNeed} keeps it out by ${swNeed - widestFour}px`), j({ widestFour, swNeed }));
+  ok("5.3 · globals.css's F18 record says what renders: the Swahili name is held by no condition (its record says so), en and zh keep theirs",
+    !/\.kp-gbt-name:lang\(sw\)/.test(cssCode) && /\.kp-gbt-name:lang\(en\)/.test(cssCode) && /\.kp-gbt-name:lang\(zh\)/.test(cssCode)
+      && squash(cssRaw).includes("THE SWAHILI NAME IS NEVER HELD WHOLE") && squash(cssRaw).includes("So sw has no condition here, nor in the offline document's copy"));
+
+  // 5.4 — MASWALI-BUILD S5 round 2 · PLATFORM (2026-10-22): NO LICENCE LINE LEAVES A WORD ALONE ON A LINE. The tickets lane's
+  // tile (Tiketi zangu, journey, sw 320) showed "Leseni" alone above the Board's name. The lead ruled (K34): wherever a word
+  // stands alone, the same even balance. Each of the four lines that holds the name in a `.kp-gbt-name` span — the journey
+  // footer, the opt-out page's footer, the offline document and the home hero's trust row — is laid out at every viewport
+  // from 320 to 1920 with Chromium's balance (R7-A's port, above):
+  //   - each line's width, from its own source (the footer's grid, the opt-out shell's row, the offline document's CSS, the
+  //     hero's grid and the trust row's columns);
+  //   - the name's nowrap, decided by the conditions its stylesheet holds (globals.css's `kp-gbt` and `kp-gbt-row`, the offline
+  //     document's copy), read from source;
+  //   - the classic footer's plain sentence, laid out beside it in the same column.
+  // Round 7's sw conditions, put back, are the CONTROL: they reproduce the stub on every one of the four lines.
+  const kw = req("../src/components/ui/keep-words.tsx") as typeof import("../src/components/ui/keep-words.tsx");
+  const OD = req("../src/lib/offline-document.ts") as { offlineDocument: (o: { licenceNumber: string }) => string };
+  const offCss = /<style>([\s\S]*?)<\/style>/.exec(OD.offlineDocument({ licenceNumber: "LIC-0001" }))?.[1] ?? "";
+  const shellCode = squash(code("src/components/layout/app-shell.tsx"));
+  const tok = (name: string) => pxOf(new RegExp(`--${name}:\\s*(\\d+)px`), cssCode);
+  const roundel = pxOf(/\.kp-rg__18 \{[^}]*?width: (\d+)px;/, cssCode);
+  // The geometry each line is drawn in, with the source it is read from (a premise: a moved class or value is reported).
+  const geo = {
+    optout: shellCode.includes('<div className="mx-auto max-w-board px-3 lg:px-6 pt-4 pb-7 space-y-2"> <div className="flex items-center gap-[10px]">') && roundel === 28,
+    offline: /\.kp-off__rg-in\{max-width:var\(--w-board\);margin:0 auto;padding:20px 16px 40px;/.test(offCss) && offCss.includes("@media (min-width:1024px){.kp-off__rg-in{padding-left:32px;padding-right:32px}}")
+      && offCss.includes(".kp-off__rg-row{display:flex;align-items:center;gap:10px}") && /\.kp-off__18\{flex:none;[^}]*width:28px/.test(offCss) && /\.kp-off__rg p\{[^}]*font-size:13px;[^}]*letter-spacing:-0\.05px/.test(offCss),
+    hero: squash(cssCode).includes(".kp-hero__inner { position: relative; max-width: var(--w-board); margin-inline: auto; padding: var(--sp-5) var(--sp-4) var(--sp-8);")
+      && squash(cssCode).includes(".kp-hero__inner { padding: var(--sp-16) var(--sp-6); gap: var(--sp-10); }")
+      && /grid-template-columns: minmax\(0, 1fr\) minmax\(0, 1fr\);[^}]*column-gap: var\(--sp-12\);/.test(cssCode)
+      && cssCode.includes(".kp-hero__trust > li { display: grid; grid-template-columns: 28px minmax(0, 1fr); column-gap: var(--sp-3);")
+      && /\.kp-hero__trust \{[^}]*font-size: var\(--type-small\);/.test(cssCode) && !/\.kp-hero__trust \{[^}]*letter-spacing/.test(cssCode) && tok("type-small") === 13,
+  };
+  const heroRow = (W: number) => (W < 768 ? Math.min(W, board) - 2 * tok("sp-4") : W < 1024 ? Math.min(W, board) - 2 * tok("sp-6") : (Math.min(W, board) - 2 * tok("sp-6") - tok("sp-12")) / 2);
+  const HERO_TY: Type = { face: interFace, size: tok("type-small"), ls: 0 };
+  type Sheets = { app: string; off: string };
+  const condIn = (css: string, container: string, l: Loc) => Number(new RegExp(`@container ${container} \\(min-width: ?(\\d+)px\\) ?\\{ ?\\.kp-gbt-name:lang\\(${l}\\) ?\\{ ?white-space: ?nowrap;? ?\\} ?\\}`).exec(css)?.[1]);
+  type Line = { name: string; ty: Type; width: (W: number) => number; box: (W: number) => number; cond: (s: Sheets, l: Loc) => number };
+  const footerW = (W: number) => (W < 768 ? Math.min(W, board) - 2 * s3 : col(W));
+  const rowW = (W: number) => Math.min(W, board) - 2 * (W >= 1024 ? s6 : s3) - roundel - 10;
+  const offW = (W: number) => Math.min(W, board) - 2 * (W >= 1024 ? 32 : 16) - 28 - 10;
+  const LINES: Line[] = [
+    { name: "the journey footer", ty: BODY_TY, width: footerW, box: footerW, cond: (s, l) => condIn(s.app, "kp-gbt", l) },
+    { name: "the opt-out page's footer", ty: BODY_TY, width: rowW, box: rowW, cond: (s, l) => condIn(s.app, "kp-gbt", l) },
+    { name: "the offline document", ty: BODY_TY, width: offW, box: offW, cond: (s, l) => condIn(s.off, "kp-gbt", l) },
+    { name: "the hero's trust row", ty: HERO_TY, width: (W) => heroRow(W) - 28 - tok("sp-3"), box: heroRow, cond: (s, l) => condIn(s.app, "kp-gbt-row", l) },
+  ];
+  const memo = new Map<string, string[]>();
+  const condMemo = new WeakMap<Sheets, Map<string, number>>();
+  const condOf = (d: Line, s: Sheets, l: Loc) => {
+    let m = condMemo.get(s);
+    if (!m) { m = new Map(); condMemo.set(s, m); }
+    const k = `${d.name}|${l}`;
+    if (!m.has(k)) m.set(k, d.cond(s, l));
+    return m.get(k)!;
+  };
+  const drawn = (d: Line, l: Loc, W: number, s: Sheets) => {
+    const c = condOf(d, s, l);
+    const held = !Number.isNaN(c) && d.box(W) >= c;
+    const key = `${d.name}|${l}|${d.width(W)}|${held}`;
+    const hit = memo.get(key);
+    if (hit) return hit;
+    const node = kw.keepRegulator(word(l, "footer.licensedByGbt"));
+    const parts = (Array.isArray(node) ? node : [node]).map((n) => {
+      const el = n as { props?: { className?: string } } | null;
+      return held && el?.props?.className === "kp-gbt-name" ? React.cloneElement(n as React.ReactElement<{ className?: string }>, { className: "kp-gbt-name whitespace-nowrap" }) : n;
+    });
+    const out = layout(parts, d.ty, d.width(W), "balance", true).lines;
+    memo.set(key, out);
+    return out;
+  };
+  const LIVE: Sheets = { app: cssCode, off: offCss };
+  const ROUND7: Sheets = {
+    app: `${cssCode}@container kp-gbt (min-width: 281px) { .kp-gbt-name:lang(sw) { white-space: nowrap; } }@container kp-gbt-row (min-width: 321px) { .kp-gbt-name:lang(sw) { white-space: nowrap; } }`,
+    off: `${offCss}@container kp-gbt (min-width:281px){.kp-gbt-name:lang(sw){white-space:nowrap}}`,
+  };
+  const alone = (ls: string[]) => ls.length > 1 && ls.some((x) => !/\s/.test(x));
+  const VIEWPORTS = Array.from({ length: 1920 - 320 + 1 }, (_, i) => 320 + i);
+  const odd = (s: Sheets) => LINES.flatMap((d) => VIEWPORTS.flatMap((W) => (["sw", "en"] as Loc[]).flatMap((l) => {
+    const ls = drawn(d, l, W, s);
+    return alone(ls) || endsOnConnective(ls) ? [`${d.name} ${l} ${W}: ${show(ls)}`] : [];
+  })));
+  const zhWraps = LINES.flatMap((d) => VIEWPORTS.filter((W) => drawn(d, "zh", W, LIVE).length > 1).map((W) => `${d.name} ${W}`));
+  const stubs = LINES.map((d) => {
+    const ws = VIEWPORTS.filter((W) => alone(drawn(d, "sw", W, ROUND7)));
+    return { line: d.name, from: ws[0], to: ws[ws.length - 1], n: ws.length };
+  });
+  ok(`5.4 CONTROL · the geometry of each line is read from source (${Object.entries(geo).map(([k, v]) => `${k} ${v ? "ok" : "MOVED"}`).join(", ")}), and round 7's sw conditions put back reproduce the stub on every line: ${stubs.map((s) => `${s.line} ${s.from}–${s.to}`).join(", ")} (the model, unkerned)`,
+    Object.values(geo).every(Boolean) && stubs.every((s) => s.n > 0 && s.n === s.to - s.from + 1) && show(drawn(LINES[0], "sw", 320, ROUND7)) === "Leseni / ya Bodi ya Michezo ya Kubahatisha Tanzania.",
+    j({ geo, stubs }));
+  ok("5.4.1 · on all four lines, at every viewport from 320 to 1920, in sw and en, no line holds one word alone and no line ends on a connective; zh is one line at every width",
+    odd(LIVE).length === 0 && zhWraps.length === 0, j({ odd: odd(LIVE).slice(0, 4), zhWraps: zhWraps.slice(0, 4) }));
+  const classicLine = (W: number) => layout(word("sw", "footer.licensedByGbt"), BODY_TY, footerW(W), "balance", true).lines;
+  ok(`5.4.2 · at sw 320 the journey footer reads the classic footer's two lines: "${show(drawn(LINES[0], "sw", 320, LIVE))}"`,
+    show(drawn(LINES[0], "sw", 320, LIVE)) === show(classicLine(320)) && show(classicLine(320)) === "Leseni ya Bodi ya Michezo / ya Kubahatisha Tanzania.");
+  const moved = LINES.map((d) => ({ line: d.name, sw: VIEWPORTS.filter((W) => show(drawn(d, "sw", W, ROUND7)) !== show(drawn(d, "sw", W, LIVE))), other: VIEWPORTS.filter((W) => (["en", "zh"] as Loc[]).some((l) => show(drawn(d, l, W, ROUND7)) !== show(drawn(d, l, W, LIVE)))).length }));
+  ok("5.4.3 · on each line only the stub's widths moved; en and zh draw what they drew",
+    moved.every((m, i) => show(m.sw.map(String)) === show(VIEWPORTS.filter((W) => alone(drawn(LINES[i], "sw", W, ROUND7))).map(String)) && m.other === 0),
+    j(moved.map((m) => ({ line: m.line, sw: m.sw.length ? `${m.sw[0]}–${m.sw[m.sw.length - 1]}` : "none", other: m.other }))));
+  // The record's bounds, as Chromium sets the words: Inter 13px WITH kerning (the measure R7-A took round 7's 281 in), the
+  // footer lines at −0.05px, the trust row at its own 0. The model above runs over unkerned advances, about 2px wider on this
+  // sentence, so its stubs end a little later. The offline document's bound is its fallback face's, measured.
+  const kerned = (s: string, ls: number) => (INTER as unknown as { layout: (x: string) => { positions: { xAdvance: number }[] } }).layout(s).positions.reduce((w, p) => w + p.xAdvance, 0) / INTER.unitsPerEm * 13 + ls * Array.from(s).length;
+  const swSentence = word("sw", "footer.licensedByGbt"), swRun = swSentence.slice(swSentence.indexOf(" ") + 1);
+  const held7 = Math.ceil(kerned(swRun, -0.05) + 3);
+  const bounds = {
+    footer: [held7 + 2 * s3, Math.ceil(kerned(swSentence, -0.05)) + 2 * s3 - 1],
+    optout: [held7 + 2 * s3 + roundel + 10, Math.ceil(kerned(swSentence, -0.05)) + 2 * s3 + roundel + 10 - 1],
+    hero: [held7 + 28 + tok("sp-3") + 2 * tok("sp-4"), Math.ceil(kerned(swSentence, 0)) + 28 + tok("sp-3") + 2 * tok("sp-4") - 1],
+    offline: held7 + 16 * 2 + 28 + 10,
+  };
+  const rec = squash(cssRaw);
+  ok(`5.4.4 · globals.css's record names the stubs as Chromium set them (kerned Inter 13px: the run ${kerned(swRun, -0.05).toFixed(1)}px held from ${held7}px, the sentence ${kerned(swSentence, -0.05).toFixed(1)}px): the journey footer ${bounds.footer.join("–")}, the opt-out page ${bounds.optout.join("–")}, the trust row ${bounds.hero.join("–")}, the offline document from ${bounds.offline}`,
+    kerned(swRun, -0.05).toFixed(1) === "277.4" && kerned(swSentence, -0.05).toFixed(1) === "320.9"
+      && rec.includes(`the journey footer at ${bounds.footer.join("–")}`) && rec.includes(`the opt-out page's footer at ${bounds.optout.join("–")}`)
+      && rec.includes(`the hero's trust row at ${bounds.hero.join("–")}`) && rec.includes(`the offline document at ${bounds.offline}–363 (in its fallback face)`),
+    j(bounds));
+  const oneBack = (app: string, off: string) => odd({ app: `${cssCode}${app}`, off: `${offCss}${off}` });
+  ok("5.4′ PLANT · round 7's 281 back in globals.css: 5.4.1 sees \"Leseni\" alone on the journey footer and the opt-out page again",
+    ["the journey footer sw 320: Leseni / ", "the opt-out page's footer sw 360: Leseni / "].every((p) => oneBack("@container kp-gbt (min-width: 281px) { .kp-gbt-name:lang(sw) { white-space: nowrap; } }", "").some((s) => s.startsWith(p))));
+  ok("5.4″ PLANT · the trust row's 321 back: 5.4.1 sees it on the hero",
+    oneBack("@container kp-gbt-row (min-width: 321px) { .kp-gbt-name:lang(sw) { white-space: nowrap; } }", "").some((s) => s.startsWith("the hero's trust row sw 360: Leseni / ")));
+  ok("5.4‴ PLANT · the offline document's own 281 back: 5.4.1 sees it there",
+    oneBack("", "@container kp-gbt (min-width:281px){.kp-gbt-name:lang(sw){white-space:nowrap}}").some((s) => s.startsWith("the offline document sw 360: Leseni / ")));
 }
 
 /* ══ §6 · THE WORDS ══════════════════════════════════════════════════════════════════════════════════════════════════ */

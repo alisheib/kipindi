@@ -111,6 +111,12 @@ export const U43_REVIEWED_BLOBS: Readonly<Record<string, string>> = {
   // NOT RE-PINNED AT S6-INT 25 (the merge of S7 at 66ec6e9be: S7-MERGE 4 with the S5 release at 2ed817395, S7-F9 14-16): S7's
   // dictionary is unchanged since S7-MERGE 3 (bd4addcfc, merged at S6-INT 21), so the merged dictionary is S6-INT 21's,
   // byte for byte, and the pin stays d61b83910.
+  // 2026-10-23 (S5 round 2: REGISTER, TICKETS' landing door, PLATFORM's rail): e851d5fa5 → d8fb5c6ea. Reviewed the same
+  // way: outside the three `millionea` blocks byte-identical; inside them three keys only — `feeZero` takes the amount
+  // ("fee {fee}", filled with formatTzs(0)), `regTicketsSoldOne` ("1 ticket at {price}"), `landingInvite` (Ali's own words
+  // of 2026-10-22, "Be this week's winner?" / "Kuwa mshindi wa wiki hii?" / "成为本周赢家？").
+  // ⏳ S6-SHIP 9 (the merge of main 07a400bc3): the merged dictionary is this branch's plus round 2's three keys — pinned at
+  // the merge's own sha by S6-SHIP 10, once the merge exists (a pin names a commit whose blob is the file).
   "src/lib/i18n-dict.ts": "d61b839100b27874e62d343d855435e2f23400e4",
   "src/app/legal/rules/_content-up-down.tsx": "a2ee86a3f3fd39cba34ddfdfd8ef316f7961cdf9",
   "src/app/legal/rules/up-down/page.tsx": "d6ab15942ad15e0812abf22fe236e27f91e586f5",

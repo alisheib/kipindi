@@ -380,12 +380,21 @@ section("6 · F18 · the Gaming Board's name is one name wherever its line can h
   const at_ = (name: string, l: Loc) => Number(new RegExp(`@container ${name} \\(min-width: ([0-9.]+)px\\) \\{ \\.kp-gbt-name:lang\\(${l}\\) \\{ white-space: nowrap; \\} \\}`).exec(CSS)?.[1]);
   const trust = rule(CSS, ".kp-hero__trust > li");
   const marker = Number(/grid-template-columns:\s*([0-9]+)px/.exec(trust)?.[1]) + px("--sp-3");
+  // ⚠️ PIN MOVED 2026-10-22 (MASWALI-BUILD S5 round 2 · PLATFORM, the lead's ruling on K34): the sw name is never held whole.
+  // One word stands before it, so holding it could only leave that word alone (measured on all four of its lines). sw
+  // therefore has NO condition in either container; en and zh keep theirs.
   const th = LOCALES.map((l) => ({ l, need: +need[l].toFixed(1), footer: at_("kp-gbt", l), row: at_("kp-gbt-row", l) }));
-  ok(`6.2 · each container keeps the name nowrap only from its width + 2px or more (en ${need.en.toFixed(1)}, sw ${need.sw.toFixed(1)}, zh ${need.zh.toFixed(1)}px); the trust row's own widths add its ${marker}px roundel column`,
+  const swHeld = (css: string) => /\.kp-gbt-name:lang\(sw\)/.test(css);
+  ok(`6.2 · each container keeps the en and zh name nowrap only from its width + 2px or more (en ${need.en.toFixed(1)}, zh ${need.zh.toFixed(1)}px), the trust row's own widths adding its ${marker}px roundel column; the sw name (${need.sw.toFixed(1)}px) is held by neither`,
     /\.kp-gbt \{ container: kp-gbt \/ inline-size; \}/.test(CSS) && /\.kp-hero__trust > li\.kp-gbt-row \{ container: kp-gbt-row \/ inline-size; \}/.test(CSS)
-      && marker === 40 && th.every((t) => t.footer >= t.need + 2 && t.footer <= t.need + 6 && t.row === t.footer + marker), show(th));
+      && marker === 40 && th.filter((t) => t.l !== "sw").every((t) => t.footer >= t.need + 2 && t.footer <= t.need + 6 && t.row === t.footer + marker)
+      && th.filter((t) => t.l === "sw").every((t) => Number.isNaN(t.footer) && Number.isNaN(t.row)) && !swHeld(CSS), show(th));
   const col = (vw: number) => vw < 768 ? vw - 2 * twStep("3") : vw < 1024 ? (vw - 2 * twStep("3") - 3 * twStep("6")) / 4 : (Math.min(vw, 1280) - 2 * twStep("6") - 3 * twStep("6")) / 4;
-  ok(`6.3 · en 1024: the ${col(1024)}px column holds the name (${need.en.toFixed(1)}px) → "Licensed by the" / "Gaming Board of Tanzania."; at 768 (${col(768)}px) no column can, and it wraps as before`,
+  // ⚠️ LABEL CORRECTED 2026-10-22 (no behaviour change): this check measures widths, not lines. In Chromium the line reads
+  // "Licensed by" / "the Gaming Board of Tanzania." at 1024–1219 (PLATFORM r2's sweep), not the "Licensed by the" / "Gaming
+  // Board…" the label used to promise. Its 768 figure is this file's own four-column model; the footer has had two 352px
+  // columns from 768 since, and r9b 5.3 reads that grid from source.
+  ok(`6.3 · en 1024: the ${col(1024)}px column holds the name (${need.en.toFixed(1)}px) but not the sentence, so the line wraps with the name whole (Chromium: "Licensed by" / "the Gaming Board of Tanzania."); this model's 768 (${col(768)}px, the old four columns) would hold no name`,
     col(1024) === 216 && col(1024) >= th[1].footer && interW(word("en", "footer.licensedByGbt")) > col(1024) && col(768) === 160 && col(768) < th[1].footer);
   const classicMk = html(h(PublicFooter, { proposalsState: "COMING_SOON", agentDoorVisible: true, inviteVisible: true, supportEmail: "d@x.t", supportPhone: "0", supportPhoneTel: "+0" }));
   const journeyMk = html(h(PublicFooter, { proposalsState: "COMING_SOON", agentDoorVisible: true, inviteVisible: true, supportEmail: "d@x.t", supportPhone: "0", supportPhoneTel: "+0", journeyShown: true }));
@@ -396,6 +405,8 @@ section("6 · F18 · the Gaming Board's name is one name wherever its line can h
   const lowered = CSS.replace("@container kp-gbt (min-width: 168px)", "@container kp-gbt (min-width: 150px)");
   ok("6.2′ PLANT · a threshold under the name's width (150px for English) is reported — it would overflow a 160px column",
     !(Number(/@container kp-gbt \(min-width: ([0-9.]+)px\) \{ \.kp-gbt-name:lang\(en\)/.exec(lowered)?.[1]) >= need.en + 2));
+  ok("6.2″ PLANT · round 7's sw condition put back (281px) is reported — it would leave \"Leseni\" alone above the name",
+    swHeld(`${CSS}@container kp-gbt (min-width: 281px) { .kp-gbt-name:lang(sw) { white-space: nowrap; } }`));
   ok("6.4′ PLANT · the sentence plain in the journey (no name span) is reported", !html(h("p", null, word("en", "footer.licensedByGbt"))).includes("kp-gbt-name"));
 }
 

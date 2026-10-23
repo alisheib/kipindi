@@ -5,7 +5,7 @@ import { I } from "@/components/ui/glyphs";
 import { MaswaliFacts, factsOf, keepFact } from "@/components/maswali/maswali-facts";
 import { counted, remainderNoteOf, weekWord } from "@/components/maswali/maswali-format";
 import { remainderFate } from "@/lib/maswali-money";
-import { cn, fill, formatNumber, formatTzs, formatTzsSigned } from "@/lib/utils";
+import { cn, fill, formatTzs, formatTzsSigned } from "@/lib/utils";
 import type { Dict, Locale } from "@/lib/i18n-dict";
 
 /**
@@ -105,10 +105,8 @@ export type MillioneaLedgerRow = {
   value: ReactNode;
   emphasis?: "fee" | "muted" | "total";
   tone?: "warning";
-  /** A total: the hairline above it. */
+  /** A total: the hairline above it — the one mark that sets a group's end apart (no step of space after it: one rhythm). */
   divider?: boolean;
-  /** The first row of a new group: a step of space above it. */
-  gap?: boolean;
   /** A carry that opens its week's register page (M10). */
   href?: string | null;
 };
@@ -123,6 +121,29 @@ export function ticketSalesRuns(sold: string, price: string): string[] {
   const priceLead = before.match(/[^\s，​]+\s*$/u)?.[0];
   if (!priceLead) return [sold];
   return [before.slice(0, -priceLead.length).trimEnd().replace(/​$/, ""), `${priceLead}${price}`].filter(Boolean);
+}
+
+/** A refund's figure kept with the word before it, so it never opens a line alone ("…every ticket is refunded / TZS 1,000",
+ *  HUB's read of the hub, round 2): the word `ticketSalesRuns` reads before a price (to a space, a Chinese comma or a
+ *  break); a sentence that opens on its figure keeps the figure alone. */
+function priceRun(text: string, price: string): string {
+  // The word and the figure are the last run `ticketSalesRuns` returns — the only one when the word opens the sentence
+  // ("每张彩票的 TZS 1,000 …") — and a sentence that opens on its figure returns itself, which does not end on it.
+  const last = ticketSalesRuns(text, price).at(-1) ?? price;
+  return last.endsWith(price) ? last : price;
+}
+
+/** A refund sentence ("If the void stands, every ticket is refunded TZS 1,000"), its figure kept with its word. */
+function refundLabel(locale: Locale, sentence: string, price: string): ReactNode {
+  const text = fill(sentence, { price });
+  return keepFact(locale, text, [priceRun(text, price)]);
+}
+
+/** A figure still a lower bound ("at least TZS 57,000") as ONE run: it holds its line at the figures' edge — at 320 the
+ *  Swahili "angalau TZS 57,000" broke into two short left-aligned lines under the pool's label (HUB's read, round 2). */
+function atLeastRun(locale: Locale, atLeast: string, amount: number): ReactNode {
+  const text = fill(atLeast, { amount: formatTzs(amount) });
+  return keepFact(locale, text, [text]);
 }
 
 /** A fact line from a dictionary line written as facts joined by " · " — each fact one wrap unit, its phrases whole, and
@@ -160,12 +181,16 @@ export function millioneaLedgerRows(t: Dict, locale: Locale, f: MillioneaLedgerI
     rows.push({
       key: "in",
       label: carryLabel(t, locale, m.carriedIn, m.carriedInNoWeek, carryIn.week),
-      value: carryIn.amount === null ? m.carriedInPending : money(carryIn.amount),
+      // A carry still waiting on its week has no figure yet: its state is the row's note, on its own line under the link —
+      // beside the label it broke loose at 320 ("Kiasi kutoka / Wiki 47 ›", "Bado / haijakamilika"; HUB's read, round 2).
+      value: carryIn.amount === null ? null : money(carryIn.amount),
+      ...(carryIn.amount === null ? { note: m.carriedInPending } : {}),
       emphasis: carryIn.amount === null ? "muted" : undefined,
       href: carryIn.href ?? null,
     });
   }
-  const sold = fill(m.regTicketsSold, { n: formatNumber(f.tickets), price });
+  // One ticket in the singular, in the dictionary's own forms (en "1 ticket at TZS 1,000", never "1 tickets").
+  const sold = counted(f.tickets, m.regTicketsSoldOne, m.regTicketsSold, { price });
   rows.push({ key: "sales", label: m.ledgerSales, note: keepFact(locale, sold, ticketSalesRuns(sold, price)), value: money(f.sales) });
   if (f.topUp > 0) rows.push({ key: "topup", label: m.topUp, note: m.topUpNote, value: money(f.topUp) });
   const inTotal = (carryIn?.amount ?? 0) + f.sales + f.topUp;
@@ -175,7 +200,7 @@ export function millioneaLedgerRows(t: Dict, locale: Locale, f: MillioneaLedgerI
     // a true lower bound while the carry waits on its week, said in words, never a guess (§M8a item 9).
     : {
         key: "pool", label: m.poolTotal, emphasis: "total", divider: true,
-        value: carryIn?.amount === null ? keepFact(locale, fill(m.atLeast, { amount: formatTzs(inTotal) })) : money(inTotal),
+        value: carryIn?.amount === null ? atLeastRun(locale, m.atLeast, inTotal) : money(inTotal),
       });
 
   // ── The jackpot, and how it was shared ──────────────────────────────────────────────────────────────────────────────
@@ -185,13 +210,13 @@ export function millioneaLedgerRows(t: Dict, locale: Locale, f: MillioneaLedgerI
     if (f.kind === "voiding") {
       // A sentence standing alone (the hub critic's L15): no refund exists yet, so no figure (H1) — and no "—" beside it,
       // which read as a missing figure.
-      afterIn.push({ key: "refund", label: keepFact(locale, fill(m.refundEachIfVoid, { price }), [price]), value: null, emphasis: "muted" });
+      afterIn.push({ key: "refund", label: refundLabel(locale, m.refundEachIfVoid, price), value: null, emphasis: "muted" });
     } else {
       const refunds = f.refunds ?? { amount: f.sales, landed: false };
       afterIn.push(refunds.landed
-        ? { key: "refund", label: keepFact(locale, fill(m.refundEach, { price }), [price]), value: money(refunds.amount) }
+        ? { key: "refund", label: refundLabel(locale, m.refundEach, price), value: money(refunds.amount) }
         // Never "refunded" before every refund landed (MR-18; the S5 UI review, HIGH 1): its money is on its way back.
-        : { key: "refund", label: keepFact(locale, fill(m.refundEachPending, { price }), [price]), value: money(refunds.amount), emphasis: "muted" });
+        : { key: "refund", label: refundLabel(locale, m.refundEachPending, price), value: money(refunds.amount), emphasis: "muted" });
       const again = f.carriedForward;
       if (again && again.amount > 0) {
         afterIn.push({ key: "again", label: carryLabel(t, locale, m.carriedOutAgain, m.carriedForwardAgain, again.week), value: money(again.amount), href: again.href ?? null });
@@ -213,7 +238,7 @@ export function millioneaLedgerRows(t: Dict, locale: Locale, f: MillioneaLedgerI
     }
     if (f.kind === "live") {
       if (f.jackpot !== null) {
-        afterIn.push({ key: "jackpot", label: m.jackpot, value: f.jackpotAtLeast ? keepFact(locale, fill(m.atLeast, { amount: formatTzs(f.jackpot) })) : money(f.jackpot) });
+        afterIn.push({ key: "jackpot", label: m.jackpot, value: f.jackpotAtLeast ? atLeastRun(locale, m.atLeast, f.jackpot) : money(f.jackpot) });
       }
       // Before a payout the fee is a rate and when it is taken, in words — never a dash, which read as "no fee" (P5).
       if (f.feePct !== null) afterIn.push({ key: "fee", label: m.fee, value: keepFact(locale, fill(m.feeAtPayout, { pct: f.feePct })), emphasis: "muted" });
@@ -278,17 +303,23 @@ export function millioneaLedgerRows(t: Dict, locale: Locale, f: MillioneaLedgerI
       });
     }
   }
-  if (afterIn.length > 0) afterIn[0] = { ...afterIn[0], gap: true };
   return [...rows, ...afterIn];
 }
 
 /**
- * The rows, drawn: the kit's ReceiptRow in its sentence-case label, a step of space between the groups, a hairline only
- * above a total (the withdraw confirm's bottom line — never a rule under every row, H5). A carry row that names its week
- * opens that week's register page: the whole row is the link (at least `--h-control-md`, 40px), its label in the link
- * ink with the chevron after it, its figure in the column every other figure stands in. A row's note stands on its own
- * line under the label AND the figure, across the row's whole width, in the kit row's note face (the lead's ruling of
- * 2026-10-21) — never squeezed into the label's column beside a figure.
+ * The rows, drawn: the kit's ReceiptRow in its sentence-case label, a hairline only above a total (the withdraw confirm's
+ * bottom line — never a rule under every row, H5). A carry row that names its week opens that week's register page: the
+ * whole row is the link, its label in the link ink with the chevron after it, its figure in the column every other figure
+ * stands in. A row's note stands on its own line under the label AND the figure, across the row's whole width, in the kit
+ * row's note face (the lead's ruling of 2026-10-21) — never squeezed into the label's column beside a figure.
+ * ⭐ ONE RHYTHM, ONE EDGE (the lead's rulings of 2026-10-22, recorded in DESIGN_AUTHORITY §M8a item 14; from HUB's sw/en/zh
+ * readers of the hub's pool card): every row
+ * stands the list's one gap apart — a total is set apart by its hairline alone; the step of space round 1 put after it
+ * stood ~46px under "Jumla ya bwawa" against the rows' 26px pitch (320/360/768). A carry's link row is as tall as its line,
+ * as every row is: drawn as a 44px box (`--h-control-md`), its one line stood centred in it — ~30px of air above the
+ * card's first row against ~20px under its last. Its TARGET reaches the tap floor instead, out of flow (`.kp-mln-hit`: a
+ * `--tap-min` box centred on the row, the source links' recipe), so no row moves. And every figure keeps the figures'
+ * edge: a value that wraps ends each line there (the kit row's `alignEnd`) — "angalau / TZS 51,000" sat ~56px short of it.
  */
 export function MaswaliLedger({ rows, className }: { rows: readonly MillioneaLedgerRow[]; className?: string }) {
   return (
@@ -307,7 +338,7 @@ export function MaswaliLedger({ rows, className }: { rows: readonly MillioneaLed
             emphasis={r.emphasis}
             tone={r.tone}
             divider={r.divider}
-            className={cn(r.gap && "mt-3")}
+            alignEnd
           />
         );
         // The note: the kit row's own note face, on the row's whole width under its label and its figure.
@@ -315,7 +346,7 @@ export function MaswaliLedger({ rows, className }: { rows: readonly MillioneaLed
           ? <span className="mt-0.5 block text-body-sm text-text-muted">{r.note}</span>
           : null;
         return r.href ? (
-          <Link key={r.key} href={r.href as never} className="flex flex-col justify-center rounded-control" style={{ minHeight: "var(--h-control-md)" }} data-ledger-row={r.key}>
+          <Link key={r.key} href={r.href as never} className="kp-mln-hit flex flex-col rounded-control" data-ledger-row={r.key}>
             {row}
             {wide}
           </Link>
