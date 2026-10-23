@@ -22,6 +22,8 @@ await runTwoStores({
   // Round 7 · a settled week's held share counted undecided until decided (6.1b) one (66 → 67, 68 → 69).
   // S6-DOCS 4 · the float check's unread finding in the pack (1.7b): 67 → 68, 69 → 70, the counts the run on a8b43c946
   // printed (run 39825278061).
-  minPass: { memory: 68, postgres: 70 },
+  // S6-SHIP 17 · the read counts taken in the pack's own async context, proven both ways (7.3c, 7.3d) two: 68 → 70,
+  // 70 → 72, the counts the run on this change printed (OMEGA, at f432cc025 with it).
+  minPass: { memory: 70, postgres: 72 },
   dbPrefix: "mlw_evidence",
 });

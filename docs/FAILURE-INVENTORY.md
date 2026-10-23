@@ -1575,7 +1575,29 @@ in), each red on the code before S6-SHIP's change:
 THE RULE in each case is the guard's own, unchanged: a census names what it finds, a citation names a guard that exists,
 the identity gate refuses only inside a withdrawal, money is set in the money type, a safety sentence names no parameter, a
 sprite production serves stays one release, every capture keeps the caret, every tracked uppercase site is read.
-`test:visual-pass-r5e` 6.5 (S7-OB's objection door's no-break space) is S7's, fixed on S7's branch by S7-SHIP.
+`test:visual-pass-r5e` 6.5 (S7-OB's objection door's no-break space) is S7's, fixed on S7's branch by S7-SHIP 2 and merged
+into the release at S6-SHIP 16.
+
+#### ✅ Evidence 7.3 · a read made by one of the week's own notices was counted as the evidence pack's, on Postgres (S6-SHIP 17)
+
+`test:maswali-evidence` 7.3 holds that the evidence pack is built in a bounded number of reads: it counts the reads of
+the week and of its tickets one pack makes, and requires as many for a week with six crowded lines as for a week with
+none. Its spies counted every call made while the pack was building, from anywhere. The week with six crowded lines has
+just been voided, and its own notices (its seventeen purchases', its fifteen voided questions', its refund's) still run
+on their own after the void and read the week as they send. In the S6-SHIP database battery at `28edef6cb` the Postgres
+half printed `{"six":[2,2],"none":[2,1]}`: one more read of the week, counted for the six-line pack. The memory half of
+the same run printed `[2,1]` for both and passed. The pack's own code reads the week once; it was not changed. Re-run
+alone at `b243a8455` (10:52 UTC): memory 68 passed, Postgres 70 passed, 0 failed; 7.3 printed
+`{"six":[2,1],"none":[2,1]}` on both stores. The count, not the pack, depended on timing. THE RULE: the pack's read
+counts are taken in the pack's own async context. Every spy (the week, the tickets, the raw statements) counts only
+inside an `AsyncLocalStorage` entered around `maswaliEvidencePack` alone, and a read made outside it is counted apart
+(`outside`, printed in 7.3's detail). It is held by two cases. 7.3c: a read of the week started outside the pack while
+it builds, as a notice's lands, is seen apart, and the pack's counts stay the clean build's. 7.3d: a pack made to read
+the week once more per crowded line is counted six more for six lines, which 7.3 fails. Mutation proofs (S6-SHIP 17):
+with the scope undone (every call counted as the pack's), 7.3c fails on both stores with the battery's own shape,
+`{"outside":0,"pack":[2,2,…],"clean":[2,1,…]}`; with a read per crowded line planted in `maswaliEvidencePack` itself,
+7.3 fails on both stores, `{"six":[2,7],"none":[2,1]}`. Each file was restored byte for byte (sha256 compared). Floors:
+memory 68 → 70, Postgres 70 → 72, as printed.
 
 ## §9c · MASWALI MILLIONEA — the admin console, walked and made plain (S6, 2026-10-22)
 
