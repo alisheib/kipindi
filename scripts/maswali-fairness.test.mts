@@ -22,6 +22,8 @@ await runTwoStores({
   casesFile: "scripts/lib/maswali-fairness-child.mts",
   // S6-DOCS 4 · the proof page on the tickets' gate gains its control H.6c (memory child only): 74 → 75, the count the
   // run on a8b43c946 printed (run 39825278061).
-  minPass: { memory: 75, postgres: 31 },
+  // S6-INT 30 · the binding rules v2026-10-23 gain L.13b (the final week's rule is `finalWeekRule`) and L.13c (L.13's
+  // predicate over planted copies), memory child only: 75 → 77, the count run 39875472498 printed at 29651e2a3.
+  minPass: { memory: 77, postgres: 31 },
   dbPrefix: "mlw_fairness",
 });
