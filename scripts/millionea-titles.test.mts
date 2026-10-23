@@ -112,7 +112,8 @@ const panel = flat(decomment(readFileSync(resolve(ROOT, "src/components/layout/n
 ok("3.1 · ⭐ the classic bell draws a Millionea row's title on up to three lines (`line-clamp-3`, its dot on the first line) and every other classic row on one, byte for byte as before",
   panel.includes('import { isMillioneaNoticeHref } from "@/lib/millionea-notice";')
     && panel.includes("const mlnWrapped = !journey && isMillioneaNoticeHref(n.href);")
-    && panel.includes('<div className={journey || mlnWrapped ? "flex items-start justify-between gap-2" : "flex items-center justify-between gap-2"}>')
+    && panel.includes('<div className={journey ? "flex items-start justify-between gap-2" : "flex items-center justify-between gap-2"}>')
+    && panel.includes('{isUnread && <Dot tone={unreadDot} size={8} className={mlnWrapped ? "mt-1 self-start" : "mt-1"} />}')
     && panel.includes('<p className={journey ? "font-display text-body-sm font-semibold text-text leading-tight" : mlnWrapped ? "font-display text-body-sm font-semibold text-text line-clamp-3 leading-tight" : "font-display text-body-sm font-semibold text-text truncate leading-tight"}'));
 const { isMillioneaNoticeHref } = await import("../src/lib/millionea-notice.ts");
 const MILLIONEA = ["/millionea/tickets/MLN-2026-W49-000041#pos_1", "/millionea/tickets/MLN-2026-W49-000041#cancelled", "/millionea/tickets#MLN-2026-W49-closed",

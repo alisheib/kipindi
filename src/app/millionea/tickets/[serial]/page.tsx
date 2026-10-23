@@ -271,7 +271,7 @@ export default async function MillioneaTicketPage({ params }: { params: Promise<
               cannotWin={running && view.cannotWinSoFar}
               cancel={cancellable && cancelUntil !== null && rules
                 ? cancelHeld
-                  ? <div data-testid="millionea-ticket-cancel-held"><Callout tone="neutral" role="status">{t.millionea.cancelWalletFrozen}</Callout></div>
+                  ? <div data-testid="millionea-ticket-cancel-held"><Callout tone="neutral" role="status">{noticeBody(t.millionea.cancelWalletFrozen)}</Callout></div>
                   : <TicketCancel serial={view.serial} ownerId={gate.userId} until={cancelUntil} serverNow={nowMs} price={view.stub.price} cap={rules.ticketCap} windowMins={rules.freeCancelMinutes} />
                 : undefined}
               play={play}

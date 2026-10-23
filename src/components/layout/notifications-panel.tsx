@@ -672,8 +672,8 @@ export function NotificationsPanel({ journey = false }: { journey?: boolean } = 
                             "TZS 4,200" in the sentence face, so one notice read two ways. A wrapping title keeps its dot on
                             its first line (`items-start`; the dot's 4px is that line's centre). Classic chrome is frozen: its
                             bell keeps today's one-line title and plain body — except a Millionea row's title, which takes up
-                            to three lines and keeps its dot on its first line (FLOW 16b, Ali's ruling on FL.5). */}
-                        <div className={journey || mlnWrapped ? "flex items-start justify-between gap-2" : "flex items-center justify-between gap-2"}>
+                            to three lines; its dot stands on the first line (`self-start`, the same 4px; FLOW 16b, Ali's ruling on FL.5). */}
+                        <div className={journey ? "flex items-start justify-between gap-2" : "flex items-center justify-between gap-2"}>
                           {/* §A4 — colour is never the only signal. Unread has a brand wash plus
                               the brand dot below, and the dot is (correctly) `aria-hidden`, so a
                               screen-reader user could not tell a settled-money notification they
@@ -687,7 +687,7 @@ export function NotificationsPanel({ journey = false }: { journey?: boolean } = 
                           {/* Stage 9b — kit <Dot>. `h-1.5 w-1.5` is 8px on this project's
                               OVERRIDDEN spacing scale, not 6px, so the size is stated in
                               pixels here where it cannot be misread. */}
-                          {isUnread && <Dot tone={unreadDot} size={8} className="mt-1" />}
+                          {isUnread && <Dot tone={unreadDot} size={8} className={mlnWrapped ? "mt-1 self-start" : "mt-1"} />}
                         </div>
                         <p className={journey ? "mt-0.5 text-label text-text-muted leading-snug break-words" : "mt-0.5 text-label text-text-muted leading-snug"}>
                           {journey ? moneySentence(pickBody(n, locale)) : pickBody(n, locale)}

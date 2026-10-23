@@ -743,10 +743,16 @@ section("14 · C16 one pill size in the board card's row · C17 the classic held
     "src/app/live/pulse-grid.tsx": "the /live board's questions — browsing cards (Q6), each its market's link",
     "src/app/positions/performance/page.tsx": "the best win's market name, inside its link to the market — the page's own tap-to-whole note",
     "src/app/proposals/page.tsx": "a proposal's description under its whole title — a browsing board; the proposal's page holds it whole",
+    // Ali's ruling on FL.5 (2026-10-23, "two-line Millionea titles"; three lines, the lead's pick, MASWALI-BUILD FLOW 16b).
+    "src/components/layout/notifications-panel.tsx": "a Millionea notice's title in the classic bell — a linked compact line (the row opens the notice's own page), up to three lines so no Millionea title is cut; every other classic row stays one line",
   };
   const clampers = PLAYER_TSX.filter((f) => /\bline-clamp-\d\b/.test(code(f)));
   ok(`14.7 · every \`line-clamp\` left in player code is ruled (${clampers.length} files): a browsing list's or a linked compact line's — never a held or won question`,
     clampers.length === Object.keys(CLAMP_RULED).length && clampers.every((f) => !!CLAMP_RULED[f]), j(clampers));
+  // The bell's ruled clamp is the Millionea row's alone (FLOW 16b): the classic title stays the frozen chrome's one line.
+  const MLN_CLAMP = 'mlnWrapped ? "font-display text-body-sm font-semibold text-text line-clamp-3 leading-tight" : "font-display text-body-sm font-semibold text-text truncate leading-tight"';
+  ok("14.8 · the bell's clamp is a Millionea row's alone — three lines for its title, every other classic row one line (Ali's ruling on FL.5)", has("src/components/layout/notifications-panel.tsx", MLN_CLAMP));
+  ok("14.8′ PLANT · the clamp on every classic row is reported", !hasIn(code("src/components/layout/notifications-panel.tsx").replace(MLN_CLAMP, MLN_CLAMP.replace("text-text truncate leading-tight", "text-text line-clamp-3 leading-tight")), MLN_CLAMP));
   ok("14.7′ PLANT · the win seal clamped again is an unruled clamp", /\bline-clamp-\d\b/.test(code(WIN).replace("text-text-subtle text-balance", "text-text-subtle line-clamp-2")) && !CLAMP_RULED[WIN]);
 }
 
