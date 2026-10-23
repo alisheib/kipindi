@@ -1,0 +1,36 @@
+// s0-restructure.mjs <plan.md> <s0-top.md> — §0 keeps the current state; every older §0 block moves to the top of §0a.
+// The working tree is CRLF (core.autocrlf): read as LF, write back as CRLF.
+import { readFileSync, writeFileSync } from "node:fs";
+const [planPath, topPath] = process.argv.slice(2);
+const LF = (s) => s.split("\r\n").join("\n");
+const doc = LF(readFileSync(planPath, "utf8"));
+const top = LF(readFileSync(topPath, "utf8")).trimEnd();
+const H0 = "## §0 · RESUME AT\n";
+const H0A = "## §0a · Historical handovers";
+const i0 = doc.indexOf(H0), i0a = doc.indexOf(H0A);
+if (i0 < 0 || i0a < 0 || i0a < i0) throw new Error("sections not found");
+const body = doc.slice(i0 + H0.length, i0a);
+const at = (s) => { const i = body.indexOf(s); if (i < 0) throw new Error("missing: " + s.slice(0, 60)); return i; };
+const iB = at("**⏳ 2026-10-23 (the Claude session asheib-f3 on OMEGA;");
+const iRest = at("**⏳ S5 IS ON `main` — `2ed817395`");
+let b2023 = body.slice(iB, iRest).trimEnd();
+const cut = b2023.indexOf("\n- Not in it: HUB");
+if (cut < 0) throw new Error("no 'Not in it' bullet");
+b2023 = b2023.slice(0, cut);
+const swap = (s, a, b) => { if (!s.includes(a)) throw new Error("missing: " + a.slice(0, 60)); return s.replace(a, () => b); };
+b2023 = swap(b2023, "**⏳ 2026-10-23 (the Claude session asheib-f3 on OMEGA;", "**✅ 2026-10-23 morning (the Claude session asheib-f3 on OMEGA;");
+b2023 = swap(b2023, "- This commit: **S5 round 2 on `main`**", "- `07a400bc3`: **S5 round 2 on `main`**");
+b2023 = swap(b2023, "Gates at `5ceb40c6f` (this commit's parent; this commit is documents only)", "Gates at `5ceb40c6f` (the code; `07a400bc3` is documents only)");
+let rest = body.slice(iRest).trimEnd();
+rest = swap(rest, "**State (2026-10-23):** S1–S5 are on `main` — S5 at `2ed817395`", "**State (2026-10-23 morning — record):** S1–S5 are on `main` — S5 at `2ed817395`");
+rest = swap(rest, "**Next:** \"continue maswali\" resumes here, in order: (1) S5 round 2", "**Next (2026-10-23 morning — record):** \"continue maswali\" resumed here, in order: (1) S5 round 2");
+const iState = top.indexOf("**State (");
+if (iState < 0) throw new Error("top has no State line");
+const s0 = top.slice(0, iState).trimEnd() + "\n\n" + b2023 + "\n\n" + top.slice(iState);
+const afterA = doc.slice(i0a);
+const noteEnd = afterA.indexOf("\n\n", afterA.indexOf("> ⚠️"));
+if (noteEnd < 0) throw new Error("§0a note not found");
+const s0a = afterA.slice(0, noteEnd) + "\n\n" + rest + "\n" + afterA.slice(noteEnd);
+const out = doc.slice(0, i0) + H0 + "\n" + s0 + "\n\n" + s0a;
+writeFileSync(planPath, out.split("\n").join("\r\n"));
+console.log(`§0: ${s0.split("\n").length} lines (was ${body.split("\n").length}); moved ${rest.split("\n").length} lines to §0a`);
