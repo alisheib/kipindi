@@ -36,7 +36,8 @@ type Tiers = readonly [below360: number, from360: number, from768: number];
  *  measured in Chromium at 320, 360 and 768 on the runner with the phones' Chinese face (DESIGN_AUTHORITY §M4a rule 5).
  *  The facts ("No 10/10 · TZS 18,000 carried forward · Fee TZS 0") take a second line from 360 in English and below 360 in
  *  Chinese since the fee says its currency (S5-R2-REGISTER 28; the register-ghosts hop: the head 20px taller on one).
- *  Where WebKit draws a cell in another count, its count is printed beside it (⏳ the runner's read). */
+ *  WEBKIT draws every cell here in the same count (run 39953673548, S5-R3-FIX 8: ratios 2.625, 3 and 1, the runner's
+ *  classic scrollbar removed); between the judged widths it takes the facts to 2 lines at en 375 and zh 340 (Chromium 1). */
 const HEAD_LINES: Record<Locale, { facts: Tiers; times: Tiers }> = {
   en: { facts: [2, 2, 1], times: [2, 1, 1] },
   sw: { facts: [2, 2, 1], times: [2, 2, 1] },
@@ -44,7 +45,7 @@ const HEAD_LINES: Record<Locale, { facts: Tiers; times: Tiers }> = {
 };
 /** The tickets' root's time line — DATA ("Fixed 13 Nov, 18:01 · 18 tickets" / "锁定于 2026年11月13日 18:01 · 18 张彩票"): the
  *  Chinese takes two lines below 360 (the register-ghosts hop: the commitments 19px taller at 320 on one). Measured as the
- *  head's lines are; WebKit's count printed beside a cell where it differs (⏳ the runner's read). */
+ *  head's lines are; WEBKIT draws every cell in the same count, at every width (run 39953673548). */
 const ROOT_LINES: Record<Locale, Tiers> = { en: [1, 1, 1], sw: [1, 1, 1], zh: [2, 1, 1] };
 
 /** A line in the numerals' mono face (§T5) — its line box stands a pixel taller than a body line: an empty run of that face
