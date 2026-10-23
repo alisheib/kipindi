@@ -2,6 +2,10 @@
  * MASWALI MILLIONEA — WHAT A CAMPAIGN NOT TAGGED MILLIONEA MAY NOT SAY (MASWALI-BUILD S6; MASWALI-PLAN §8 MB-47; the lead's
  * ruling 6 and its accepted corrections, S6-LINT 1).
  *
+ * ⛔ OFF IN THIS RELEASE (the build lead's ruling of 2026-10-23, S6-SHIP 5). `MILLIONEA_UNTAGGED_RULES_ON` is false, so
+ *    `untaggedRulesFor` hands these rules to no door, whatever the ceiling: a campaign not tagged Millionea goes exactly as
+ *    before the lint, and their stamp is never written (`test:maswali-claims` §11). They stay built and checked (§1, §2, §7,
+ *    §8) for the release that fixes the lint review's open findings and turns them on (`docs/FAILURE-INVENTORY.md` §9b).
  * ⭐ THE RULE. A campaign whose name does not declare Millionea (`campaignProductOf`, `millionea-claims.ts`) is refused when
  *    its text speaks Millionea's words — the product's name in any spelling, millionaire, jackpot, milioni, 10/10, or a
  *    figure of a million or more in a claim — in words: tag it Millionea, or reword it (`MILLIONEA_UNTAGGED`). A body in
@@ -467,12 +471,25 @@ export const untaggedCampaignProblems: UntaggedCampaignRules = (text: string): s
 };
 
 /**
- * ⭐ THE ONE DECISION every server door asks for a campaign's name: the untagged rules for a campaign not tagged Millionea
- * while Millionea's ceiling is ACTIVE (a tagged one meets the tagged rules instead, in the composer's one door), else none.
+ * ⛔ THE UNTAGGED RULES ARE OFF IN THIS RELEASE — the build lead's ruling of 2026-10-23 (MASWALI-BUILD S6-SHIP 5;
+ * COMPLIANCE-DECISIONS § "2026-10-23 · Marketing — a campaign not tagged Millionea is sent exactly as before the claims
+ * lint …"). Production runs Millionea at the ACTIVE ceiling, and the lint review's open findings (`docs/FAILURE-INVENTORY.md`
+ * §9b) would refuse ordinary marketing copy, so while this is `false` no door is handed these rules, whatever the ceiling:
+ * a campaign not tagged Millionea — in any language, a body in Chinese characters included — is saved, test-sent,
+ * previewed and sent exactly as before the lint, and their stamp (`millionea-lint-epoch.ts`) is never written. Only a
+ * campaign tagged Millionea meets the lint. The release that fixes and verifies those findings turns this on.
+ */
+export const MILLIONEA_UNTAGGED_RULES_ON: boolean = false;
+
+/**
+ * ⭐ THE ONE DECISION every server door asks for a campaign's name: none while the untagged rules are off
+ * (`MILLIONEA_UNTAGGED_RULES_ON`). When they are on: the untagged rules for a campaign not tagged Millionea while
+ * Millionea's ceiling is ACTIVE (a tagged one meets the tagged rules instead, in the composer's one door), else none.
  * ⛔ S6-LINT 6 (the lead's ruling 6) · below the ACTIVE ceiling — WITHDRAWN or STAFF_PREVIEW — a campaign not tagged
  * Millionea meets no Millionea rule at any door: it is judged, saved and sent exactly as before the lint.
  */
 export function untaggedRulesFor(name: string | null | undefined): UntaggedCampaignRules | undefined {
+  if (!MILLIONEA_UNTAGGED_RULES_ON) return undefined;
   if (campaignProductOf(name) === "MILLIONEA") return undefined;
   return millioneaCeiling().ceiling === "ACTIVE" ? untaggedCampaignProblems : undefined;
 }

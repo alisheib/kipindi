@@ -116,7 +116,7 @@ product (`npm run test:maswali-fairness` H.7; S5's ghosts are wordless for the s
 | `src/lib/server/maswali-settlement.ts` | The preview, the release, holds, releases and forfeits of a share, the sunset's top score |
 | `src/lib/server/maswali-void.ts` | The week void's refunds, exactly once, at any size |
 | `src/lib/server/maswali-invariants.ts` | The nightly invariants |
-| `src/lib/server/maswali-console.ts` · `maswali-integrity.ts` · `src/lib/maswali-admin-format.ts` | What the console reads: the weeks, the alerts, the pools, the integrity reports |
+| `src/lib/server/maswali-console.ts` · `maswali-integrity.ts` · `src/lib/maswali-admin-format.ts` · `src/lib/maswali-strip-link.ts` | What the console reads: the weeks, the alerts, the pools, the integrity reports; where the front page's Millionea card links |
 | `src/lib/server/maswali-player.ts` · `maswali-player-acts.ts` · `maswali-pool-feed.ts` | What the player surfaces read and do; the live pool figure |
 | `src/lib/server/maswali-fairness.ts` | What `/fairness` publishes, and one owner's inclusion proof |
 | `src/lib/server/millionea-legal.ts` · `src/lib/millionea-rules-version.ts` | The binding rules' figures (one week's, never a mix), their version and the hash of their text |
@@ -137,7 +137,7 @@ product (`npm run test:maswali-fairness` H.7; S5's ghosts are wordless for the s
 | `src/lib/server/maswali-objections.ts` · `src/app/millionea/objection-actions.ts` · `src/components/maswali/maswali-objection-*.tsx` · `src/app/admin/maswali/integrity/objection-*.tsx` | The per-question objection (MR-16): the holder's door on the ticket page and Compliance's ruling on the integrity page |
 | `src/lib/server/maswali-takeover.ts` | The winners' takeover alert (MB-96): an alert and a name for Compliance, never a hold |
 | `src/lib/server/maswali-share-payout.ts` | A share owed to a winner who cannot sign in (OD-13): the console's list, and Compliance's one payment of it through `withdraw` |
-| `src/lib/marketing/millionea-claims.ts` · `src/lib/server/marketing/millionea-untagged.ts` · `millionea-lint-epoch.ts` · `src/lib/server/maswali-marketing.ts` | What a campaign may say about Millionea (MB-47): the tagged rules at the composer's one door, the untagged rules on the server only, the approved wordings with the fee the week froze |
+| `src/lib/marketing/millionea-claims.ts` · `src/lib/server/marketing/millionea-untagged.ts` · `millionea-lint-epoch.ts` · `src/lib/server/maswali-marketing.ts` | What a campaign may say about Millionea (MB-47): the tagged rules at the composer's one door, the untagged rules on the server only — off in this release (`MILLIONEA_UNTAGGED_RULES_ON`; the lead's ruling of 2026-10-23, S6-SHIP 5) — the approved wordings with the fee the week froze |
 | `src/lib/server/tax-report-data.ts` · `tax-report-view.ts` · `tax-report-doc.ts` · `house-ledger.ts` · `report-money.ts` · `src/lib/server/reports/catalogue.ts` · `finance-window.ts` | The reports (OD-08): the tax report's product pill and three reconciling lines, the house book's waterfall step, the statutory pack's liability and guarantee lines |
 | `src/lib/server/maswali-register-cache.ts` · `maswali-week-record.ts` · `src/lib/maswali-cluster-coverage.ts` · `maswali-integrity-list.ts` · `maswali-week-list.ts` · `maswali-share-note.ts` | The register's brief cache; a settled week's record and the figures it lacks; the cluster report's coverage; the console's list queries; the words for a held share |
 | `prisma/migrations/20261017*_maswali_*` · `20261018*_maswali_*` | The tables, the ledger entry types, the tax report's product, the REFUNDED state, the seen marks; one winner SMS per player-week; the database's fence on a market's line |
@@ -220,6 +220,7 @@ domains are in `ROUTE_DOMAINS` (`src/lib/server/roles.ts`).
 | A locked winner's money leaving | `payLockedWinnerShare` (compliance), through `withdraw`'s `lockedWinnerShare` alone |
 | A week's shares against the payout float | `floatCover` (`maswali-settlement.ts`): the release, its after-commit check and the Pools line |
 | Who the console's front-page strip speaks to | `millioneaStripAlerts` (`maswali-console.ts`): every alert for trading; the float's for Finance and Compliance; a connected group holding a winner for Compliance (never trading) |
+| Where the front-page strip's card links | `millioneaStripLink` (`src/lib/maswali-strip-link.ts`): the first of the weeks, Integrity and Pools the viewer may open (`viewerMayOpen`, the page's own gate), else no link |
 | Who rules on an objection | `ruleMaswaliObjection` (compliance; `maswali-objections.ts` bars the question's sealer, its confirmer, the officer whose upheld ruling set its result, the objector and a holder) |
 | What a campaign may say about Millionea | `millionea-claims.ts` (the tagged rules, the composer's one door) and `millionea-untagged.ts` (the server's alone) |
 | A notice sent once | `maswali-notify.ts`: each notice's own key, its run's lease and record |

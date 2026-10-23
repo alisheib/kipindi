@@ -42,7 +42,8 @@ function ok(name: string, condition: boolean, detail = "") {
 // ── The sources each screen's labels are printed by ──────────────────────────────────────────────
 const SCREENS: Record<string, readonly string[]> = {
   nav: ["src/components/admin/admin-nav-groups.ts"],
-  home: ["src/app/admin/page.tsx"],
+  // S6-SHIP 6 · the front page's Millionea card takes its link's words from the strip-link module (the link a viewer may open).
+  home: ["src/app/admin/page.tsx", "src/lib/maswali-strip-link.ts"],
   weeks: ["src/app/admin/maswali/page.tsx", "src/app/admin/maswali/rules-controls.tsx", "src/app/admin/maswali/rules-form.ts", "src/lib/maswali-admin-format.ts"],
   draft: ["src/app/admin/maswali/new/page.tsx", "src/app/admin/maswali/new/week-builder.tsx", "src/app/admin/maswali/[weekId]/edit/page.tsx"],
   week: ["src/app/admin/maswali/[weekId]/page.tsx", "src/app/admin/maswali/[weekId]/week-controls.tsx", "src/lib/maswali-void-reason.ts", "src/lib/maswali-admin-format.ts"],

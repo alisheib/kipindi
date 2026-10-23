@@ -1499,6 +1499,40 @@ Owner, never for the trading officer who seals (MR-14) nor Finance; a report tha
 own critical alert. The words say what the control enforces, never what ties the accounts. Guards:
 `test:maswali-integrity` 4.9–4.13 (both stores); plants (SM18)–(SM21).
 
+#### ⏸ The claims lint's untagged rules would refuse ordinary marketing at production's ceiling — held OFF (S6-SHIP 5, the build lead's ruling of 2026-10-23)
+
+Millionea runs at the ACTIVE ceiling in production since 2026-10-22, and at that ceiling S6-LINT 6 hands the untagged
+rules (a campaign NOT tagged Millionea refused for Millionea's words, and for a body in Chinese characters) to every
+marketing door. The lint review after round 17 left findings open in those rules — some refuse ordinary marketing copy —
+so shipping them would have blocked the owner's ordinary campaigns. THE RULE for this release: the untagged rules are off
+(`MILLIONEA_UNTAGGED_RULES_ON = false`, `src/lib/server/marketing/millionea-untagged.ts`): the one decision
+(`untaggedRulesFor`) hands them to no door, whatever the ceiling; a campaign not tagged Millionea — in any language — is
+saved, test-sent, previewed and sent exactly as before the lint, and the rules' first-run stamp is never written. The
+claims lint judges only campaigns tagged Millionea (a name that begins with "Millionea"), which still meet the tagged
+rules in full. Held by `test:maswali-claims` §11 (11.1 the decision under every ceiling; 11.2–11.5 the save, the test
+send, the slice and the preview at ACTIVE, with Swahili and English bodies in Millionea's words and a Chinese line, each
+against the verdict before the lint; 11.6 no stamp; 11.7 a tagged campaign still judged; 11.8 the seventeen door checks
+held while the rules are off) and the plants of `red:maswali-claims`: (C42) the rules switched back on, (C43)–(C46) a
+door that decides around the one decision; the six plants that need the rules handed in, (C31)–(C34), (C40) and (C41),
+are held while they are off.
+**Open, waiting for the LINT release** (the review's findings, by what each rule does wrongly): 1–4 (HIGH) and 5, 6 and 10
+(MEDIUM) — phrasings of a claim the rules let pass; 7 and 8 (MEDIUM) — ordinary copy the rules refuse; 12 (LOW) — both
+kinds; 11 (LOW) — comments that still describe a way past a rule; 13 (LOW) — gaps in the suite and its red twin. Finding 9 is
+closed (S6-INT 16, S6-LINT 4). The release that fixes and verifies them turns the rules on and re-aims §11.
+
+#### ✅ Four light reds the release head carried into the S6-SHIP gate, none the lane's own change (S6-SHIP 5 and 7)
+
+Found by S6-SHIP's light batch on the merged head (S7, main and the S6 lanes in), each red on the code before S6-SHIP's
+change: `test:maswali-claims` 6.2 (since S6-INT 30: the sign-in service, which sends the one-time codes, names Millionea to
+stamp the Terms version at registration) — 6.2 names it, 6.2e pins its two lines; `test:guards-exist` (MB-47's row and the
+claims suite's header cited the guard by its planned name, `test:millionea-claims`) — both cite `test:maswali-claims`, the
+guard as built, and the inherited-phantoms list did not grow; `test:failure-reasons` 9f.gate (since the S6-MONEY merge:
+OD-13's locked-share list reads the identity gate to word an officer's line) — 9f.gate names both callers, and 9f.sharepay
+holds that the list writes no identity refusal and pays only through `withdraw()`; `test:type-scale` §1/§2 (since the
+S6-MONEY merge: the locked-share card printed a money figure inside tracked sentence type) — the figure wears the money
+treatment in its own span. THE RULE in each case is the guard's own, unchanged: a census names what it finds, a citation
+names a guard that exists, the identity gate refuses only inside a withdrawal, money is set in the money type.
+
 ## §9c · MASWALI MILLIONEA — the admin console, walked and made plain (S6, 2026-10-22)
 
 Ali, 2026-10-22: "admin make sure full control with the right sorting etc. and management", and his admin guide must be
@@ -1610,3 +1644,22 @@ byte-identical. THE RULE: a suite that reads what the console prints pins the wo
 re-derived from the run's printed list, never by hand. The same run's `red:maswali-engine` printed "108/108 caught, 0
 missed, 0 files left dirty": its "FAIL [postgres] 13.2" line is plant (79) caught, not a red. The engine's floor rose to
 the counts it printed there (memory 212, Postgres 220: §15, the draft discard).
+
+#### ✅ GD.1 · five console texts said what the code does not do — fixed by S6-SHIP 6 (the lead's rulings of 2026-10-23)
+
+Found by the GUIDE lane's walk for the final admin guide, on the release head. THE RULE: a console sentence states what the
+code does, and a link names a page its reader may open. Each is fixed as ruled:
+- The integrity page's "Marketing wordings" card said a campaign using Millionea's words without its tag "is refused until
+  it is tagged or reworded" — false since the untagged rules are off in this release (§9b, S6-SHIP 5). It now says only
+  campaigns tagged as Millionea are checked against these wordings, and other campaigns are not judged in this release.
+- The weeks page's "Rules for the next week" card named the complaint answer target as the one setting that applies at
+  once, while the release-wait alert reads the live "Alert when a release waits (hours)" for every week. It names both.
+- The release-wait alert said "Accounting releases it."; the console's one word for that role is "Finance".
+- The move-close dialog said the service checks "the notice period" — `moveClose` checks no notice period; it names what
+  the move checks: the free-cancel window and the first event.
+- The front page's Millionea card linked every viewer to the weeks and said the rest were "on the weeks page", a page
+  Finance and Compliance cannot open. Its link is now the first page the viewer may open, asked with that page's own gate
+  (`viewerMayOpen`): the weeks, else Integrity, else Pools, else none (`src/lib/maswali-strip-link.ts`); "on the weeks
+  page" is said only beside the weeks link.
+Held by `test:maswali-admin-plain` §9 (9.1–9.4 on the words an officer reads, each against the code it describes; 9.5 a
+case per role, 9.5b–c the last line and the page's wiring) and the plants (AP15)–(AP21) of `red:maswali-admin-plain`.

@@ -242,12 +242,17 @@ export const MUTATIONS = [
     to: "import { millioneaCampaignProblems, UNTAGGED_CAMPAIGN, type MillioneaComposeContext } from \"@/lib/marketing/millionea-claims\";\nimport { untaggedCampaignProblems } from \"@/lib/server/marketing/millionea-untagged\";",
     expect: "9.1 · ⭐ S6-LINT 1",
   },
+  /* ⛔ S6-SHIP 5 (the lead's ruling of 2026-10-23) · `whenRulesOn: true` marks a plant whose defect a door shows only while the
+   * untagged rules are handed in: while they are off (`MILLIONEA_UNTAGGED_RULES_ON = false`, millionea-untagged.ts) its case
+   * is held by the suite (an OFF line), so `red:maswali-claims` holds the plant too — said and counted, never run. (C42)–(C46)
+   * below are the plants of the rules' OFF state. */
   {
     name: "(C31) S6-LINT 1 · the save hands its verdict no untagged rules: an untagged campaign in Millionea's words is saved",
     file: "src/lib/server/marketing/campaign-draft.ts",
     from: "  const verdict = deps.validate(fields, \"\", { untagged });",
     to: "  const verdict = deps.validate(fields, \"\");",
     expect: "4.4 · ⭐ THE SAVE · an untagged campaign in Millionea's words is refused in words",
+    whenRulesOn: true,
   },
   {
     name: "(C32) S6-LINT 1 · the test send's template carries no untagged rules",
@@ -255,6 +260,7 @@ export const MUTATIONS = [
     from: "    untaggedRules: untaggedRulesFor(c.name),",
     to: "    untaggedRules: undefined,",
     expect: "4.5 · ⭐ THE TEST SEND · an untagged draft saved before the lint is refused with that reason",
+    whenRulesOn: true,
   },
   {
     name: "(C33) S6-LINT 1 · the engine's template carries no untagged rules",
@@ -262,6 +268,7 @@ export const MUTATIONS = [
     from: "    untaggedRules: untaggedRulesFor(c.name),",
     to: "    untaggedRules: undefined,",
     expect: "4.6 · ⭐ THE REAL SEND · an untagged campaign saved before the lint and STARTED after its first run",
+    whenRulesOn: true,
   },
   {
     name: "(C34) S6-LINT 1 · the composer's previews carry no untagged rules: the typed test is offered for a draft its send refuses",
@@ -269,6 +276,7 @@ export const MUTATIONS = [
     from: "    untaggedRules: untaggedRulesFor(c.name),",
     to: "    untaggedRules: undefined,",
     expect: "9.3b · S6-LINT 1",
+    whenRulesOn: true,
   },
   /* ── S6-LINT 4 · finding 9's two other guards, each on its own ── */
   {
@@ -313,6 +321,7 @@ export const MUTATIONS = [
     from: "  return millioneaCeiling().ceiling === \"ACTIVE\" ? untaggedCampaignProblems : undefined;",
     to: "  return untaggedCampaignProblems;",
     expect: "10.2 · ⭐ S6-LINT 6 (ruling 6) · under",
+    whenRulesOn: true,
   },
   {
     name: "(C41) S6-LINT 6 · the test send judges with the untagged rules but never stamps their first run",
@@ -320,5 +329,42 @@ export const MUTATIONS = [
     from: "  if (template.untaggedRules !== undefined) await stampUntaggedRun(deps.millioneaLintEpoch, deps.now());",
     to: "  if (false) await stampUntaggedRun(deps.millioneaLintEpoch, deps.now());",
     expect: "10.4a · ⭐ S6-LINT 6",
+    whenRulesOn: true,
+  },
+  /* ── S6-SHIP 5 · the lead's ruling of 2026-10-23: the untagged rules OFF in this release, at every door ── */
+  {
+    name: "(C42) S6-SHIP 5 · the untagged rules switched back on: a classic campaign at the ACTIVE ceiling is judged by them again",
+    file: UNTAGGED,
+    from: "export const MILLIONEA_UNTAGGED_RULES_ON: boolean = false;",
+    to: "export const MILLIONEA_UNTAGGED_RULES_ON: boolean = true;",
+    expect: "11.1 · ⭐ S6-SHIP 5 · the one decision hands no door the untagged rules",
+  },
+  {
+    name: "(C43) S6-SHIP 5 · the save decides around the one decision: it hands the untagged rules to its verdict itself",
+    file: "src/lib/server/marketing/campaign-draft.ts",
+    from: "import { untaggedRulesFor } from \"@/lib/server/marketing/millionea-untagged\";",
+    to: "import { untaggedCampaignProblems } from \"@/lib/server/marketing/millionea-untagged\";\nconst untaggedRulesFor = (_name: unknown) => untaggedCampaignProblems;",
+    expect: "11.2 · ⭐ S6-SHIP 5 · THE SAVE at the ACTIVE ceiling",
+  },
+  {
+    name: "(C44) S6-SHIP 5 · the test send decides around the one decision: its template carries the untagged rules itself",
+    file: "src/lib/server/marketing/campaign-test-send.ts",
+    from: "import { untaggedRulesFor } from \"@/lib/server/marketing/millionea-untagged\";",
+    to: "import { untaggedCampaignProblems } from \"@/lib/server/marketing/millionea-untagged\";\nconst untaggedRulesFor = (_name: unknown) => untaggedCampaignProblems;",
+    expect: "11.3 · ⭐ S6-SHIP 5 · THE TEST SEND at the ACTIVE ceiling",
+  },
+  {
+    name: "(C45) S6-SHIP 5 · the engine decides around the one decision: its template carries the untagged rules itself",
+    file: "src/lib/server/marketing/engine.ts",
+    from: "import { untaggedRulesFor } from \"@/lib/server/marketing/millionea-untagged\";",
+    to: "import { untaggedCampaignProblems } from \"@/lib/server/marketing/millionea-untagged\";\nconst untaggedRulesFor = (_name: unknown) => untaggedCampaignProblems;",
+    expect: "11.4 · ⭐ S6-SHIP 5 · THE REAL SEND at the ACTIVE ceiling",
+  },
+  {
+    name: "(C46) S6-SHIP 5 · the composer's previews decide around the one decision: they judge with the untagged rules themselves",
+    file: "src/app/admin/campaigns/new/composer-loader.ts",
+    from: "import { untaggedRulesFor } from \"@/lib/server/marketing/millionea-untagged\";",
+    to: "import { untaggedCampaignProblems } from \"@/lib/server/marketing/millionea-untagged\";\nconst untaggedRulesFor = (_name: unknown) => untaggedCampaignProblems;",
+    expect: "11.5 · ⭐ S6-SHIP 5 · THE PREVIEW at the ACTIVE ceiling",
   },
 ];

@@ -483,7 +483,7 @@ function templateOf(c: StoredSmsCampaign): CampaignTemplate {
     nameFallbackEn: c.nameFallbackEn ?? "",
     sourcePhrase: c.sourcePhrase ?? "",
     product: campaignProductOf(c.name),
-    // ⭐ S6-LINT 1 · a campaign not tagged Millionea meets the untagged rules on this server door (`millionea-untagged.ts`).
+    // ⭐ S6-LINT 1 · a campaign not tagged Millionea meets the untagged rules the one decision hands this door (none while off: S6-SHIP 5).
     untaggedRules: untaggedRulesFor(c.name),
   };
 }

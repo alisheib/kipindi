@@ -151,8 +151,9 @@ async function AdminMaswaliContent({ searchParams }: MaswaliPageProps) {
         </AdminCard>
 
         <AdminCard title="Rules for the next week" sw="Kanuni za wiki ijayo">
-          {/* MB-75 · each week runs on the rules it froze · MB-91 · the complaint answer target applies at once. */}
-          <p className="mb-3 text-body-sm text-text-secondary">A change applies from the next week to open, never to a running one: each week runs on the rules it froze when it opened. The one exception is the support desk&rsquo;s complaint answer target: a promise, not a week&rsquo;s rule, it applies at once. The licence basis is the Owner&rsquo;s own record, on Pools.</p>
+          {/* MB-75 · each week runs on the rules it froze · MB-91 · the complaint answer target applies at once · S6-SHIP 6 (the
+              lead's ruling of 2026-10-23) · so does the release alert: `consoleAlerts` reads the live `releaseAlertHours`. */}
+          <p className="mb-3 text-body-sm text-text-secondary">A change applies from the next week to open, never to a running one: each week runs on the rules it froze when it opened. Two settings apply at once, to every week: &ldquo;Complaint answer target (working days)&rdquo;, the support desk&rsquo;s promise, and &ldquo;Alert when a release waits (hours)&rdquo;, which the console&rsquo;s alert reads live. The licence basis is the Owner&rsquo;s own record, on Pools.</p>
           {rules?.problem && <p className="mb-3 text-body-sm text-danger-fg">The stored rules do not validate, so no week can open until they are corrected: {rules.problem}</p>}
           {rules === null ? <p className="text-body-sm text-danger-fg">The Millionea rules could not be read, so they cannot be shown or changed now.</p>
             : canRules ? <RulesForm initial={rules.values} policies={policies} />

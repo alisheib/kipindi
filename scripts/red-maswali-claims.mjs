@@ -14,6 +14,9 @@
  * Built as `red-maswali-money-path.mjs` is: a lock file against a concurrent run, a refusal to start when the target differs
  * from git HEAD, temp-file + rename writes, the shared anchor resolver, a green baseline before any mutation, the shared
  * restore guard, and a byte-identical check at the end.
+ * ⛔ S6-SHIP 5 (the build lead's ruling of 2026-10-23) · while the untagged rules are off (`MILLIONEA_UNTAGGED_RULES_ON`), a
+ *    plant marked `whenRulesOn` in the anchors is HELD — said on an OFF line and counted, never run (its case is held by the
+ *    suite too) — and the number held on a full run is pinned (`HELD_WHILE_OFF`).
  * ⛔ Never beside another red drive in the same checkout: it rewrites a live file.
  * ⚠️ This file carries no backslash: line breaks are built from their code points.
  */
@@ -32,6 +35,18 @@ const DEFECTS = ONLY.length ? MUTATIONS.filter((d) => ONLY.some((o) => d.name.st
 const SUITE = "npx tsx scripts/maswali-claims.test.mts";
 const MEM_ENV = { ...process.env, DATABASE_URL: "", USE_PRISMA_DAL: "false" };
 const lf = (s) => s.split(CR + LF).join(LF);
+// ⛔ S6-SHIP 5 · THE LEAD'S RULING OF 2026-10-23: the untagged rules are off in this release (`MILLIONEA_UNTAGGED_RULES_ON` in
+// millionea-untagged.ts). A plant marked `whenRulesOn` shows nothing at any door while they are off — its case is held by the
+// suite (an OFF line) — so it is held here too: said and counted, never run, and the count of held plants is pinned.
+const UNTAGGED_FILE = "src/lib/server/marketing/millionea-untagged.ts";
+const SWITCH = /export const MILLIONEA_UNTAGGED_RULES_ON: boolean = (true|false);/.exec(readFileSync(UNTAGGED_FILE, "utf8"));
+if (SWITCH === null) {
+  console.error(`REFUSING TO RUN — the untagged rules' switch (MILLIONEA_UNTAGGED_RULES_ON) is not found in ${UNTAGGED_FILE}.`);
+  process.exit(1);
+}
+const RULES_ON = SWITCH[1] === "true";
+/** The plants marked `whenRulesOn` in the anchors — held, all of them, on a full run while the rules are off. */
+const HELD_WHILE_OFF = 6;
 
 const sha = (p) => createHash("sha256").update(readFileSync(p)).digest("hex");
 const write = (p, s) => {
@@ -85,8 +100,13 @@ if (base.red) {
 }
 console.log("baseline green · maswali-claims");
 
-let caught = 0, missed = 0;
+let caught = 0, missed = 0, held = 0;
 for (const d of DEFECTS) {
+  if (d.whenRulesOn === true && !RULES_ON) {
+    held++;
+    console.log(`OFF ${d.name} — held: the untagged rules are off (the lead's ruling of 2026-10-23), so no door can show it`);
+    continue;
+  }
   const src = original.get(d.file);
   let mutated;
   try {
@@ -116,5 +136,7 @@ for (const [p, before] of shaBefore) {
   if (sha(p) !== before) { dirty++; console.log(`DIRTY ${p} — NOT restored byte-identically`); }
   try { unlinkSync(`${p}.red-tmp`); } catch { /* already gone */ }
 }
-console.log(`${LF}maswali-claims RED: ${caught}/${DEFECTS.length} caught, ${missed} missed, ${dirty} files left dirty`);
-if (missed > 0 || dirty > 0 || caught !== DEFECTS.length) process.exit(1);
+const heldPinned = ONLY.length > 0 || (RULES_ON ? held === 0 : held === HELD_WHILE_OFF);
+if (!heldPinned) console.log(`HELD-COUNT ${held} plants held while the untagged rules are off, against the ${HELD_WHILE_OFF} marked whenRulesOn — read the anchors, then move the pin`);
+console.log(`${LF}maswali-claims RED: ${caught}/${DEFECTS.length - held} caught, ${missed} missed, ${held} held while the untagged rules are off, ${dirty} files left dirty`);
+if (missed > 0 || dirty > 0 || caught !== DEFECTS.length - held || !heldPinned) process.exit(1);

@@ -18,6 +18,11 @@
  * §7 · G7 · the evidence archive is a list like the other three: week-code search, state and line filters, sort, pager.
  * §8 · G8 · the lock chip names who works a control in the roles' own words — the Owner, never "an Admin" — and the
  *      Winners table prints a role and an account status as words.
+ * §9 · S6-SHIP 6 (the lead's rulings of 2026-10-23, on the GUIDE lane's walk) · five console texts say what the code does:
+ *      9.1 the Marketing wordings card (the untagged rules are off: other campaigns are not judged); 9.2 the Rules card (two
+ *      settings apply at once: the complaint answer target and the release alert, which reads the live setting); 9.3 the
+ *      release-wait alert says "Finance"; 9.4 the move-close dialog names only what the move checks; 9.5 the front page's
+ *      Millionea card links a page the viewer may open — the weeks, Integrity or Pools, by role — or none.
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
@@ -34,6 +39,10 @@ import { ControlLocked, CONTROL_WHO } from "../src/components/admin/control-lock
 import { ROLE_LABEL } from "../src/lib/server/roles.ts";
 import { CATEGORY_LABEL } from "../src/lib/ai/poll-vocabulary.ts";
 import { EVENT_KIND_LABEL, eatInText, officerHandle } from "../src/lib/maswali-admin-format.ts";
+import { MILLIONEA_STRIP_LINKS, millioneaStripLink, millioneaStripMore } from "../src/lib/maswali-strip-link.ts";
+import { canViewPath } from "../src/lib/server/rbac.ts";
+import { releaseWaitAlertText } from "../src/lib/server/maswali-console.ts";
+import { untaggedRulesFor } from "../src/lib/server/marketing/millionea-untagged.ts";
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
 const SELF = "scripts/maswali-admin-plain.test.mts";
@@ -203,7 +212,77 @@ ok("8.4 · a domain the chip does not know falls to the Owner, never to a code",
 ok("8.5 · the Winners table prints a role and an account status as words, never their enums",
   integrityPage.includes("{roleLabel(w.role)} · {accountStatusLabel(w.status)}") && !integrityPage.includes("{w.role} · {w.status}"));
 
-const FLOOR = 28; // the count the first run printed (S6-ADMIN 6, run 39824239196)
+// ── §9 · S6-SHIP 6 ─────────────────────────────────────────────────────
+console.log("\n§9 · S6-SHIP 6 · five console texts say what the code does (the lead's rulings of 2026-10-23)");
+/** A page's words as an officer reads them: comments dropped, JSX's entities as their characters, whitespace folded. */
+const pageWords = (path: string) => decomment(read(path)).replace(/&ldquo;/g, "“").replace(/&rdquo;/g, "”").replace(/&rsquo;/g, "’")
+  .replace(/&apos;/g, "'").replace(/\s+/g, " ");
+{
+  // 9.1 · the untagged rules are off in this release (MILLIONEA_UNTAGGED_RULES_ON), so the card says so — read against the
+  // one decision itself at production's ceiling: it hands no rule for a campaign not tagged Millionea.
+  const integrityWords = pageWords("src/app/admin/maswali/integrity/page.tsx");
+  const RULE_9_1 = "Only campaigns tagged as Millionea are checked against these wordings; other campaigns are not judged in this release.";
+  const ceilingKept = process.env.FEATURE_MILLIONEA;
+  process.env.FEATURE_MILLIONEA = "ACTIVE";
+  const decided = untaggedRulesFor("Derby promo");
+  if (ceilingKept === undefined) delete process.env.FEATURE_MILLIONEA; else process.env.FEATURE_MILLIONEA = ceilingKept;
+  ok("9.1 · ⭐ the Marketing wordings card says what the lint does in this release — tagged campaigns checked, other campaigns not judged — and no longer that they are refused until tagged",
+    integrityWords.includes(RULE_9_1) && !integrityWords.includes("refused until it is tagged or reworded") && decided === undefined,
+    `card=${integrityWords.includes(RULE_9_1)} decision=${decided === undefined ? "none" : "rules"}`);
+
+  // 9.2 · two settings apply at once, in the form's own labels: the desk's complaint target (no week freezes it) and the
+  // release alert, which the console reads from the LIVE rules for every week (`consoleAlerts`: cfg = getMaswaliConfig()).
+  const label = (key: string) => RULES_FIELDS.find((f) => f.key === key)?.label ?? `(no field ${key})`;
+  const mainWords = pageWords("src/app/admin/maswali/page.tsx");
+  const RULE_9_2 = `Two settings apply at once, to every week: “${label("complaintAnswerDays")}”, the support desk’s promise, and “${label("releaseAlertHours")}”, which the console’s alert reads live.`;
+  const consoleCode = decomment(read("src/lib/server/maswali-console.ts"));
+  const alertsFn = consoleCode.slice(consoleCode.indexOf("export async function consoleAlerts("), consoleCode.indexOf("export async function", consoleCode.indexOf("export async function consoleAlerts(") + 10));
+  ok("9.2 · ⭐ the Rules card names both settings that apply at once — the complaint answer target and the release alert — as the console reads them",
+    mainWords.includes(RULE_9_2) && !mainWords.includes("The one exception is the support desk")
+      && alertsFn.includes("const cfg = getMaswaliConfig();") && alertsFn.includes("Date.parse(w.objectionsCloseAt) + cfg.releaseAlertHours * HOUR < nowMs"),
+    RULE_9_2);
+
+  // 9.3 · the release-wait alert's words, rendered: "Finance", the console's one word for the role that releases.
+  const said = releaseWaitAlertText("MLN-2026-W44", 4);
+  ok("9.3 · ⭐ the release-wait alert says Finance releases it — the role's own label, never \"Accounting\"",
+    said === `MLN-2026-W44: its results are final and its window closed 4 h ago, and it is not settled. ${ROLE_LABEL.FINANCE} releases it.`
+      && ROLE_LABEL.FINANCE === "Finance" && !/Accounting releases/.test(consoleCode) && alertsFn.includes("text: releaseWaitAlertText(w.code, cfg.releaseAlertHours)"),
+    said);
+
+  // 9.4 · the move-close dialog names only what the move checks: the free-cancel window and the first event (moveClose,
+  // maswali-service.ts — its two refusals); no notice period, which nothing checks.
+  const controlsWords = pageWords("src/app/admin/maswali/[weekId]/week-controls.tsx");
+  const serviceCode = decomment(read("src/lib/server/maswali-service.ts"));
+  const moveFn = serviceCode.slice(serviceCode.indexOf("export async function moveClose("), serviceCode.indexOf("export async function", serviceCode.indexOf("export async function moveClose(") + 10));
+  const refusals = moveFn.match(/refuse\((?:"[^"]*"|`[^`]*`)\)/g) ?? [];
+  ok("9.4 · ⭐ the move-close dialog says the service checks the free-cancel window and the first event — the two refusals moveClose makes — and no notice period",
+    controlsWords.includes("The service checks the free-cancel window and the first event before accepting this move.") && !/notice period/i.test(controlsWords)
+      && refusals.some((r) => r.includes("so every ticket keeps its free-cancel window.")) && refusals.some((r) => r.includes("minutes before the first event."))
+      && refusals.length > 5 && !refusals.some((r) => /notice/i.test(r)),
+    `${refusals.length} refusals in moveClose`);
+}
+{
+  // 9.5 · the front page's Millionea card links a page the viewer may open, asked with that page's own gate question
+  // (`canViewPath`, which `viewerMayOpen` asks): the weeks, else Integrity, else Pools, else none — a case per role.
+  const EXPECT: Record<string, string | null> = { ADMIN: "Open the weeks", MODERATOR: "Open the weeks", AUDITOR: "Open the weeks",
+    COMPLIANCE: "Open Integrity", FINANCE: "Open Pools", GROWTH: null, SUPPORT: null };
+  for (const [role, label] of Object.entries(EXPECT)) {
+    const link = await millioneaStripLink((path) => canViewPath(role as never, path));
+    const gate = link === null ? null : await canViewPath(role as never, link.href);
+    ok(`9.5 · ⭐ ${ROLE_LABEL[role as keyof typeof ROLE_LABEL]} (${role}) · the card's link is ${label === null ? "none" : `"${label}"`} — a page this role may open`,
+      (link?.label ?? null) === label && (link === null || gate === true), JSON.stringify({ link: link?.href ?? null, gate }));
+  }
+  const weeks = MILLIONEA_STRIP_LINKS[0];
+  ok("9.5b · the rest are said to be \"on the weeks page\" only beside the weeks link; any other link, or none, says how many and no page",
+    millioneaStripMore(3, weeks) === "and 3 more on the weeks page" && millioneaStripMore(3, MILLIONEA_STRIP_LINKS[1]) === "and 3 more"
+      && millioneaStripMore(3, MILLIONEA_STRIP_LINKS[2]) === "and 3 more" && millioneaStripMore(3, null) === "and 3 more");
+  const home = decomment(read("src/app/admin/page.tsx"));
+  ok("9.5c · the front page draws the card's link and its last line from the viewer's own gate (viewerMayOpen), never a fixed weeks link",
+    home.includes("await millioneaStripLink(viewerMayOpen)") && home.includes("{millioneaStripMore(millioneaAlerts.length - 4, millioneaLink)}")
+      && !home.includes(">Open the weeks</Link>") && !home.includes("more on the weeks page</li>"));
+}
+
+const FLOOR = 41; // the count the first green run printed: 28 at S6-ADMIN 6 (run 39824239196); 41 with §9 (S6-SHIP 6)
 ok(`floor · at least ${FLOOR} checks ran before this one`, passed + failed >= FLOOR, `${passed + failed} ran`);
 console.log(`\nmaswali-admin-plain: ${passed} passed, ${failed} failed`);
 if (failed) process.exitCode = 1;

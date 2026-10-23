@@ -184,6 +184,13 @@ export async function weekFeeRate(week: Pick<StoredWeek, "marketId">): Promise<n
  *  float's (MB-11) and a connected group holding a winner (MB-35). */
 export type ConsoleAlert = { level: "critical" | "warning"; text: string; weekId?: string; topic?: "float" | "cluster" };
 
+/** The alert for a week whose release waits past the live "Alert when a release waits (hours)" (`releaseAlertHours`, read
+ *  for every week at once). ⭐ S6-SHIP 6 (the lead's ruling of 2026-10-23): "Finance" — the console's one word for the
+ *  role that releases (`ROLE_LABEL.FINANCE`), never "Accounting". `test:maswali-admin-plain` §9.3. */
+export function releaseWaitAlertText(weekCode: string, hours: number): string {
+  return `${weekCode}: its results are final and its window closed ${hours} h ago, and it is not settled. Finance releases it.`;
+}
+
 /** `deps.readFloat` reads the payout float (the payments provider's by default; a suite hands its own); `deps.readTakeover`
  *  the winners' takeover watch (`maswali-takeover.ts` by default). */
 export async function consoleAlerts(
@@ -228,7 +235,7 @@ export async function consoleAlerts(
       // MR-15 · a question unsealed at its void deadline voids on a ground from the closed list, sealed by an officer.
       if (proposed.length) out.push({ level: "warning", weekId: w.id, text: `${w.code}: ${proposed.length} question(s) passed their void deadline unsealed; void each one, with its ground.` });
       if (w.objectionsCloseAt && Date.parse(w.objectionsCloseAt) + cfg.releaseAlertHours * HOUR < nowMs) {
-        out.push({ level: "critical", weekId: w.id, text: `${w.code}: its results are final and its window closed ${cfg.releaseAlertHours} h ago, and it is not settled. Accounting releases it.` });
+        out.push({ level: "critical", weekId: w.id, text: releaseWaitAlertText(w.code, cfg.releaseAlertHours) });
       }
     }
   }

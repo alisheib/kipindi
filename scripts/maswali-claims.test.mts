@@ -3,7 +3,7 @@
  * OD-25, OD-30, R-HEADLINE; the lane-N review's HIGH 1 and MEDIUM 6; the round-3 claims review, B1–B6).
  *
  *   npm run test:maswali-claims        (the memory twin, no database: §4 drives the save, the test send and an engine slice
- *                                       on it; MB-47 names it `test:millionea-claims`, the S6 suite list
+ *                                       on it; MB-47 planned it as "millionea-claims", the S6 suite list as
  *                                       `test:maswali-claims` — one suite, this name)
  *
  * 🔴 MB-47: the SMS composer sent text as typed, so "Shinda TZS 1,000,000 kwa TZS 1,000!" could go out — false three ways.
@@ -34,6 +34,9 @@
  *    alone (S6-LINT 1); the boot stamped their first run and they judged a classic campaign whatever the ceiling — §10 holds
  *    the boot clear of them and every door to the ACTIVE ceiling (S6-LINT 6). Each S6-LINT commit's cases are red on the code
  *    before it.
+ * 🔴 S6-SHIP 5 (the lead's ruling of 2026-10-23): with Millionea ACTIVE in production, the untagged rules' open findings would
+ *    refuse ordinary marketing copy — §11 holds them off at every door, so a classic campaign goes exactly as before the
+ *    lint, while a tagged one is still judged. §11's cases are red with the rules switched on (plant (C42)).
  *   §1 ⭐ CONTROL FIRST: an untagged campaign with no Millionea signal is not read — it composes exactly as before — and
  *      the reader does see every spelling it is for
  *   §2 ⭐ the review's texts, every one red: refused untagged ("tag it Millionea or reword it") AND tagged (each claim
@@ -61,7 +64,14 @@
  *      instrumentation.ts) · 10.2 below the ACTIVE ceiling a campaign not tagged Millionea is saved, tested, sent and
  *      previewed exactly as before the lint · 10.3 nothing reads or writes the rules' stamp there, nor for a tagged campaign,
  *      nor on a preview · 10.4 at the ACTIVE ceiling the first door that judges with the untagged rules writes it
- * ⭐ The suite runs at production's ceiling, ACTIVE (S6-LINT 6); §10 sets the others itself.
+ *   §11 ⭐ S6-SHIP 5 (the lead's ruling of 2026-10-23: the untagged rules OFF in this release, `MILLIONEA_UNTAGGED_RULES_ON`):
+ *      11.1 the one decision hands no door the untagged rules, under any ceiling · 11.2–11.5 at the ACTIVE ceiling a campaign
+ *      not tagged Millionea — Swahili and English bodies in Millionea's words, a Chinese line — is saved, test-sent, sent and
+ *      previewed exactly as before the lint · 11.6 no stamp · 11.7 a tagged campaign is still judged · 11.8 the held checks
+ * ⛔ S6-SHIP 5 · while the untagged rules are off, the seventeen door checks that need a door to hand them in print an OFF
+ *    line instead of a verdict (`whenRulesOn`) and 11.8 pins their number; they run again, and §11 is re-aimed, in the
+ *    release that turns the rules on. `red:maswali-claims` holds the plants aimed at them (`whenRulesOn` in the anchors).
+ * ⭐ The suite runs at production's ceiling, ACTIVE (S6-LINT 6); §10 and §11 set the others themselves.
  * Each refusal is shown beside a text that passes, so no check here can pass by being blind. ⛔ §1–§4 hold no backslash
  * (an editing tool decodes them): patterns are character classes and characters are built from their codes.
  */
@@ -100,8 +110,9 @@ const LOADER = await import("../src/app/admin/campaigns/new/composer-loader.ts")
 const W = await import("./marketing-engine/engine-world.mts");
 // U13 · a suite that drives a send path hands it a FIXED window (`test:marketing-window` W6).
 const { ALWAYS_OPEN } = await import("./lib/send-window.mts");
-// ⭐ S6-LINT 6 · Millionea's ceiling as production runs it since 2026-10-23: ACTIVE, so every server door hands the untagged
-// rules in for a campaign not tagged Millionea (`untaggedRulesFor`). §10 sets the other ceilings itself and puts this back.
+// ⭐ S6-LINT 6 · Millionea's ceiling as production runs it since 2026-10-23: ACTIVE. Every server door asks the one decision
+// (`untaggedRulesFor`) for a campaign not tagged Millionea — which, while the untagged rules are off (S6-SHIP 5, below), hands
+// none in. §10 and §11 set the other ceilings themselves and put this back.
 process.env.FEATURE_MILLIONEA = "ACTIVE";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -109,6 +120,20 @@ let pass = 0, fail = 0;
 const ok = (label: string, cond: boolean, detail = "") => {
   if (cond) pass++; else fail++;
   console.log(`${cond ? "PASS" : "FAIL"} ${label}${detail ? ` — ${detail}` : ""}`);
+};
+/**
+ * ⛔ S6-SHIP 5 · THE LEAD'S RULING OF 2026-10-23: the untagged rules are OFF in this release (`MILLIONEA_UNTAGGED_RULES_ON`,
+ * `millionea-untagged.ts`) — no door is handed them, whatever the ceiling. A check that needs a DOOR to hand them in runs
+ * only while they are on; while they are off it prints an OFF line and is counted, and §11 proves each door's classic path
+ * exactly as before the lint instead (11.0 pins how many are held). The rules themselves — §1, §2, §7 and §8 hand them to
+ * the composer directly — are checked either way.
+ */
+const RULES_ON = UNT.MILLIONEA_UNTAGGED_RULES_ON === true;
+let offHeld = 0;
+const whenRulesOn = (label: string, cond: boolean, detail = "") => {
+  if (RULES_ON) { ok(label, cond, detail); return; }
+  offHeld++;
+  console.log(`OFF  ${label} — runs while the untagged rules are on; the lead's ruling of 2026-10-23 holds them off (§11)`);
 };
 const J = (x: unknown) => JSON.stringify(x);
 const LF = String.fromCharCode(10);
@@ -938,7 +963,7 @@ console.log(`${LF}§4 · the doors — the screen and the save's verdict, a send
     saved.ok && created.length === before + 1 && row?.name === MLN && row?.bodySw === SW1, J(saved));
   const askedBefore = asked;
   const untaggedS = await save("Derby week", STALE, async () => OPEN);
-  ok("4.4 · ⭐ THE SAVE · an untagged campaign in Millionea's words is refused in words — and no week is read for it",
+  whenRulesOn("4.4 · ⭐ THE SAVE · an untagged campaign in Millionea's words is refused in words — and no week is read for it",
     !untaggedS.ok && untagged(String(untaggedS.error)) && asked === askedBefore, J(untaggedS));
   const plainS = await save("Derby week", "50pick: Habari, mechi kubwa leo.", async () => OPEN);
   ok("4.4 · control · THE SAVE · a plain campaign saves exactly as before, and no week is read for it", plainS.ok && asked === askedBefore, J(plainS));
@@ -974,7 +999,7 @@ console.log(`${LF}§4 · the doors — the screen and the save's verdict, a send
   const t2 = await tryTest("cmp_mln_claims_t1", async () => { throw new Error("the week could not be read (fixture)"); });
   ok("4.5 · ⛔ THE TEST SEND · a week that cannot be read refuses it", !t2.ok && t2.reason === "template_invalid" && t2.error === claims.MILLIONEA_FACTS_UNREAD, J(t2));
   const t3 = await tryTest("cmp_mln_claims_t2", async () => OPEN);
-  ok("4.5 · ⭐ THE TEST SEND · an untagged draft saved before the lint is refused with that reason",
+  whenRulesOn("4.5 · ⭐ THE TEST SEND · an untagged draft saved before the lint is refused with that reason",
     !t3.ok && t3.reason === "template_invalid" && untagged(String(t3.error)), J(t3));
   const t4 = await tryTest("cmp_mln_claims_t1", async () => OPEN);
   ok("4.5 · control · THE TEST SEND · open, at the week's fee: the template's verdict passes (the stub's missing token is the next refusal)",
@@ -1020,7 +1045,7 @@ console.log(`${LF}§4 · the doors — the screen and the save's verdict, a send
     e1.r.kind === "paused" && e1.r.reason === "template_invalid" && e1.detail === claims.MILLIONEA_NOT_LIVE && e1.wire.calls === 0,
     J({ r: e1.r, detail: e1.detail, calls: e1.wire.calls }));
   const e2 = await slice(await running("Derby week", STALE), { millioneaFacts: async () => OPEN });
-  ok("4.6 · ⭐ THE REAL SEND · an untagged campaign saved before the lint and STARTED after its first run pauses at its first slice with that reason — nothing goes out unchecked",
+  whenRulesOn("4.6 · ⭐ THE REAL SEND · an untagged campaign saved before the lint and STARTED after its first run pauses at its first slice with that reason — nothing goes out unchecked",
     e2.r.kind === "paused" && e2.r.reason === "template_invalid" && e2.detail.startsWith(UNT.MILLIONEA_UNTAGGED) && e2.wire.calls === 0,
     J({ r: e2.r, detail: e2.detail, calls: e2.wire.calls }));
   const e3 = await slice(await running(MLN, SW1), { millioneaFacts: undefined });
@@ -1092,7 +1117,7 @@ console.log(`${LF}§4 · the doors — the screen and the save's verdict, a send
     f1.r.kind === "sent" && f1.wire.sent.length === 1 && f1.wire.sent[0]?.body === ROLLOUT && f1.detail === "", J({ r: f1.r, sent: f1.wire.sent.map((m: any) => m.body) }));
   const preRow: any = await db.smsCampaign.find(pre);
   const card = LIVE.preRulesFlagOf([{ action: LINT.CAMPAIGN_FLAGGED_ACTION, createdAt: new Date().toISOString(), payload: { detail: f1.flagged } } as any], preRow);
-  ok("4.8 · ⭐ rule 6 · …and it is FLAGGED: one SYSTEM row with what the rules would refuse, which its status card says while it sends, with what binds it",
+  whenRulesOn("4.8 · ⭐ rule 6 · …and it is FLAGGED: one SYSTEM row with what the rules would refuse, which its status card says while it sends, with what binds it",
     f1.flagged.startsWith(UNT.MILLIONEA_UNTAGGED) && typeof card === "string" && card.includes(f1.flagged)
       && card.includes("They apply if it is paused and resumed, and to any copy made of it."), J({ flagged: f1.flagged, card }));
   // ⭐ Round 5 (LOW 9) · what binds it is only what the code allows, proven on the RUNNING campaign itself: it can be neither
@@ -1108,12 +1133,12 @@ console.log(`${LF}§4 · the doors — the screen and the save's verdict, a send
   ok("4.8e · ⭐ round 5 (LOW 9) · the running campaign itself can be neither saved nor test-sent: each is refused as no longer a draft",
     !liveSave.ok && liveSave.reason === "not_draft" && !liveTest.ok && liveTest.reason === "not_draft", J({ liveSave, liveTest }));
   const copied = await save("Derby promo", ROLLOUT, async () => OPEN);
-  ok("4.8 · ⭐ rule 6 · …a copy of it (a new draft, through the one save) is refused in the rule's words — judged in full",
+  whenRulesOn("4.8 · ⭐ rule 6 · …a copy of it (a new draft, through the one save) is refused in the rule's words — judged in full",
     !copied.ok && untagged(String(copied.error)), J(copied));
   await moveTo(pre, "RUNNING", "PAUSED", { pausedAt: new Date().toISOString(), stopReason: "officer_paused" }, null);
   await moveTo(pre, "PAUSED", "RUNNING", { stopReason: null }, null);
   const f2 = await slice(pre, { millioneaFacts: async () => OPEN });
-  ok("4.8 · ⭐ rule 6 · …and a restart binds it: its next slice pauses template_invalid in the rule's words, nothing on the wire",
+  whenRulesOn("4.8 · ⭐ rule 6 · …and a restart binds it: its next slice pauses template_invalid in the rule's words, nothing on the wire",
     f2.r.kind === "paused" && f2.r.reason === "template_invalid" && f2.detail.startsWith(UNT.MILLIONEA_UNTAGGED) && f2.wire.calls === 0,
     J({ r: f2.r, detail: f2.detail }));
   const restarted = await db.smsCampaign.find(pre);
@@ -1138,7 +1163,7 @@ console.log(`${LF}§4 · the doors — the screen and the save's verdict, a send
   const outgoing = await seated(await running("Derby outgoing", ROLLOUT, null, overlapAt));
   const g1 = await slice(prep, { millioneaFacts: async () => OPEN });
   const g2 = await slice(outgoing, { millioneaFacts: async () => OPEN });
-  ok("4.8g · ⭐ round 5 (LOW 10) · a classic campaign preparing its list at the stamp, and one started by the outgoing build, each send their message — flagged, never paused",
+  whenRulesOn("4.8g · ⭐ round 5 (LOW 10) · a classic campaign preparing its list at the stamp, and one started by the outgoing build, each send their message — flagged, never paused",
     [g1, g2].every((x) => x.r.kind === "sent" && x.wire.sent.length === 1 && x.wire.sent[0]?.body === ROLLOUT && x.detail === "" && x.flagged.startsWith(UNT.MILLIONEA_UNTAGGED)),
     J([g1, g2].map((x) => ({ r: x.r, detail: x.detail }))));
   // ⭐ Round 5 (MEDIUM 4b) · THE STAMP UNREAD: a classic campaign that only Millionea's rules would stop WAITS for it (a signal
@@ -1147,11 +1172,11 @@ console.log(`${LF}§4 · the doors — the screen and the save's verdict, a send
   const unreadPre = await seated(await running("Derby unread", ROLLOUT, null, preAt));
   const k1 = await slice(unreadPre, { millioneaFacts: async () => OPEN, millioneaLintEpoch: async () => null });
   const unreadRow: any = await db.smsCampaign.find(unreadPre);
-  ok("4.8h · ⭐ round 5 (MEDIUM 4b) · with the stamp unread, a classic campaign only Millionea's rules would stop WAITS — never a pause, nothing on the wire",
+  whenRulesOn("4.8h · ⭐ round 5 (MEDIUM 4b) · with the stamp unread, a classic campaign only Millionea's rules would stop WAITS — never a pause, nothing on the wire",
     k1.r.kind === "waiting" && k1.r.reason === "rules_unreadable" && k1.wire.calls === 0 && k1.detail === "" && unreadRow?.status === "RUNNING",
     J({ r: k1.r, status: unreadRow?.status }));
   const k2 = await slice(unreadPre, { millioneaFacts: async () => OPEN });
-  ok("4.8h · …and once the stamp reads, it sends as a campaign sending since before the rules: flagged",
+  whenRulesOn("4.8h · …and once the stamp reads, it sends as a campaign sending since before the rules: flagged",
     k2.r.kind === "sent" && k2.wire.sent.length === 1 && k2.flagged.startsWith(UNT.MILLIONEA_UNTAGGED), J({ r: k2.r }));
   const broken = await seated(await running("Derby broken", "Habari, soka leo.", null, preAt));
   const mlnUnread = await seated(await running("Millionea unread", SW1, null, preAt));
@@ -1321,8 +1346,12 @@ console.log(`${LF}§6 · holders only (OD-25) — the one service SMS, and anyth
   }
   const naming = senders.filter((f) => /millionea/i.test(decomment(readFileSync(join(ROOT, f), "utf8")))).sort();
   const DOORS = ["src/lib/server/marketing/campaign-test-send.ts", "src/lib/server/marketing/engine.ts"];
-  const NAMING = [...DOORS, "src/lib/server/maswali-winner-sms.ts"].sort();
-  ok("6.2 · ⭐ of every src/ file that sends an SMS, the only ones whose code names Millionea are the winner's service SMS and the two campaign doors (they name it only to apply its claims gate)",
+  // ⭐ S6-SHIP 5 · the sign-in service sends the one-time codes, and since S6-INT 30 names Millionea to stamp, at
+  // registration, the Terms version of the rendering the page showed (`termsVersionFor(millioneaWordingPublished())`) — never
+  // in an SMS: 6.2e pins its two lines.
+  const AUTH = "src/lib/server/auth-service.ts";
+  const NAMING = [...DOORS, AUTH, "src/lib/server/maswali-winner-sms.ts"].sort();
+  ok("6.2 · ⭐ of every src/ file that sends an SMS, the only ones whose code names Millionea are the winner's service SMS, the two campaign doors (they name it only to apply its claims gate) and the sign-in service (only to stamp the Terms version at registration)",
     all.length > 500 && senders.includes("src/lib/server/sms.ts") && senders.includes("src/lib/server/maswali-winner-sms.ts")
       && J(naming) === J(NAMING), `${senders.length} senders of ${all.length} files · naming: ${naming.join(", ")}`);
   ok("6.2b · control · the decommenter keeps code and drops comments", /millionea/i.test(decomment("const a = 'Millionea'; // x")) && !/millionea/i.test(decomment("const a = 1; // Millionea")));
@@ -1362,6 +1391,12 @@ console.log(`${LF}§6 · holders only (OD-25) — the one service SMS, and anyth
     J(doorCode.map((c) => mentions(c).length)) === J([10, 14]) && doorCode.every((c) => outsideGate(c).length === 0),
     J(doorCode.map((c) => ({ mentions: mentions(c).length, outside: outsideGate(c) }))));
   ok("6.2d · control · a line planted outside the gate is caught", J(outsideGate(`${doorCode[1]}${LF}const note = "Millionea wiki hii";`)) === J(['const note = "Millionea wiki hii";']));
+  // ⭐ S6-SHIP 5 · the sign-in service names Millionea on exactly two lines of code — the rollout's import and the Terms
+  // version its registration stamps — so no code of it can say anything about Millionea in an SMS (its control: a planted line).
+  const AUTH_LINES = ['import { millioneaWordingPublished } from "@/lib/millionea-rollout";', "acceptedTermsVersion: termsVersionFor(millioneaWordingPublished()),"];
+  const authCode = decomment(readFileSync(join(ROOT, AUTH), "utf8").split(CR).join(""));
+  ok("6.2e · S6-SHIP 5 · …and the sign-in service names it on exactly two lines of code: the rollout's import and the Terms version its registration stamps",
+    J(mentions(authCode)) === J(AUTH_LINES) && J(mentions(`${authCode}${LF}const sms = "Millionea wiki hii";`)) !== J(AUTH_LINES), J(mentions(authCode)));
   const line = { userId: "u", weekId: "w", weekCode: "MLN-2026-W44", tickets: 1, paidTzs: 870_000, phone: "+255700000000", held: false, cannotSignIn: false } as const;
   const LINK = /https?:|www\.|\.tz\b|\.com\b|\/\w/i;
   const bodies = (["EN", "SW", "ZH"] as const).map((locale) => ({ locale, paid: winnerSmsBody({ ...line, locale }), held: winnerSmsBody({ ...line, locale, held: true }) }));
@@ -1822,12 +1857,12 @@ const COMPOSER_ROOT = ABS("src/app/admin/campaigns/new/composer-client.tsx");
   const draftOf = (bodySw: string, bodyEn = "") => ({ name: "Derby promo", bodySw, bodyEn, nameFallbackSw: "Rafiki", nameFallbackEn: "Friend" });
   const screen = validateCampaignTemplate(draftOf(SIGNAL_BODY), "");
   const atSave = validateCampaignTemplate(draftOf(SIGNAL_BODY), "", { untagged: UNT.untaggedRulesFor("Derby promo") });
-  ok("9.2 · ⭐ S6-LINT 1 · the live counter (no rules handed in) refuses nothing in an untagged body that speaks Millionea's words, while the save's verdict refuses it in the rule's words",
+  whenRulesOn("9.2 · ⭐ S6-LINT 1 · the live counter (no rules handed in) refuses nothing in an untagged body that speaks Millionea's words, while the save's verdict refuses it in the rule's words",
     screen.ok && Object.keys(screen.problems).length === 0 && !atSave.ok && (atSave.problems.bodySw ?? []).some(untagged),
     J({ screen: screen.problems, save: atSave.problems }));
   const hanScreen = validateCampaignTemplate(draftOf("50pick: Habari, soka leo.", HAN_BODY), "");
   const hanSave = validateCampaignTemplate(draftOf("50pick: Habari, soka leo.", HAN_BODY), "", { untagged: UNT.untaggedRulesFor("Derby promo") });
-  ok("9.2 · S6-LINT 1 · …and a Chinese line: the counter says only what it said before (the GSM alphabet's sentence), the save adds the Chinese-characters rule",
+  whenRulesOn("9.2 · S6-LINT 1 · …and a Chinese line: the counter says only what it said before (the GSM alphabet's sentence), the save adds the Chinese-characters rule",
     (hanScreen.problems.bodyEn ?? []).length > 0 && !(hanScreen.problems.bodyEn ?? []).includes(claims.CAMPAIGN_HAN_SCRIPT)
       && J(hanSave.problems.bodyEn) === J([...(hanScreen.problems.bodyEn ?? []), claims.CAMPAIGN_HAN_SCRIPT]),
     J({ screen: hanScreen.problems.bodyEn, save: hanSave.problems.bodyEn }));
@@ -1839,11 +1874,13 @@ const COMPOSER_ROOT = ABS("src/app/admin/campaigns/new/composer-client.tsx");
   const ATTACHES = "untaggedRules: untaggedRulesFor(c.name),";
   const doors = ["src/lib/server/marketing/campaign-test-send.ts", "src/lib/server/marketing/engine.ts", "src/app/admin/campaigns/new/composer-loader.ts"];
   const draft9 = code9("src/lib/server/marketing/campaign-draft.ts");
-  ok("9.3 · S6-LINT 1 · the wiring · the one decision answers the untagged rules for an untagged name and none for a tagged one (under the ACTIVE ceiling: §10 below it); the save hands them to its verdict; each send and preview door's template carries them",
-    UNT.untaggedRulesFor("Derby promo") === UNT.untaggedCampaignProblems && UNT.untaggedRulesFor("Millionea promo") === undefined
-      && draft9.split("const untagged = untaggedRulesFor(fields.name);").length === 2 && draft9.split('deps.validate(fields, "", { untagged })').length === 2
+  ok("9.3 · S6-LINT 1 · the wiring · the save asks the one decision and hands its answer to its verdict; each send and preview door's template carries the one decision's answer",
+    draft9.split("const untagged = untaggedRulesFor(fields.name);").length === 2 && draft9.split('deps.validate(fields, "", { untagged })').length === 2
       && doors.every((rel) => code9(rel).split(ATTACHES).length === 2),
     J(doors.map((rel) => code9(rel).split(ATTACHES).length - 1)));
+  // S6-SHIP 5 · what the decision answers at the ACTIVE ceiling while the rules are on; while they are off, §11.1.
+  whenRulesOn("9.3a · S6-LINT 1 · the one decision answers the untagged rules for an untagged name and none for a tagged one (under the ACTIVE ceiling: §10 below it)",
+    UNT.untaggedRulesFor("Derby promo") === UNT.untaggedCampaignProblems && UNT.untaggedRulesFor("Millionea promo") === undefined);
   // ⭐ 9.3b · …and the composer's typed-test preview, which the server renders, judges a saved untagged draft as its test send
   // will: one that speaks Millionea's words is not offered, in the rule's words — a plain one is, with its preview.
   const previewRow = (bodySw: string): any => ({
@@ -1853,7 +1890,7 @@ const COMPOSER_ROOT = ABS("src/app/admin/campaigns/new/composer-client.tsx");
   const ADULT = { outreachOpen: true, adult: { text: "Nina miaka 18 au zaidi.", v: 1 } };
   const refusedView = LOADER.composeTypedView(previewRow(SIGNAL_BODY), ADULT);
   const plainView = LOADER.composeTypedView(previewRow("50pick: Habari, soka leo."), ADULT);
-  ok("9.3b · S6-LINT 1 · the composer's typed-test preview judges a saved untagged draft as its test send will: Millionea's words refused in the rule's words, a plain draft offered with its preview",
+  whenRulesOn("9.3b · S6-LINT 1 · the composer's typed-test preview judges a saved untagged draft as its test send will: Millionea's words refused in the rule's words, a plain draft offered with its preview",
     !refusedView.allowed && untagged(String(refusedView.why)) && refusedView.preview === null
       && plainView.allowed && plainView.preview?.SW === "50pick: Habari, soka leo.",
     J({ refused: [refusedView.allowed, refusedView.why], plain: [plainView.allowed, plainView.preview] }));
@@ -2021,7 +2058,7 @@ console.log(`${LF}§10 · ⭐ S6-LINT 6 — nothing of the lint at boot; below t
     // ⭐ 10.3c · at the ACTIVE ceiling the composer's preview judges with the untagged rules — the draft that speaks
     // Millionea's words is not offered, in the rule's words — and writes nothing: a page that shows a verdict is no door that stamps.
     const viewActive = LOADER.composeTypedView(previewRow10(SPEAKS), ADULT10);
-    ok("10.3c · ⭐ S6-LINT 6 · at the ACTIVE ceiling the composer's preview refuses the draft in the rule's words and writes no stamp",
+    whenRulesOn("10.3c · ⭐ S6-LINT 6 · at the ACTIVE ceiling the composer's preview refuses the draft in the rule's words and writes no stamp",
       !viewActive.allowed && untagged(String(viewActive.why)) && stampOf() === undefined, J({ view: [viewActive.allowed, viewActive.why], stamp: stampOf() }));
     // ⭐ 10.4 · at the ACTIVE ceiling, the FIRST door that judges a campaign not tagged Millionea writes the stamp — this
     // process's start (§4.8b) — whichever it is: the test send, the save, the engine's slice (each from an unwritten stamp).
@@ -2034,11 +2071,157 @@ console.log(`${LF}§10 · ⭐ S6-LINT 6 — nothing of the lint at boot; below t
     clearStamp();
     const firstSlice = await slice10(await running10("Derby promo", PLAIN10));
     const byFirstSlice = stampOf();
-    ok("10.4a · ⭐ S6-LINT 6 · at the ACTIVE ceiling the first door that judges a campaign not tagged Millionea writes the stamp, this process's start: the test send",
+    whenRulesOn("10.4a · ⭐ S6-LINT 6 · at the ACTIVE ceiling the first door that judges a campaign not tagged Millionea writes the stamp, this process's start: the test send",
       firstTest.reason === "token_unavailable" && isProcessStart(byFirstTest), J({ test: firstTest.reason, byFirstTest }));
-    ok("10.4b · ⭐ S6-LINT 6 · …the save", firstSave.ok && isProcessStart(byFirstSave), J({ save: firstSave.ok, byFirstSave }));
-    ok("10.4c · ⭐ S6-LINT 6 · …the engine's slice, which sends the plain campaign as written",
+    whenRulesOn("10.4b · ⭐ S6-LINT 6 · …the save", firstSave.ok && isProcessStart(byFirstSave), J({ save: firstSave.ok, byFirstSave }));
+    whenRulesOn("10.4c · ⭐ S6-LINT 6 · …the engine's slice, which sends the plain campaign as written",
       firstSlice.r.kind === "sent" && firstSlice.wire.sent[0]?.body === PLAIN10 && isProcessStart(byFirstSlice), J({ r: firstSlice.r, byFirstSlice }));
+
+    // ══ §11 · S6-SHIP 5 · THE LEAD'S RULING OF 2026-10-23 — THE UNTAGGED RULES ARE OFF IN THIS RELEASE ══
+    // Production runs Millionea at the ACTIVE ceiling, and the claims lint judges only campaigns tagged Millionea: a campaign
+    // not tagged Millionea — its Swahili and English bodies speaking Millionea's words, or a line in Chinese characters — meets
+    // no Millionea rule at any door, exactly as before the lint (the verdict before the lint is the composer's own, with no
+    // rule handed in), and the rules' stamp is never written. A campaign tagged Millionea is still judged.
+    console.log(`${LF}§11 · ⭐ S6-SHIP 5 — the untagged rules are off: at the ACTIVE ceiling a campaign not tagged Millionea meets no Millionea rule at any door, in Swahili, English or Chinese, exactly as before the lint; a tagged one is still judged`);
+    const decisions = ([null, "WITHDRAWN", "STAFF_PREVIEW", "ACTIVE"] as const).map((c) => {
+      setCeiling(c);
+      return { ceiling: c ?? "none", classic: UNT.untaggedRulesFor("Derby promo") === undefined, tagged: UNT.untaggedRulesFor("Millionea promo") === undefined };
+    });
+    setCeiling("ACTIVE");
+    ok("11.1 · ⭐ S6-SHIP 5 · the one decision hands no door the untagged rules: for a campaign not tagged Millionea under every ceiling (none, WITHDRAWN, STAFF_PREVIEW, ACTIVE), and for a tagged one",
+      decisions.every((d) => d.classic && d.tagged), J(decisions));
+    const SPEAKS_EN = "50pick: Win up to TZS 2,000,000 on Up & Down today!";
+    const HAN_EN = `50pick: ${cc(0x4F60, 0x597D)}, derby tonight.`;
+    ok("11.1 · control · were they handed in, the untagged rules would refuse each body below: Millionea's words in Swahili and in English, and the Chinese line",
+      [SPEAKS, SPEAKS_EN].every((t) => UNT.untaggedCampaignProblems(t).some(untagged)) && UNT.untaggedCampaignProblems(HAN_EN).includes(claims.CAMPAIGN_HAN_SCRIPT),
+      J([SPEAKS, SPEAKS_EN, HAN_EN].map((t) => UNT.untaggedCampaignProblems(t))));
+    const fields11 = (name: string, bodySw: string, bodyEn: string) => ({ name, bodySw, bodyEn, nameFallbackSw: "", nameFallbackEn: "" });
+    /** The verdict before the lint: the one verdict with no rule handed in — the composer's own live counter's. */
+    const before11 = (name: string, bodySw: string, bodyEn: string) => validateCampaignTemplate(fields11(name, bodySw, bodyEn), "");
+    /** A send's render before the lint: the stored template with no rule handed in, as a door renders it for a book contact. */
+    const render11 = (bodySw: string, bodyEn: string, variant: "SW" | "EN") => renderForRecipient(
+      { bodySw, bodyEn, nameFallbackSw: "", nameFallbackEn: "", sourcePhrase: "", product: null } as any, { variant, name: null, token: TOKEN, origin: "book" });
+    const save11 = (name: string, bodySw: string, bodyEn: string): Promise<any> =>
+      DRAFT.saveCampaignDraft({ id: null, draftRevision: null, ...fields11(name, bodySw, bodyEn), audience: null }, OFFICER10, { viewerReads: true }, {
+        ...DRAFT.CAMPAIGN_DRAFT_DEPS,
+        campaigns: { find: async () => null, create: async (row: any) => { rows10.push(row); return row; }, update: async () => null },
+        millioneaFacts: async () => OPEN,
+        audit: async () => ({}),
+      } as any);
+    const draft11 = (name: string, bodySw: string, bodyEn: string | null): string => {
+      const id = `cmp_s6ship_t${W.nextRun()}`;
+      drafts10.set(id, { id, name, status: "DRAFT", bodySw, bodyEn, nameFallbackSw: null, nameFallbackEn: null, sourcePhrase: null, draftRevision: 0 });
+      return id;
+    };
+    const test11 = (id: string, variant: "SW" | "EN"): Promise<any> => TEST.sendCampaignTest({ campaignId: id, variant }, OFFICER10, {
+      ...TEST.CAMPAIGN_TEST_DEPS,
+      campaigns: { find: async (cid: string) => drafts10.get(cid) ?? null },
+      users: { findById: async () => OFFICER10_ROW },
+      rate: async () => ({ allowed: true, remaining: 9, retryAfterSec: 0 }),
+      provider: () => "console",
+      rail: () => null,
+      liveSwitch: async () => ({ state: "closed", why: "absent" }),
+      window: ALWAYS_OPEN,
+      audit: () => undefined,
+      // ⛔ No token is ever made here: a test past the template's verdict stops at the next step, `token_unavailable`.
+      ensureToken: async () => null,
+      millioneaFacts: async () => OPEN,
+    } as any);
+    /** A campaign RUNNING since now, one consenting player seated per language given — so each body is measured on the wire. */
+    const running11 = async (name: string, bodySw: string, bodyEn: string | null, locales: readonly ("SW" | "EN")[]): Promise<string> => {
+      const at = new Date().toISOString();
+      const id = `cmp_s6ship_e${W.nextRun()}`;
+      await db.smsCampaign.create({
+        id, name, status: "DRAFT", bodySw, bodyEn, codingSw: sizeSms(bodySw).encoding, segmentsSw: 1,
+        codingEn: bodyEn === null ? null : sizeSms(bodyEn).encoding, segmentsEn: bodyEn === null ? null : 1,
+        nameFallbackSw: null, nameFallbackEn: null, sourcePhrase: null, draftRevision: 0, confirmTier: null,
+        audienceFilter: '{"consent":["GIVEN"]}', audienceCount: null, audienceWatermark: null, estimateSegments: null,
+        estimateTzs: null, budgetTzs: null, enqueueCursor: null, enqueuedAt: null, stopReason: null, createdBy: OFFICER10,
+        confirmedBy: null, confirmedAt: null, startedAt: null, pausedAt: null, finishedAt: null, createdAt: at, updatedAt: at,
+      } as any);
+      await move10(id, "DRAFT", "CONFIRMED", {
+        audienceCount: locales.length, confirmTier: "TYPED", audienceWatermark: null, estimateSegments: locales.length,
+        estimateTzs: 6 * locales.length, budgetTzs: 10_000, confirmedBy: OFFICER10, confirmedAt: at,
+      }, 0, at);
+      await move10(id, "CONFIRMED", "PREPARING", { startedAt: at }, null, at);
+      await move10(id, "PREPARING", "RUNNING", { enqueuedAt: at, enqueueCursor: "done" }, null, at);
+      const seats: { id: string; key: string; userId: string }[] = [];
+      for (const locale of locales) {
+        const n = W.nextRun();
+        const k = W.keyIn("71", 4_600_000 + n);
+        const p = `usr_s6ship_p${n}`;
+        await W.player(p, k, { locale } as any);
+        seats.push({ id: `rcp_s6ship_${n}_1`, key: k, userId: p });
+      }
+      await W.seat(id, seats);
+      return id;
+    };
+    const slice11 = async (id: string) => {
+      const wire = W.stubWire();
+      const audits: any[] = [];
+      const r: any = await ENGINE.runCampaignSlice(id, W.engineDeps(W.freshState(), wire, {
+        gate: W.CLEARS_ALL, audit: (e: any) => { audits.push(e); }, millioneaFacts: async () => OPEN,
+      } as any));
+      const paused = audits.find((e) => e.action === ENGINE.ENGINE_PAUSED_ACTION && e.targetId === id);
+      return { r, wire, detail: String(paused?.payload?.detail ?? ""), flagged: audits.some((e) => e.action === LINT.CAMPAIGN_FLAGGED_ACTION && e.targetId === id) };
+    };
+    const previewRow11 = (bodySw: string, bodyEn: string): any => ({
+      id: "cmp_s6ship_preview11", name: "Derby promo", status: "DRAFT", bodySw, bodyEn, nameFallbackSw: null, nameFallbackEn: null,
+      sourcePhrase: null, draftRevision: 1,
+    });
+    clearStamp();
+    // ⭐ 11.2 · THE SAVE
+    const enBefore = before11("Derby promo", SPEAKS, SPEAKS_EN);
+    const enSaved = await save11("Derby promo", SPEAKS, SPEAKS_EN);
+    const enRow = rows10[rows10.length - 1];
+    const zhBefore = before11("Derby promo", PLAIN10, HAN_EN);
+    const zhSaved = await save11("Derby promo", PLAIN10, HAN_EN);
+    const zhVerdict = zhBefore.problems.bodyEn ?? [];
+    ok("11.2 · ⭐ S6-SHIP 5 · THE SAVE at the ACTIVE ceiling · a campaign not tagged Millionea whose Swahili and English bodies speak Millionea's words is saved as typed, with the verdict it had before the lint",
+      enBefore.ok && enSaved.ok && enRow?.bodySw === SPEAKS && enRow?.bodyEn === SPEAKS_EN, J({ before: enBefore.problems, saved: enSaved }));
+    ok("11.2 · ⭐ S6-SHIP 5 · THE SAVE · …and one with a Chinese line is refused exactly as before the lint: the GSM alphabet's own sentence, and no Millionea rule's",
+      !zhBefore.ok && zhVerdict.length > 0 && !zhVerdict.includes(claims.CAMPAIGN_HAN_SCRIPT) && millioneaIn(zhVerdict).length === 0
+        && !zhSaved.ok && zhSaved.reason === "invalid" && J(zhSaved.problems) === J(zhBefore.problems),
+      J({ before: zhBefore.problems, saved: zhSaved.problems }));
+    // ⭐ 11.3 · THE TEST SEND
+    const zhRender = render11(PLAIN10, HAN_EN, "EN");
+    const enDraft = draft11("Derby promo", SPEAKS, SPEAKS_EN);
+    const tSw = await test11(enDraft, "SW");
+    const tEn = await test11(enDraft, "EN");
+    const tZh = await test11(draft11("Derby promo", PLAIN10, HAN_EN), "EN");
+    ok("11.3 · ⭐ S6-SHIP 5 · THE TEST SEND at the ACTIVE ceiling · both languages of a campaign not tagged Millionea that speaks Millionea's words pass the template's verdict (the stub's missing token is the next refusal)",
+      tSw.reason === "token_unavailable" && tEn.reason === "token_unavailable", J({ sw: tSw.reason, en: tEn.reason }));
+    ok("11.3 · ⭐ S6-SHIP 5 · THE TEST SEND · …and its Chinese line is refused exactly as before the lint, in the render's own first sentence",
+      !zhRender.ok && !tZh.ok && tZh.reason === "template_invalid" && tZh.error === zhRender.problems[0] && tZh.error !== claims.CAMPAIGN_HAN_SCRIPT,
+      J({ test: tZh, before: zhRender.problems }));
+    // ⭐ 11.4 · THE REAL SEND
+    const sEn = await slice11(await running11("Derby promo", SPEAKS, SPEAKS_EN, ["SW", "EN"]));
+    const sentBodies = sEn.wire.sent.map((m: any) => m.body).sort();
+    const sZh = await slice11(await running11("Derby promo", PLAIN10, HAN_EN, ["SW"]));
+    ok("11.4 · ⭐ S6-SHIP 5 · THE REAL SEND at the ACTIVE ceiling · a running campaign not tagged Millionea that speaks Millionea's words sends each recipient its own language's message exactly as written, unflagged",
+      sEn.r.kind === "sent" && J(sentBodies) === J([SPEAKS, SPEAKS_EN].sort()) && sEn.detail === "" && !sEn.flagged, J({ r: sEn.r, sent: sentBodies }));
+    ok("11.4 · ⭐ S6-SHIP 5 · THE REAL SEND · …and one with a Chinese line pauses template_invalid in the render's own first sentence, exactly as before the lint — nothing on the wire",
+      sZh.r.kind === "paused" && sZh.r.reason === "template_invalid" && sZh.detail === zhRender.problems[0] && sZh.wire.calls === 0 && !sZh.flagged,
+      J({ r: sZh.r, detail: sZh.detail }));
+    // ⭐ 11.5 · THE PREVIEW (the composer's typed test, which the server renders)
+    const vEn = LOADER.composeTypedView(previewRow11(SPEAKS, SPEAKS_EN), ADULT10);
+    ok("11.5 · ⭐ S6-SHIP 5 · THE PREVIEW at the ACTIVE ceiling · the composer offers a draft not tagged Millionea that speaks Millionea's words, with its preview in both languages",
+      vEn.allowed && vEn.preview?.SW === SPEAKS && vEn.preview?.EN === SPEAKS_EN, J({ allowed: vEn.allowed, why: vEn.why, preview: vEn.preview }));
+    // ⭐ 11.6 · THE STAMP
+    ok("11.6 · ⭐ S6-SHIP 5 · none of these doors wrote the rules' stamp: it is never written while the untagged rules are off", stampOf() === undefined, J(stampOf()));
+    // ⭐ 11.7 · A CAMPAIGN TAGGED MILLIONEA IS STILL JUDGED
+    const CLAIM = "50pick: Shinda Millionea kwa uhakika leo!";
+    const tagSaved = await save11("Millionea promo", CLAIM, "");
+    const tagTest = await test11(draft11("Millionea promo", CLAIM, null), "SW");
+    const tagSlice = await slice11(await running11("Millionea promo", CLAIM, null, ["SW"]));
+    const tagGood = await save11("Millionea promo", SW1, EN1);
+    ok("11.7 · ⭐ S6-SHIP 5 · a campaign tagged Millionea is still judged at the ACTIVE ceiling: its claim refused at the save, the test send and the slice — nothing on the wire — while the approved wordings save",
+      !tagSaved.ok && familiesOf(tagSaved.problems?.bodySw ?? []).includes("win") && !tagTest.ok && tagTest.reason === "template_invalid"
+        && tagSlice.r.kind === "paused" && tagSlice.r.reason === "template_invalid" && tagSlice.wire.calls === 0 && tagGood.ok,
+      J({ save: tagSaved.error, test: tagTest.reason, slice: [tagSlice.r, tagSlice.detail], good: tagGood.ok }));
+    // ⭐ 11.8 · what the OFF lines above hold: exactly the door checks that need the untagged rules handed in.
+    ok("11.8 · S6-SHIP 5 · while the untagged rules are off, exactly the seventeen door checks that need them handed in are held (the OFF lines above) — and none while they are on",
+      RULES_ON ? offHeld === 0 : offHeld === 17, `${offHeld} held`);
   } finally {
     g.__50PICK_MILLIONEA_LINT_EPOCH = stampKept;
     setCeiling(ceilingKept);
@@ -2055,8 +2238,10 @@ console.log(`${LF}§10 · ⭐ S6-LINT 6 — nothing of the lint at boot; below t
  * with §8 (finding 9, S6-INT 16), 639.
  * ⭐ S6-LINT · re-pinned the same way: with §9.0–9.3b (S6-LINT 1, the untagged rules the server's alone), 643; with §8
  * merged in beside it (S6-INT 16), 648; with §8.6–8.6b (S6-LINT 4, finding 9's guards each on its own), 650.
+ * ⭐ S6-SHIP 5 · with the untagged rules off (the lead's ruling of 2026-10-23): the seventeen door checks that need them are
+ * held (OFF lines, pinned by 11.8), §11's eleven checks and 6.2e added — 669, the count the green run printed.
  */
-const FLOOR = 650;
+const FLOOR = 669;
 ok(`floor · at least ${FLOOR} checks ran before this one (a suite that goes blind prints fewer)`, pass + fail >= FLOOR, `${pass + fail} ran`);
 console.log(`${LF}test:maswali-claims: ${pass} passed, ${fail} failed`);
 process.exit(fail === 0 ? 0 : 1);

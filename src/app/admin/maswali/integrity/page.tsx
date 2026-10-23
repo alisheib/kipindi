@@ -373,7 +373,7 @@ async function Content({ searchParams }: IntegrityPageProps) {
             registered on the account, at the holder's request — the usual withdrawal rules apply, and the account's own
             hold stays. Its own read: a failure takes this card only. */}
         <AdminCard title={locked ? `Winners who cannot sign in · ${locked.length.toLocaleString("en")}` : "Winners who cannot sign in"} sw="Washindi wasioweza kuingia" padding="p-0">
-          <p className="px-4 pt-3 text-body-sm text-text-tertiary">A share owed to a winner whose account is self-excluded, closed or suspended. Pay it to the number registered on the account when the holder asks: the usual withdrawal rules apply, at most {formatTzs(WITHDRAW_MAX_TZS)} a payment, and the account&apos;s own hold stays.</p>
+          <p className="px-4 pt-3 text-body-sm text-text-tertiary">A share owed to a winner whose account is self-excluded, closed or suspended. Pay it to the number registered on the account when the holder asks: the usual withdrawal rules apply, at most <span className="font-mono tabular-nums">{formatTzs(WITHDRAW_MAX_TZS)}</span> a payment, and the account&apos;s own hold stays.</p>
           <div className="px-4 pt-3 empty:hidden"><StandingAuditWarning slot="integrity:sharePayment" /></div>
           {locked === null ? <p className="p-4 text-body-sm text-danger-fg">The shares owed to winners who cannot sign in could not be read.</p>
             : locked.length === 0 ? <EmptyState title="No share is owed to a winner who cannot sign in" body="A winner whose account cannot sign in is listed here until their share is paid in full." /> : (
@@ -514,8 +514,9 @@ async function Content({ searchParams }: IntegrityPageProps) {
             <>
               <p className="text-body-sm text-text-secondary mb-3">
                 {wordings.facts.live ? null : <span className="text-warning">Millionea is not public yet, so no campaign may be about it. </span>}
-                {/* MB-47 · the campaign lint · OD-30 · no wording names a winner. */}
-                A Millionea campaign is one whose name begins with &ldquo;Millionea&rdquo;: it carries its headline&apos;s three facts and the week&apos;s own fee, and the composer refuses an amount, a win or a winner, a sum, an income, a guarantee, a rank or a chance; any other campaign that uses Millionea&apos;s words is refused until it is tagged or reworded, and no wording names a winner.
+                {/* MB-47 · the campaign lint · OD-30 · no wording names a winner · S6-SHIP 6 (the lead's ruling of 2026-10-23): the
+                    untagged rules are off in this release (`MILLIONEA_UNTAGGED_RULES_ON`), so the lint checks tagged campaigns only. */}
+                A Millionea campaign is one whose name begins with &ldquo;Millionea&rdquo;: it carries its headline&apos;s three facts and the week&apos;s own fee, and the composer refuses an amount, a win or a winner, a sum, an income, a guarantee, a rank or a chance. Only campaigns tagged as Millionea are checked against these wordings; other campaigns are not judged in this release. No wording names a winner.
                 {" "}The fee below is {wordings.facts.source === "WEEK" ? `${wordings.facts.weekCode ?? "this week"}'s own` : "the one the next week will freeze"}.
               </p>
               <ul className="space-y-2">
