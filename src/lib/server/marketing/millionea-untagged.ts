@@ -12,6 +12,10 @@
  *    door (`footer.ts`) in the campaign's context (`MillioneaComposeContext.untagged`, `CampaignTemplate.untaggedRules`).
  *    The composer's live counter runs the tagged rules alone, so a body these rules refuse is refused at the save, in their
  *    words. `test:maswali-claims` §9 holds every client module's import graph clear of this file.
+ * ⛔ ONLY UNDER THE ACTIVE CEILING (the lead's ruling 6, S6-LINT 6). `untaggedRulesFor` answers these rules only while
+ *    Millionea's ceiling (`millioneaCeiling`, the environment's) is ACTIVE; below it no door hands them in, so a campaign not
+ *    tagged Millionea is judged, saved and sent exactly as before the lint, and nothing reads or writes the rules' stamp
+ *    (`millionea-lint-epoch.ts`). `test:maswali-claims` §10 holds every door to it, under each ceiling.
  * ⭐ FINDING 9 (S6-LINT 4). The signal reader's cost grows with the square of a long run, so a body past one SMS
  *    (`CLAIMS_MAX_CHARS`) is read here by nothing: the untagged path and the reader each refuse it first, whoever calls
  *    them (`test:maswali-claims` §8).
@@ -21,6 +25,7 @@ import {
   CAMPAIGN_HAN_SCRIPT, CLAIMS_MAX_CHARS, CURRENCY, CURRENCY_SIGN, GET_BEFORE, LOOK_ALIKE_DIGITS, baseForm, campaignProductOf,
   foldWords, foldedForm, holdsHanScript, normalizeClaimText, pastOneSms, tenOfTen, type UntaggedCampaignRules,
 } from "@/lib/marketing/millionea-claims";
+import { millioneaCeiling } from "@/lib/millionea-rollout";
 
 /* ══ THE REFUSAL ═════════════════════════════════════════════════════════════════════════════════════════════════════ */
 
@@ -463,8 +468,11 @@ export const untaggedCampaignProblems: UntaggedCampaignRules = (text: string): s
 
 /**
  * ⭐ THE ONE DECISION every server door asks for a campaign's name: the untagged rules for a campaign not tagged Millionea
- * (a tagged one meets the tagged rules instead, in the composer's one door), else none.
+ * while Millionea's ceiling is ACTIVE (a tagged one meets the tagged rules instead, in the composer's one door), else none.
+ * ⛔ S6-LINT 6 (the lead's ruling 6) · below the ACTIVE ceiling — WITHDRAWN or STAFF_PREVIEW — a campaign not tagged
+ * Millionea meets no Millionea rule at any door: it is judged, saved and sent exactly as before the lint.
  */
 export function untaggedRulesFor(name: string | null | undefined): UntaggedCampaignRules | undefined {
-  return campaignProductOf(name) === "MILLIONEA" ? undefined : untaggedCampaignProblems;
+  if (campaignProductOf(name) === "MILLIONEA") return undefined;
+  return millioneaCeiling().ceiling === "ACTIVE" ? untaggedCampaignProblems : undefined;
 }

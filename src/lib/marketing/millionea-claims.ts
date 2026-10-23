@@ -20,6 +20,9 @@
  *      or reword it — and a body in Chinese characters) only where a server door hands them in
  *      (`MillioneaComposeContext.untagged`): they are the server's alone (`lib/server/marketing/millionea-untagged.ts`,
  *      S6-LINT 1), and without them nothing here reads an untagged campaign — its problems are exactly what they were.
+ *      ⛔ A server door hands them in only while Millionea's ceiling is ACTIVE (the lead's ruling 6, S6-LINT 6): below it a
+ *      campaign not tagged Millionea is judged, saved and sent exactly as before the lint, and nothing of the lint runs at
+ *      boot.
  * ⭐ `{pct}` IS NEVER TYPED. The approved wordings hold the placeholder; `maswali-marketing.ts` fills it from the week's own
  *    frozen fee for the officer to copy.
  * ⛔ NEVER A WINNER (OD-30, MB-88): the platform holds no written opt-in to publicity, so a winner is never named, described

@@ -44,7 +44,8 @@
  * that fails refuses the save. Any other campaign reads nothing more.
  * ⭐ S6-LINT 1 · A CAMPAIGN NOT TAGGED MILLIONEA MEETS THE UNTAGGED RULES HERE: the save hands them to the ONE verdict
  * (`untaggedRulesFor`), so what the screen's live verdict does not judge — they are the server's alone — is refused at the
- * save, in their words, on the field that holds it.
+ * save, in their words, on the field that holds it. ⛔ S6-LINT 6 · only under Millionea's ACTIVE ceiling: below it such a
+ * campaign saves exactly as before the lint, and only a save that hands the rules in stamps their first run.
  *
  * `marketing.campaign_created` is written once, when the draft is born. Owed: U50 registers it.
  *
@@ -67,7 +68,7 @@ import { holdsPhoneRun } from "@/lib/contacts/contact-fields";
 import { SMS_CAMPAIGN_VALUE } from "@/lib/server/marketing/campaign-model";
 import { formatClock } from "@/lib/utils";
 import { campaignProductOf, millioneaFactsFrom, millioneaFactsProblems, type MillioneaFacts } from "@/lib/marketing/millionea-claims";
-import { millioneaLintEpoch } from "@/lib/server/marketing/millionea-lint-epoch";
+import { millioneaLintEpoch, stampUntaggedRun } from "@/lib/server/marketing/millionea-lint-epoch";
 import { untaggedRulesFor } from "@/lib/server/marketing/millionea-untagged";
 
 /* ══ THE SENTENCES — the server's, shown as they are ═══════════════════════════════════════════════════════════════ */
@@ -146,8 +147,9 @@ export type CampaignDraftDeps = {
    *  dependency set written before it still type-checks; production's sets it, and a set without it reads none — a
    *  Millionea campaign is then refused as unread, never saved unchecked. */
   millioneaFacts?: () => Promise<MillioneaFacts | null>;
-  /** ⭐ Round 4, rule 6 · the stamp of the instant Millionea's claims rules first ran (`millioneaLintEpoch`): a save is one of
-   *  the doors that stamps it. Optional; it never refuses a save. */
+  /** ⭐ Round 4, rule 6 · the stamp of the instant Millionea's claims rules first ran (`millioneaLintEpoch`): a save of a
+   *  campaign not tagged Millionea under the ACTIVE ceiling is one of the doors that stamps it (S6-LINT 6). Optional; it
+   *  never refuses a save. */
   millioneaLintEpoch?: (clock: Date) => Promise<string | null>;
   /** OD55's rule (`wholeNumberAudienceProblem`). */
   audienceRule: (f: ContactAudienceFilter) => string | null;
@@ -314,15 +316,18 @@ export async function saveCampaignDraft(
   }
 
   // ── the audience, and the template — the server's verdict on both ──
-  // ⭐ Round 4, rule 6 · the rules' first run is stamped by the first door that judges a campaign (it never refuses one).
-  await deps.millioneaLintEpoch?.(deps.now()).catch(() => null);
+  // ⭐ S6-LINT 1 · a campaign not tagged Millionea meets the untagged rules here (the header) — ⛔ S6-LINT 6 · only under the
+  // ACTIVE ceiling (`untaggedRulesFor`), and only then is the rules' first run stamped, before they judge (it never refuses
+  // a save). Below it, or for a campaign tagged Millionea, nothing reads or writes the stamp.
+  const untagged = untaggedRulesFor(fields.name);
+  if (untagged !== undefined) await stampUntaggedRun(deps.millioneaLintEpoch, deps.now());
   const problems: Partial<Record<CampaignDraftField, string[]>> = {};
   const audience = audienceOf(input?.audience ?? null, current, options.viewerReads, deps.audienceRule);
   if (!audience.ok) problems.audience = [audience.reason];
   // ⛔ No source line is handed to the verdict (the owner's ruling of 2026-10-09): nothing is appended, so the message
   // priced is the message sent. ⭐ The ONE verdict refuses a name holding a phone number too, exactly as the screen did
-  // before Save was pressed. ⭐ S6-LINT 1 · and a campaign not tagged Millionea meets the untagged rules here (the header).
-  const verdict = deps.validate(fields, "", { untagged: untaggedRulesFor(fields.name) });
+  // before Save was pressed.
+  const verdict = deps.validate(fields, "", { untagged });
   Object.assign(problems, verdict.problems);
   // ⭐ HIGH 1 · a Millionea campaign meets the week here, on the server (the header): each body it holds is refused while
   // the facts cannot be read, while Millionea is not open to everyone, or while a fee it states is not the week's.

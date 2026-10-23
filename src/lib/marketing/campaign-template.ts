@@ -63,7 +63,9 @@
  * ⭐ S6-LINT 1 · A CAMPAIGN NOT TAGGED MILLIONEA meets the untagged rules only where a server door hands them in — the save
  * (`validateCampaignTemplate`'s `untagged`), and every send and preview (`CampaignTemplate.untaggedRules`, set by the door's
  * `templateOf` through `untaggedRulesFor`): they are the server's alone (`lib/server/marketing/millionea-untagged.ts`), so
- * the composer's live counter judges a campaign not tagged Millionea exactly as before.
+ * the composer's live counter judges a campaign not tagged Millionea exactly as before. ⛔ S6-LINT 6 · and a door hands
+ * them in only while Millionea's ceiling is ACTIVE (the lead's ruling 6): below it every door judges such a campaign exactly
+ * as before the lint.
  *
  * Guard: `npm run test:campaign-compose` §15–§16 · `npm run test:maswali-claims` §4. Red: `npm run red:campaign-compose`.
  */
