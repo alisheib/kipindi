@@ -132,7 +132,9 @@ function DepositOffer({ t, locale, plan, fallback, railNames, amount, onAmount, 
       </Callout>
     );
   }
-  // A held wallet takes neither a deposit nor a ticket: the purchase's own refusal says so at the buy.
+  // A held wallet takes neither a deposit nor a ticket. It is told before any pick, in the buy's own refusal — the slip page
+  // says it instead of the slip (`millioneaSlip`'s `wallet_frozen`, FLOW 10) — and the buy still decides, so a wallet held
+  // while the slip is open meets the same refusal at the buy.
   if (plan?.kind === "blocked" || plan?.kind === "enough") return null;
   const option = plan?.kind === "short" ? (plan.options.find((o) => o.kind === "deposit") as DepositOption | undefined) : undefined;
   if (plan?.kind === "short" && !option) {

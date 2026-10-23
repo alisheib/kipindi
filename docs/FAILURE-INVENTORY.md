@@ -1770,5 +1770,17 @@ Found on the same walk: at 360 the classic wallet's result drew `txn_b7f5f7cd596
 result modal's value that is one unbroken token of 16+ characters breaks only between near-equal chunks (14/14 for the id;
 `src/lib/even-break.ts`, drawn by `OperationResultModal`'s `DetailValue`), one line when it fits, the exact string on a copy.
 Classic-visible for every caller whose value is such a token; no classic parity cell draws a result modal. Held by
-`test:result-reference` with plants (RR1)–(RR4) of `red:result-reference`, and `qa:result-reference` (a real deposit's
+`test:result-reference` with plants (RR1)–(RR5) of `red:result-reference`, and `qa:result-reference` (a real deposit's
 reference at 320/360 × sw/en/zh, measured character by character, with an in-page control that the old wrap is caught).
+
+#### ✅ FL.3 · a held wallet answered fifteen questions before hearing it could not buy — fixed by FLOW 10 (the lead's ruling of 2026-10-23)
+
+Found in the code on the same walk: the slip says paused, sales closed, staff and the cap BEFORE any pick
+(`millioneaSlip`'s refusal, said instead of the slip), but not a held wallet — an officer's hold, a self-exclusion's freeze —
+which the buy refuses (`wallet_frozen`). Such a player answered all fifteen and pressed Continue to be refused, while the
+landing's line already hides itself from a frozen wallet (DESIGN_AUTHORITY §M8a item 21) and the deposit page says so
+first. THE RULE: a held wallet meets the buy's own refusal, in the buy's own words, before any pick — the slip page says it
+instead of the slip, as it says the cap — and the buy still decides (a wallet held while the slip is open meets the same
+refusal at the buy). The condition is the buy's own (a wallet whose status is not ACTIVE). Held by `test:maswali-player`
+4.7b on both stores (the slip's refusal, the buy's same reason, and the lift), with a recorded plant (the pre-refusal
+dropped: 4.7b failed on the memory store, 194/1, and the file was restored byte for byte).
