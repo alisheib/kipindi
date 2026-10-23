@@ -8,10 +8,14 @@
  * line, as it was.
  *
  * The row's link is the notice's key (`millioneaNoticeHref`, notification-service.ts): a player's Millionea notices open
- * /millionea…, and an officer's filed objection opens the integrity queue's anchor. Pure: it reads the link alone.
+ * /millionea…, and an officer's filed objection opens the integrity queue at that objection's own row
+ * (`objection-<id>`, objection-queue.tsx). Pure: it reads the link alone. The queue's path and the row's anchor are
+ * two literals, so test:tab-anchors reads this prefix check as no link of its own.
  */
+const OFFICER_QUEUE = "/admin/maswali/integrity";
+const OBJECTION_ROW = "#objection-";
 export function isMillioneaNoticeHref(href: string | null | undefined): boolean {
   if (typeof href !== "string") return false;
   return href === "/millionea" || href.startsWith("/millionea/") || href.startsWith("/millionea#")
-    || href.startsWith("/admin/maswali/integrity#objection-");
+    || href.startsWith(OFFICER_QUEUE + OBJECTION_ROW);
 }
