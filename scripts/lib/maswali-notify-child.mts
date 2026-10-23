@@ -937,7 +937,7 @@ console.log(`${LF}§8 · a week void — a two-officer void, the certainty rule,
   const listF = await consoleRead.unresolvedLetterList(openF, 1);
   ok("8.11f2 · ⭐ S6-NOTICES (L-3) · a letter whose address changed since its attempt is counted apart — the run, the card's row and the opened list each say its search can never be asked, with its holder, tag and attempts",
     sA.letters.unresolved === 1 && !sA.letters.unmatched && !notify.millioneaRunComplete(sA)
-      && s6.letters.unmatched === 1 && J(rowF?.causes) === J({ uncertain: 0, unmatched: 1, resendOwed: 0 }) && rowF?.letters === 1 && rowF?.unread === 0
+      && s6.letters.unmatched === 1 && J(rowF?.causes) === J({ uncertain: 0, unmatched: 1, resendOwed: 0, capped: 0 }) && rowF?.letters === 1 && rowF?.unread === 0 && rowF?.deferred === 0
       && openF?.length === 1 && openF[0].userId === A && openF[0].cause === "unmatched" && openF[0].tag === notify.millioneaLetterMetadata(w4.id, A)
       && openF[0].attempts.length >= 2 && openF[0].attempts.every((x: string) => Number.isFinite(Date.parse(x)))
       && listF?.total === 1 && listF.rows[0].userId === A && typeof listF.rows[0].holder === "string" && listF.rows[0].holder.length > 0,

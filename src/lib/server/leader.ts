@@ -149,6 +149,24 @@ export async function acquireLeadership(task: string, opts: LeadershipOptions = 
   });
 }
 
+/**
+ * ⭐ A FENCE (MASWALI-BUILD S6-NOTICES, L-1): whether THIS process still holds `task`'s lease with at least `marginMs` of it
+ * left — read strictly (a read that fails answers false: fail closed), no lock taken, nothing written. Single-process mode
+ * (no database) holds every lease. A lease another process holds — the successor of a run that stalled past its own — or
+ * one about to lapse answers false; the caller renews it (`acquireLeadership`) or stops.
+ */
+export async function holdsLeadership(task: string, opts: { marginMs: number; now?: number }): Promise<boolean> {
+  if (!hasDatabase()) return true;
+  const now = opts.now ?? Date.now();
+  try {
+    const current = await leaseOf(task, true);
+    return current?.holder === INSTANCE_ID && current.expiresAt > now + opts.marginMs;
+  } catch (e) {
+    console.error(`[leader] could not read "${task}" for its fence — treating it as not held:`, (e as Error)?.message ?? e);
+    return false;
+  }
+}
+
 /** Give up the lease immediately, so a redeploying container does not hold it for 3 minutes. */
 export async function releaseLeadership(task: string): Promise<void> {
   if (!hasDatabase()) return;

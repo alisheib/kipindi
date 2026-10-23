@@ -929,8 +929,8 @@ export const MUTATIONS = [
   {
     name: "(N16) L-2 · the integrity card leaves out a week whose holders' letter records could not be read: nothing was sent to them, and nobody sees it",
     file: "src/lib/server/maswali-console.ts",
-    from: "      if (open > 0 || unread > 0) rows.push({ weekId: w.id, code: w.code, notice, letters: open, causes, unread });",
-    to: "      if (open > 0) rows.push({ weekId: w.id, code: w.code, notice, letters: open, causes, unread });",
+    from: "      if (open > 0 || unread > 0 || deferred > 0) rows.push({ weekId: w.id, code: w.code, notice, letters: open, causes, unread, deferred });",
+    to: "      if (open > 0 || deferred > 0) rows.push({ weekId: w.id, code: w.code, notice, letters: open, causes, unread, deferred });",
     expect: "11c.1b · ⭐ S6-NOTICES (L-2)",
     suite: "notify",
   },

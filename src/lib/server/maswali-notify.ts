@@ -63,7 +63,7 @@
 import { createHash } from "node:crypto";
 import { audit, auditFlush, getAuditForTargetsDurable } from "./audit";
 import { pepperedLetters } from "./crypto";
-import { acquireLeadership, releaseLeadership } from "./leader";
+import { acquireLeadership, holdsLeadership, releaseLeadership } from "./leader";
 import { currentLockTx, inLock, runOutsideLock } from "./locks";
 import { db, type StoredNotification, type StoredUser } from "./store";
 import { questionStore, ticketStore, weekStore, type StoredQuestion, type StoredTicket, type StoredWeek } from "./maswali-dal";
@@ -267,6 +267,8 @@ async function claimWeek(r: NoticeRun, notice: "result" | "refund", weekId: stri
   }
   let renewedAt = Date.now();
   return async () => {
+    // ⭐ S6-NOTICES (L-1) · a letter whose fence failed has stopped this run: no later holder is told by it.
+    if (r.skipped === "lease_lost") return false;
     if (Date.now() - renewedAt < NOTICE_LEASE_MS / 3) return true;
     renewedAt = Date.now();
     if (await acquireLeadership(task, { leaseMs: NOTICE_LEASE_MS, strictWrite: true, strictRead: true })) return true;
@@ -646,7 +648,7 @@ function attemptMatches(attempt: LetterRecord | undefined, to: string | null): b
  * before its attempt is written: no attempt, no refusal used, and the run stays owed (`railAllowsLetter`).
  * Answers whether the letter was attempted (S6-NOTICES, L-3: a resend still owed is counted by its caller).
  */
-async function sendLetter(r: NoticeRun, userId: string, job: LetterJob): Promise<"attempted" | "unrecorded" | "deferred"> {
+async function sendLetter(r: NoticeRun, userId: string, job: LetterJob): Promise<"attempted" | "unrecorded" | "deferred" | "fenced"> {
   const target = letterTarget(r.weekId, userId);
   const to = await letterAddressOf(userId, { confirmedOnly: true });
   if (reachesProvider(to) && !railAllowsLetter(r)) { r.letters.deferred = (r.letters.deferred ?? 0) + 1; return "deferred"; }
@@ -659,6 +661,8 @@ async function sendLetter(r: NoticeRun, userId: string, job: LetterJob): Promise
     r.letters.failed = (r.letters.failed ?? 0) + 1;
     return "unrecorded";
   }
+  await FENCE.stall?.(r.weekId, userId);
+  if (!(await fenceHolds(r))) { r.skipped = "lease_lost"; return "fenced"; }
   const res = await job.send({ letter: letterMetadata(target) });
   const outcome = letterOutcome(res, job.money);
   r.letters[outcome] = (r.letters[outcome] ?? 0) + 1;
@@ -670,6 +674,31 @@ async function sendLetter(r: NoticeRun, userId: string, job: LetterJob): Promise
   // did not land — is not yet known to be gone.
   if (job.money && (outcome === "ambiguous" || !kept.recorded)) r.letters.unresolved = (r.letters.unresolved ?? 0) + 1;
   return "attempted";
+}
+
+/** ⭐ S6-NOTICES (L-1) · how much of the week's lease a letter's send needs left: the provider call's own limit and room. */
+export const LETTER_FENCE_MARGIN_MS = 30_000;
+
+/** ⚠️ FOR THE SUITES: a stall between a letter's recorded attempt and its fence (where a run stalls in life: a slow write, a
+ *  paused process) — null outside the suites. */
+const FENCE: { stall: ((weekId: string, userId: string) => Promise<void>) | null } = { stall: null };
+export function withMillioneaLetterStall(stall: (weekId: string, userId: string) => Promise<void>): () => void {
+  FENCE.stall = stall;
+  return () => { FENCE.stall = null; };
+}
+
+/**
+ * ⭐ S6-NOTICES (L-1) · THE FENCE: just before a money letter's send, the week's lease is read again, strictly — still this
+ * process's, with room for the send. One about to lapse is renewed; one another process holds now (the successor of a run
+ * that stalled past its lease) is not this run's: the letter is not sent, and the run stops and records nothing (the
+ * holder, or the reconcile, finishes the week; this letter's attempt stands, so its search is asked and it is sent once
+ * more if the provider never took it).
+ */
+async function fenceHolds(r: NoticeRun): Promise<boolean> {
+  if (r.notice !== "result" && r.notice !== "refund") return true;
+  const task = noticeLeaseTask(r.notice, r.weekId);
+  if (await holdsLeadership(task, { marginMs: LETTER_FENCE_MARGIN_MS })) return true;
+  return acquireLeadership(task, { leaseMs: NOTICE_LEASE_MS, strictWrite: true, strictRead: true });
 }
 
 /** ⚠️ FOR THE SUITES: the winners' SMS of these outcomes, tallied as a run tallies them, and whether that leaves the SMS done. */
@@ -827,6 +856,9 @@ function standingLetters(letters: unknown): string {
  * silent: the run records.
  */
 async function recordMoneyRun(week: StoredWeek, r: NoticeRun): Promise<void> {
+  // ⭐ S6-NOTICES (L-1) · a run whose letter's fence failed records nothing, even at its last holder: the week is another
+  //    process's now, and a record here could call the week complete over the letter it never sent.
+  if (r.skipped === "lease_lost") return;
   const last = await lastRunRecord(week.id, r.notice as "result" | "refund");
   const went = r.sent > 0 || (r.letters.sent ?? 0) + (r.letters.stub ?? 0) + (r.letters.ambiguous ?? 0) + (r.letters.confirmed ?? 0) > 0 || (r.sms?.sent ?? 0) > 0;
   if (last && !went && last.complete === complete(r) && standingLetters(last.letters) === standingLetters(r.letters)) return;
