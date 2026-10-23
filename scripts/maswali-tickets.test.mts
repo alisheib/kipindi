@@ -445,7 +445,9 @@ check("10.1", "the four lenses ride the kit's strip — exactly the journey Tike
 check("11.1", "the empty states are their siblings': they fill for a journey reader; the first ticket's call is the primary verb \"Fill a ticket\" to the slip, only for a week on sale (never on a break); a lens that empties says which in the platform's words, with the way out to every ticket counted", (w) => {
   const p = code(w, "list"), d: string[] = [];
   need(d, count(p, "fill={journey}") === 2, "an empty state does not fill");
-  need(d, p.includes('action={selling ? ( <Link href={MILLIONEA_HREF.slip as never} className="btn btn-primary btn-md">{t.millionea.titleSlip}</Link> ) : undefined}'), "the call is not the primary verb to the slip");
+  // Re-pinned at MASWALI-BUILD FLOW 14 (the lead's ruling of 2026-10-23): a held wallet is offered no slip (`held`; its
+  // sentence and its plant are test:millionea-held-wallet 2.5, (HW7)).
+  need(d, p.includes('action={selling && !held ? ( <Link href={MILLIONEA_HREF.slip as never} className="btn btn-primary btn-md">{t.millionea.titleSlip}</Link> ) : undefined}'), "the call is not the primary verb to the slip");
   need(d, p.includes("const invite = total === 0 && gate.visible && (await millioneaBreakOf(gate.userId)) === null;") && p.includes("const hubWeek = invite ?"), "the call is not behind the break gate");
   need(d, p.includes("title={total > PLAYER_PER_PAGE ? t.millionea.lensNoneOnPage : lensEmptyTitle(t, lens)}") && p.includes("body={t.positions.emptyLensBody}"), "the lens-empty state is not the platform's");
   need(d, p.includes("{`${t.journey.ticketsExitLens} (${formatNumber(drawable.length)})`}"), "no way out of an empty lens");
