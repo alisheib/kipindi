@@ -119,7 +119,7 @@ takeovers to review and the held shares are listed.</p>
   <tr><td>Seal YES/NO results</td><td><b class="ui" data-screen="week">SEAL</b></td><td>Trading · the week page</td></tr>
   <tr><td>Void a question</td><td><b class="ui" data-screen="week">VOID</b></td><td>Trading · the week page</td></tr>
   <tr><td>Confirm a seal as second officer</td><td><b class="ui" data-screen="week">CONFIRM</b></td><td>Trading · the week page</td></tr>
-  <tr><td>Correct your own seal</td><td><b class="ui" data-screen="week">CORRECT</b></td><td>Trading · the week page</td></tr>
+  <tr><td>Correct a result you set</td><td><b class="ui" data-screen="week">CORRECT</b></td><td>Trading · the week page</td></tr>
   <tr><td>Release a week's settlement</td><td><b class="ui" data-screen="pools">RELEASE</b></td><td>Finance · Pools</td></tr>
   <tr><td>Pause or resume sales</td><td><b class="ui" data-screen="integrity">PAUSE</b> · <b class="ui" data-screen="integrity">RESUME</b></td><td>Compliance · Integrity</td></tr>
   <tr><td>Rule on an objection</td><td><b>REJECT</b> · <b>REVERSE</b> · <b>VOID</b> · <b>REINSTATE</b></td><td>Compliance · Integrity</td></tr>
@@ -426,29 +426,37 @@ unsealed.</p>
 <section class="step" id="confirm">
 <h3>B10 · Confirm a seal as second officer</h3>
 <dl class="f4">
-  <dt>Who</dt><dd>A second Trading officer — never the one who sealed it.</dd>
-  <dt>Where</dt><dd>A seal made while the platform's two-officer setting was on (Compliance's "Two-admin authorization"
-    switch, on the Resolver queue) reads <b class="ui" data-screen="week">awaits a second officer</b> and does not count
-    until confirmed: its <b class="ui" data-screen="week">Confirm as second officer</b>, type CONFIRM,
+  <dt>Who</dt><dd>A second Trading officer — never the one who sealed it, nor the one who set the result it confirms.</dd>
+  <dt>Where</dt><dd>A seal or a correction made while the platform's two-officer setting was on (Compliance's "Two-admin
+    authorization" switch, on the Resolver queue) reads <b class="ui" data-screen="week">awaits a second officer</b> and does
+    not count until confirmed: its <b class="ui" data-screen="week">Confirm as second officer</b>, type CONFIRM,
     <b class="ui" data-screen="week">Confirm this seal</b>.</dd>
-  <dt>Refused when</dt><dd>The seal changed since your page loaded; you sealed it; it is already confirmed; the week has
-    settled or voided.</dd>
+  <dt>Refused when</dt><dd>The seal changed since your page loaded; you sealed it; you set the result
+    (<i>The officer who set this result cannot confirm it — a second officer must.</i>); who set it cannot be read
+    (<i>… present record cannot be read, so who set its result is not known. Try again in a moment.</i>); it is already
+    confirmed; the week has settled or voided.</dd>
   <dt>If refused</dt><dd>Reload and read the result again, or ask another officer.</dd>
 </dl>
 </section>
 
 <section class="step" id="correct">
-<h3>B11 · Correct your own seal</h3>
+<h3>B11 · Correct a result you set</h3>
 <dl class="f4">
-  <dt>Who</dt><dd>Trading — the officer who sealed the question.</dd>
+  <dt>Who</dt><dd>The officer who set the question's present result: its sealer, or — for a result an upheld objection set
+    — the officer who ruled it, never the sealer. It is a Trading control, so a result Compliance ruled changes only through
+    another objection.</dd>
   <dt>Where</dt><dd>While the objection window is open, the question's <b class="ui" data-screen="week">Correct…</b>: the
     <b class="ui" data-screen="week">Correct result</b> (YES, NO, or VOID with its ground) and the evidence; type CORRECT;
     <b class="ui" data-screen="week">Record the correction</b>. The window starts again once the graded set is final again;
     a seal that needed a second officer needs one again.</dd>
-  <dt>Refused when</dt><dd>The objection window has closed — the seal stands; you did not seal it; the seal changed since
-    your page loaded; evidence under 10 characters; a void ground not yet available.</dd>
-  <dt>If refused</dt><dd>After the window, the result stands. Only the officer who sealed can correct a seal: another
-    officer who doubts one tells its sealer while the window is open; a holder objects (B12).</dd>
+  <dt>Refused when</dt><dd>The objection window has closed — the seal stands; you did not set the present result
+    (<i>Only the officer who sealed a question may correct it; anyone else files an objection.</i> — for a ruled result,
+    <i>… present result was set on an objection: only the officer who ruled it may correct it; anyone else files an
+    objection.</i>); who set it cannot be read (<i>… present record cannot be read, so who set its result is not known. Try
+    again in a moment.</i>); the seal changed since your page loaded; evidence under 10 characters; a void ground not yet
+    available.</dd>
+  <dt>If refused</dt><dd>After the window, the result stands. Only the officer who set a result corrects it: another
+    officer who doubts one tells that officer while the window is open; a holder objects (B12).</dd>
 </dl>
 </section>
 
