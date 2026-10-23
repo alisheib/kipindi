@@ -30,27 +30,56 @@
 ## §0 · RESUME AT
 
 **⭐ MILLIONEA IS ACTIVE ON PRODUCTION (Ali's ruling, 2026-10-23 — COMPLIANCE-DECISIONS § "2026-10-23 · Maswali
-Millionea — switched ON for everyone ahead of the launch gate; …").** The Railway variable `FEATURE_MILLIONEA=ACTIVE` on
-`main` `3aecf0edd` (the S5 release), live from 2026-10-22 23:32 UTC; the code's shipped ceiling stays WITHDRAWN on purpose
-(delete the variable, or the Owner's stored switch, to hide it again). Every visitor sees the product; NOTHING SELLS until
-the Owner sets the licence basis, funds the guarantee and a week opens (the earliest Monday 00:00 EAT). ⛔ DEADLINES:
-before any week OPENS — S6's Millionea rules page (`/legal/rules/millionea`, a 404 at the switch) and its Terms section
-live; before the FIRST settlement — S7 and S6's notices, tax-report lines and payout-float check live. §6.1's lines stay
-unticked until each is true.
+Millionea — switched ON for everyone ahead of the launch gate; …").** The Railway variable `FEATURE_MILLIONEA=ACTIVE`,
+live from 2026-10-22 23:32 UTC; the code's shipped ceiling stays WITHDRAWN on purpose (delete the variable, or the Owner's
+stored switch, to hide it again). Every visitor sees the product; NOTHING SELLS until an admin pays the guarantee in
+(Pools → the Owner card → Guarantee: the amount and the bank reference → Pay in; Ali: "the bank thing my admin later
+does") and a week opens (the earliest Monday 00:00 EAT). The licence basis needs no step: it is 50pick's GBT licence by
+Ali's ruling of 2026-10-23 (LICBASIS, below). ⛔ DEADLINES: before any week OPENS — S6's Millionea rules page
+(`/legal/rules/millionea`, a 404 until S6 ships) and its Terms section live; before the FIRST settlement — S7 and S6's
+notices, tax-report lines and payout-float check live. §6.1's lines stay unticked until each is true.
 
-**⏳ 2026-10-23 (the Claude session asheib-f3 on OMEGA; Ali: "replace in the navbar on mobile Millionea with Live … the
+**⏳ 2026-10-23 — UDDOT and LICBASIS on `main` (the Claude session asheib-f3 on OMEGA; Ali: "remove the golden dot …
+people are misunderstanding and thinking there is a certain notification there"; on the licence basis: "mark this
+done").**
+- **UDDOT** (`788de909a`): Up & Down's golden dot is gone from every nav — the desktop header and the phone rail — so
+  every tab reads alike; Millionea keeps its gold diamond and its ink (COMPLIANCE-DECISIONS § "2026-10-23 · Up & Down
+  loses its golden dot — every nav tab alike"). Classic parity against `07a400bc3`: every difference is the dot's — the
+  224 header cells lose the link's accent attribute and its 5px gilt span, the 224 rail cells the dot's span; at 1024 and
+  1280 Up & Down's link is 13px narrower and the links after it move 13px left; nothing else moved.
+- **LICBASIS** (`42486354c`, `51c6efa84`): Millionea's licence basis is 50pick's GBT licence by Ali's ruling
+  (COMPLIANCE-DECISIONS § "2026-10-23 · Maswali Millionea — the licence basis is 50pick's GBT licence; …"). While no basis
+  was ever recorded, the effective basis is the ruling, built from the platform's licence number (Admin → System, the
+  number the footer prints); a basis the Owner records wins, and a recorded None closes every week; with no valid licence
+  number there is no default and no week opens. Every ADMIN account seals (the ADMIN role passes every control's grant).
+  An admin pays the guarantee in; §6.1 line 2 stays ☐ until it is paid.
+- Gates at `fd5368668` (the code; `c01777bd0` adds one census line to test:visual-pass-r5g, and this commit is documents
+  only): tsc 0; `next build`; test:maswali-licence-gate 3/0 (65 checks on PostgreSQL); qa:live 379/0 at ACTIVE and
+  391/0 at the default; qa:classic-rail drawn 221/0 (the lead read its tiles: no tab carries a dot; Millionea keeps
+  its gold diamond and ink, lit and unlit, in sw, en and zh); CI on `c01777bd0` (run 39941714860): every step green
+  but test:needle-rest 55/35 — the same 35 failing case lines as main's own run 39928712493 at `07a400bc3` (diffed).
+- In flight: lane S7-SHIP merges this `main` into `claude/maswali-s7-s5`; lane S6-SHIP takes S7's head into
+  `claude/maswali-s6-release` with FLOW (MB-57; the result modal's reference wrap; the console's release-wait alert
+  while an objection stands; the slip's held-wallet refusal before the answers), S6-NOTICES (the decided-objection
+  notice and the officers' ping on a filing; "Ticket bought" in the purchase bell — Ali's ruling 7 of 2026-10-21) and
+  GUIDE (the admin guide re-shot on one demo timeline), for `main` before Monday 00:00 EAT. Then S5 round 2b: HUB-2B
+  (`claude/maswali-s5-r2-hub`), R3-2B (`claude/maswali-s5-r3-fix`; the lead's ruling: a static paragraph's loading
+  drawing sets its own words unseen, so it lands in any engine) and HEADER-1024 (in Swahili at 1024 a signed-in
+  player's header row runs past its content edge — already so on `main` before UDDOT, which narrowed it by 13px).
+
+**✅ 2026-10-23 morning (the Claude session asheib-f3 on OMEGA; Ali: "replace in the navbar on mobile Millionea with Live … the
 order you think is perfect … give me the pdf … mark progress done").**
 - `main` `ac9fd7c21` (08:09 UTC): **Next.js 16.4.0 → 16.4.2**, the security patch (critical GHSA-2464-fhr4-w9xw and
   GHSA-673q-mjm6-r5xr, high GHSA-p3m5-59mp-jv5r; Ali: "patch it first"). Gates at the exact commit: tsc 0, `next build`,
   local qa:live 378/0 at ACTIVE and 390/0 at the default; CI: every step green but test:needle-rest 55/35 — the same 35
   cases as live main's own run (U43's red since 7e3a06ea0). Read back: dpl on the three hosts after 415 s, health ok,
   qa:chunks-prod 6/6 on www.
-- This commit: **S5 round 2 on `main`** — the classic phone rail draws **Millionea's track in Live's place** (Markets ·
+- `07a400bc3`: **S5 round 2 on `main`** — the classic phone rail draws **Millionea's track in Live's place** (Markets ·
   Up & Down · Deposit · Millionea · More; Live leads More — DESIGN_AUTHORITY §M8a item 11; the order kept: the two
   established tracks stay where players' thumbs know them, the coin stays centred, Millionea follows the coin in its own
   ink, the products read in the journey tab's order), the landing's door row (the Live link — landing ruling R19; "Be
   this week's winner?" — §M8a item 21), REGISTER's round 2 (§M8a items 22–23) and PLATFORM's round 2 (D10–D15, the break's
-  doors, the Swahili licence lines). Gates at `5ceb40c6f` (this commit's parent; this commit is documents only): tsc 0;
+  doors, the Swahili licence lines). Gates at `5ceb40c6f` (the code; `07a400bc3` is documents only): tsc 0;
   `next build`; qa:live 379/0 at ACTIVE and 391/0 at the default; qa:classic-rail drawn 212/0 and dark 172/0 (every rail
   tile read by the lead: 320/360/412/740/768 × sw/en/zh × guest, player, held wallet; the lit states; More with Live
   first); landing-doors 266/0 dark and 791/0 drawn; break nav 7/0, break money doors 7/0; door census 40/0 WITHDRAWN and
@@ -61,11 +90,23 @@ order you think is perfect … give me the pdf … mark progress done").**
   instrument's known flaky cell family, `question-player|en|1280` (`:selection-closed` timed out; `:open` read 0px
   margins and an undrawn chart) — measured directly on fresh servers of both commits: identical (the reading container
   1080px at x100 with 100px margins, the chart not yet drawn on either).
-- Not in it: HUB (`536b66535`, its last commit WIP) and R3-FIX (`3b24c846c`) — the next S5 release, then the critics.
-- In flight for the weekend: lane S7-SHIP readies `claude/maswali-s7-s5`, lane S6-SHIP `claude/maswali-s6-release` (the
-  rules page and Terms before Monday 00:00 EAT; the claims lint judges only Millionea-tagged campaigns in that release —
-  the lead's ruling of 2026-10-23, so the classic marketing path is unchanged); lane GUIDE writes Ali's admin PDF to what
-  ships.
+
+**State (2026-10-23):** S1–S5 are on `main` and Millionea is ACTIVE on production (Ali's ruling of 2026-10-23): S5 with
+round 2 of DOORS, SLIP, TICKETS, FACTS, REGISTER and PLATFORM (the phone rail's Millionea track; Live leads More), the
+Next.js security patch, UDDOT (no dot on any nav tab) and LICBASIS (the licence basis by the Owner's ruling; every admin
+seals). S7 and S6 ship together before Monday 00:00 EAT (the in-flight list above); S5's round 2b follows.
+
+**Next:** in order — (1) the S7 + S6 release to `main` (S7-SHIP, then S6-SHIP; the rules page and the Terms section
+before any week opens), read back (AGENTS §4), §1's S6 and S7 rows ticked; (2) S5 round 2b (HUB-2B, R3-2B,
+HEADER-1024) to `main`, read back, §1's S5 row ticked; (3) S8 — Ali's list in §6.1 (an admin pays the guarantee in;
+his launch word); the first public week is the drive (Ali, 2026-10-22).
+
+## §0a · Historical handovers (superseded by §0 above)
+
+> ⚠️ **A record, not the rules in force.** Statements below were true on their date and some are superseded — e.g. R10c is
+> closed (Ali, 2026-10-21 ruling 2: no staff-only buying phase); the live drive is the first public week (2026-10-22, §7b
+> S8); Millionea's tab and the classic rail's Millionea track replace "Millionea under More" (DESIGN_AUTHORITY §M8a item 11).
+> The rules in force are §0, §2, §3, §6, §7b and the owning documents they link.
 
 **⏳ S5 IS ON `main` — `2ed817395`, pushed 2026-10-22 19:09 UTC (the Claude session ali-7e on ALI-BLADE15, on Ali's
 word "continue maswali … push all now"). ⭐ RESUME FIRST from the hand-over branch `maswali-handover-20261021`, file
@@ -114,7 +155,7 @@ the money suites); the staff preview follows (pre-approved). Every Millionea scr
 get it. The admin guide's DRAFT is on his Desktop; the final follows S6. The admin console works whatever the rollout,
 so the Owner's ceremonies (licence basis, guarantee) and week drafts can start on production after this push.
 
-**State (2026-10-23):** S1–S5 are on `main` — S5 at `2ed817395`: every player surface, round 1 of Ali's 10/10
+**State (2026-10-23 morning — record):** S1–S5 are on `main` — S5 at `2ed817395`: every player surface, round 1 of Ali's 10/10
 pass, and round 2 of DOORS, SLIP, TICKETS and FACTS — and the rollout is ACTIVE on production (the Railway variable,
 Ali's ruling of 2026-10-23; nothing sells until the Owner's steps and an open week). Not in it, each pushed on its own branch: S5 round 2's REGISTER,
 PLATFORM (with the phone rail's Millionea track) and TICKETS' landing line and Live link, merged on
@@ -122,7 +163,7 @@ PLATFORM (with the phone rail's Millionea track) and TICKETS' landing line and L
 to merge; S7 (`claude/maswali-s7-s5`, the objection door merged in, the release merged in); S6
 (`claude/maswali-s6-release`: S7, ADMIN and DOCS merged in; LINT, MONEY and NOTICES to finish).
 
-**Next:** "continue maswali" resumes here, in order: (1) S5 round 2 — merge HUB, REGISTER, PLATFORM and TICKETS' landing
+**Next (2026-10-23 morning — record):** "continue maswali" resumed here, in order: (1) S5 round 2 — merge HUB, REGISTER, PLATFORM and TICKETS' landing
 door into this branch, run the integrated render, have the independent critics score every cell to 10, push the next S5
 release; (2) S7 — merge the objection door, the reds, the S17 rush and MB-97, the migration proof, push dark; (3) S6 —
 the integrator merges its five lanes, the ADMIN-COMPLETENESS review, push dark, the final admin guide PDF; (4) S8 —
@@ -300,12 +341,6 @@ S7-F8 4 verified on both stores and under the 10,000-ticket load — see the STO
 S6 follows in L → D → R → N order. S8 remains at its owner and regulatory gates in §6. Do not flip the rollout as
 part of a dark release.
 
-## §0a · Historical handovers (superseded by §0 above)
-
-> ⚠️ **A record, not the rules in force.** Statements below were true on their date and some are superseded — e.g. R10c is
-> closed (Ali, 2026-10-21 ruling 2: no staff-only buying phase); the live drive is the first public week (2026-10-22, §7b
-> S8); Millionea's tab and the classic rail's Millionea track replace "Millionea under More" (DESIGN_AUTHORITY §M8a item 11).
-> The rules in force are §0, §2, §3, §6, §7b and the owning documents they link.
 
 **Codex's S5 checkpoints (2026-10-20) — record.** Codex's state line of that day: the earlier ACTIVE player drive,
 WITHDRAWN-route drive and three-language player tile read passed; classic parity against the then-current `main`
