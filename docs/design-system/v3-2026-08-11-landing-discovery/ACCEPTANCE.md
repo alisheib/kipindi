@@ -118,6 +118,14 @@ everything is recreated in the existing Next.js/React/Tailwind codebase from exi
     the token file already schedules Phase 3 (`--h-control-md: 38px → 44`). Recorded only.
 12. **`--type-nano`/`--type-label` raise** proposed by the designer: NOT applied — it is a change
     to the frozen system outside this scope. Recorded as an open decision for Ali.
+13. **Up & Down's "gilt marker" and `--brand-300` ink — STRUCK by the owner, 2026-10-23.** The kit
+    gave Up & Down, a destination, a 5px gilt dot and its own ink as its "different game" signal
+    (`README.md`'s header notes, `SPEC.md`'s correction table, the layouts' `.nav a.accent`), and
+    the build shipped both. Ali,
+    after players read the dot as a notification: *"please remove the golden dot, make it like other
+    tabs please"*; he chose *"Remove Up & Down's dot"*. Every nav tab is drawn alike
+    (`DESIGN_AUTHORITY.md` §K 3; `docs/COMPLIANCE-DECISIONS.md`, "2026-10-23 · Up & Down loses its
+    golden dot"). The kit's files stay raw; this row is the ruling.
 
 ---
 

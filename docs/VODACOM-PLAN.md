@@ -4662,7 +4662,8 @@ On 2026-09-28 the agency that will sponsor and market 50pick sent `Downloads\50p
   - Desktop ≥1024 keeps LanguageMenu, bell and avatar to the right of the 4 destinations.
 - **SJ-16 Four tabs.**
   - Maswali (`/`) · Juu/Chini (`/updown`) · Tiketi zangu (`/positions`) · Akaunti (`/account`, new, public).
-  - Tabs keep 50pick's glyph + label and `--pill-active`. The Juu/Chini accent dot is shelved.
+  - Tabs keep 50pick's glyph + label and `--pill-active`. The Juu/Chini accent dot is shelved (since Ali's ruling of
+    2026-10-23 it is gone from every nav: DESIGN_AUTHORITY §K 3, "Every nav tab alike").
   - One `activeTabFor(pathname)` function serves both the rail and the desktop nav.
   - Guests who tap "Tiketi zangu" get a small sheet: "Ingia uone tiketi zako" with Jisajili / Ingia.
 - **SJ-17 Akaunti hub (`/account`, reading tier).**

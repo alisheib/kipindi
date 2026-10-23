@@ -1222,6 +1222,8 @@
     "qa:millionea-break-nav": "node scripts/qa-millionea-break-nav.mjs",
     "qa:break-money-doors": "node scripts/qa-break-money-doors.mjs",
     "qa:classic-rail": "node scripts/qa-classic-rail.mjs",
+    "test:nav-tabs-alike": "tsx scripts/nav-tabs-alike.test.mts",
+    "red:nav-tabs-alike": "tsx scripts/nav-tabs-alike.test.mts --prove-red",
     "qa:journey-rail-gaps": "node scripts/qa-journey-rail-gaps.mjs",
     "test:chat-yield": "tsx scripts/chat-yield.test.mts",
     "qa:chat-yield": "node scripts/qa-chat-yield.mjs",

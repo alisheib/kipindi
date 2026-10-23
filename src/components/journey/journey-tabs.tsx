@@ -17,7 +17,8 @@
  *
  * ── WHAT IS NOT, AND WHY ─────────────────────────────────────────────────────────────────────────────────────────
  *   · Four tabs — five while Millionea shows — from `journeyTabsFor`, in equal tracks: no centre coin, no More, no
- *     Juu/Chini accent dot (shelved). What More carried lives in Akaunti, which is a tab.
+ *     Juu/Chini accent dot (gone from every nav since Ali's ruling of 2026-10-23: every nav tab alike, DESIGN_AUTHORITY
+ *     §K 3). What More carried lives in Akaunti, which is a tab.
  *   · Which tab is lit comes from `activeTabFor` over the very list this rail draws — the one table and the one list the
  *     desktop links read too — and `aria-current` from `tabAriaCurrent` (A12): "page" on a tab's own page, "true" on the
  *     rest of its section.

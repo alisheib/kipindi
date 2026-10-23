@@ -8,6 +8,38 @@
 
 ---
 
+## 2026-10-23 · Up & Down loses its golden dot — every nav tab alike (owner ruling)
+
+**Authority.** Ali, 2026-10-23, to the MASWALI-BUILD lead session on OMEGA-COMPILE01. He reported that *"people are
+misunderstanding and thinking there is a certain notification there"* and asked *"please remove the golden dot, make it
+like other tabs please, cleanly, perfect … make it everywhere needed"*; asked which change he wanted, he chose *"Remove
+Up & Down's dot"*.
+
+**What it rules.** Up & Down looks exactly like Markets and More on the phone menu and the desktop bar: no dot, the same
+colour as its siblings. Its 5px gilt "product-line dot" — on the classic phone rail's pip and before its words in the
+classic desktop bar — is deleted from the code, and so is the bar's own ink for it (`--brand-300`); every destination is
+one box, one ink at rest, one hover and one lit state. The journey's rail and bar never drew the dot (shelved at SJ-16;
+now gone, so `docs/SHELVED.md` no longer lists it). Millionea keeps its gold diamond (its glyph resting in gold on the
+phone rails) and its coloured name (DESIGN_AUTHORITY §M8a item 11): no dot, and nobody reads those as a notification. A
+notification dot — the bell's unread mark, the journey's Akaunti dot — is a state, not an identity, and stays. The rule
+is DESIGN_AUTHORITY §K 3, "Every nav tab alike".
+
+**What it reverses.** The round-2 kit's product-line marker (2026-08-13: Up & Down's distinction "moves to a 5px gilt
+dot plus `--brand-300` ink"), and that dot's place among the shell accents Ali's 2026-10-20 gold restoration brought
+back (DESIGN_AUTHORITY §M3a) — for this mark only; the rest of the restoration stands. It closes the critics panel's
+2026-09-16 note held for the owner (MOBILE-VISUAL-PLAN U33: "a player reads it as an unread badge that never clears, in
+the money colour").
+
+**Why it is logged here.** A gold mark on a tab tells a player something is waiting for him. No later pass may
+"restore" the dot or a destination's own ink as the product line's identity.
+
+**Guards.** `test:nav-tabs-alike` and `red:nav-tabs-alike` (the classic rail, the classic bar and the journey's rail and
+bar, rendered and painted: no destination differs from its siblings but by its words, its glyph and Millionea's ruled
+ink) · `qa:classic-rail` (the drawn rail: Up & Down's pip, glyph and label against Markets', in a browser) ·
+`test:u43-shell-palette` 5.8 · `test:visual-pass-r5c` 7.2.
+
+---
+
 ## 2026-10-23 · Maswali Millionea — switched ON for everyone ahead of the launch gate; nothing sells until the Owner's steps; S6 and S7 owed by fixed deadlines (owner ruling)
 
 **Authority.** Ali, 2026-10-23 (~02:15–02:30 EAT), to the MASWALI-BUILD lead session on ALI-BLADE15, after being told

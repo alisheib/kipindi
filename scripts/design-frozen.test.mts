@@ -198,7 +198,8 @@ const FROZEN_RATCHET = new Map<string, number>([
   // page.tsx + top-app-bar + bottom-nav + nav-more CLEARED 2026-08-13 (batch 3, the
   // round-2 landing/header/rail): the landing's inline oklch gradients and hand-typed sizes moved
   // into the .kp-band / .kp-rail blocks in globals.css, the header dropped its bespoke accent
-  // gradient + glow for a 5px gilt dot, the rail dropped its aqua-literal active pill and 78%
+  // gradient + glow for a 5px gilt dot (itself deleted 2026-10-23 — Ali's ruling, every nav tab
+  // alike, DESIGN_AUTHORITY §K 3), the rail dropped its aqua-literal active pill and 78%
   // backdrop-blur capsule for --pill-active on --panel, and nav-more's hand-typed
   // oklch(40% 0.08 264 / 0.4) became --pill-active. language-toggle.tsx is DELETED — one 44x44
   // language menu replaced the 3-pill capsule (41 -> 36).
