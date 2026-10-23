@@ -9,8 +9,17 @@
 --
 -- Hand-written, additive, re-runnable (AGENTS.md §5): a guard, then one CREATE UNIQUE INDEX IF NOT EXISTS, each attempt
 -- retried as one. It is partial, so `schema.prisma` cannot express it (as "MaswaliCycle_one_open_per_visibility_key" before
--- it). Nothing existing is altered. No production row can collide: Millionea is dark there, and no "MaswaliWinner" row
--- exists.
+-- it). Nothing existing is altered. No production row can collide: when this file ships (the S6 release, 2026-10), no
+-- Millionea week has paid in production — Millionea is ACTIVE there since 2026-10-22 23:32 UTC, and no week has opened — so
+-- no "MaswaliWinner" row exists.
+-- PROVEN (MASWALI-BUILD S6-SHIP 11, 2026-10-23, a throwaway PostgreSQL 18.3 on OMEGA-COMPILE01, the order it ships in):
+--   main's 112 migrations (07a400bc3), then S7's set (c12c6b2ee) — which applied exactly
+--   20261018130000_maswali_product_line_fence — then S6's, which applied exactly this file; a second deploy printed
+--   "No pending migrations to apply."; the fence and this file each replayed once more, cleanly; the index stood valid,
+--   unique and partial on 'MaswaliWinner', the fence's function and trigger present and enabled. `verify:backup-schema`
+--   16 passed, 0 failed, with all 114 migrations (the real db:backup, then db:verify-backup restoring it, and the gate's
+--   controls); `test:backup` 140 passed, 0 failed. ⚠️ This file's name sorts before the fence's and main's latest: deploy
+--   applies every pending migration whatever its name, as the proof shows.
 -- ⛔ THE GUARD (round 4 L9, round 5 MEDIUM 8) fails first, in words, and builds nothing:
 --   · two rows for one winner target (two messages already sent to one winner) would fail the build on a bare unique
 --     violation — keep those rows' delivery records, remove all but each target's first row, and run it again;
