@@ -1876,5 +1876,15 @@ sentence, `millionea.walletFrozen` — "Your wallet is frozen, so tickets can’
 pre-refusal (instead of the slip), the buy's refusal (the slip's toast) and the hub's buy block, which says it in place of
 the fill door (after a break's notice and a guest's door, before the cap's line; `millioneaWalletHeld`, the buy's own
 condition, failing open — the slip and the buy still refuse). Every other reason keeps the registry's sentence, and the
-platform's `error.failWalletFrozen` stays for every other product. Held by `test:millionea-held-wallet` (the one choice, the
-three surfaces and their order, the one condition, the words) with plants (HW1)–(HW6) of `red:millionea-held-wallet`.
+platform's `error.failWalletFrozen` stays for every other product. FLOW 14 (the lead's rulings of 2026-10-23, the sweep of
+every Millionea door a held wallet can still see; the polish release): Tiketi zangu's empty list offers a held wallet no
+slip and says the same sentence where it named the week on sale; and the free cancel, which `cancelMaswaliTicket` refuses
+to a held wallet (`wallet_frozen`), is not drawn for one — its place says `millionea.cancelWalletFrozen`, "Your wallet is
+frozen, so this ticket can’t be cancelled. Contact support to resolve it." / "Pochi yako imegandishwa, kwa hiyo tiketi hii
+haiwezi kughairiwa. Wasiliana na msaada kutatua hili." / "您的钱包已冻结，无法取消此彩票。请联系客服处理。" (the button's own verb,
+Ghairi tiketi / 取消彩票, in the form `cancelNotOpen` reads), and the cancel's refusal says it too when the hold lands while
+the page is open, never the platform's "bets can’t be placed" under "Not cancelled". The sweep found no other door: the home
+and board cards, results, the register, the nav, /positions and help are facts or the reader's own tickets (the lead: no
+change). The hub's held notice wears its test id on a wrapper — the kit's Callout takes none, so FLOW 13's never reached the
+page (its words and place unchanged). Held by `test:millionea-held-wallet` (the one choice, the surfaces and their order, the
+one condition across the buy, the cancel and the reads, the words) with plants (HW1)–(HW10) of `red:millionea-held-wallet`.

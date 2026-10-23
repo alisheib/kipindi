@@ -17,7 +17,8 @@
  * ⭐ AN EMPTY LIST IS ITS SIBLINGS' EMPTY STATE (M3): it fills the column for a journey reader as Juu/Chini's does (PV-03:
  *    the box no longer changes width as the reader switches kinds); a reader with no ticket at all is offered the week on
  *    sale in a verb, "Fill a ticket", the platform's primary call — ⛔ never on a break (S5-FIX-PLAYER P2: the title alone,
- *    no week, no door); and a lens that empties says which, in the platform's own words ("Nothing of yours has won yet"),
+ *    no week, no door), ⛔ never to a held wallet (FLOW 14: the buy's refusal in Millionea's one sentence instead of the
+ *    week on sale, no door); and a lens that empties says which, in the platform's own words ("Nothing of yours has won yet"),
  *    with its way out to all the reader's tickets and their count, as Tiketi zangu's other kinds do — never a dead end.
  *
  * ⛔ THE TICKETS' GATE (`millioneaTicketGate`, L5): a kill hides the product, never a player's own tickets — a holder
@@ -41,7 +42,8 @@ import { eatWeekdayClock, weekNumberOf } from "@/components/maswali/maswali-form
 import { TicketsHead } from "@/components/journey/tickets/ticket-switch";
 import { millioneaTicketGate } from "@/lib/server/millionea-gate";
 import { millioneaCancelUntil, millioneaMyTickets, type MillioneaTicketRow } from "@/lib/server/maswali-player";
-import { millioneaBreakOf, millioneaHubNow, millioneaTicketsDoor, millioneaWeekPrices } from "@/lib/server/millionea-doors";
+import { millioneaBreakOf, millioneaHubNow, millioneaTicketsDoor, millioneaWalletHeld, millioneaWeekPrices } from "@/lib/server/millionea-doors";
+import { millioneaRefusalBody } from "@/lib/millionea-refusal";
 import { resolveSimpleJourney } from "@/lib/server/journey-preview";
 import { getServerT } from "@/lib/i18n-server";
 import { fill, formatNumber } from "@/lib/utils";
@@ -127,6 +129,9 @@ export default async function MillioneaTicketsPage({ searchParams }: { searchPar
   const invite = total === 0 && gate.visible && (await millioneaBreakOf(gate.userId)) === null;
   const hubWeek = invite ? (await millioneaHubNow(gate.userId, gate.state))?.week ?? null : null;
   const selling = hubWeek?.selling ? hubWeek : null;
+  // ⭐ FLOW 14 (the lead's ruling of 2026-10-23): a held wallet is offered no slip — the list says the buy's refusal in
+  // Millionea's one sentence where it named the week on sale (`millioneaRefusalBody`, as the hub's buy block and the slip).
+  const held = selling !== null && (await millioneaWalletHeld(gate.userId));
   // A lens that empties this page: the way out is every ticket on it, counted (Tiketi zangu's exit, `journey.ticketsExitLens`).
   const exitHref = page > 1 ? `${lensHref("all")}?page=${page}` : lensHref("all");
 
@@ -152,9 +157,9 @@ export default async function MillioneaTicketsPage({ searchParams }: { searchPar
           kind="positions"
           title={t.millionea.emptyTickets}
           body={selling
-            ? fill(t.millionea.emptyTicketsNext, { week: weekNumberOf(selling.code), when: eatWeekdayClock(t, msOf(selling.closesAt) ?? 0) })
+            ? held ? millioneaRefusalBody("wallet_frozen", t) ?? undefined : fill(t.millionea.emptyTicketsNext, { week: weekNumberOf(selling.code), when: eatWeekdayClock(t, msOf(selling.closesAt) ?? 0) })
             : undefined}
-          action={selling ? (
+          action={selling && !held ? (
             <Link href={MILLIONEA_HREF.slip as never} className="btn btn-primary btn-md">{t.millionea.titleSlip}</Link>
           ) : undefined}
         />
