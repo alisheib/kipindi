@@ -133,12 +133,14 @@ export function JourneyRouteGhost({ rails, at, millionea = false }: { rails: rea
     "/wallet/deposit/return": <DepositReturnLoading />,
     "/markets/[id]": <QuestionGhost />,
     // MASWALI-BUILD S5 · the Millionea pages the journey's tabs reach (`surfaces.ts` JOURNEY_ROUTE), each its own loading
-    // file's drawing, wordless (`maswali-ghost.tsx`); Tiketi zangu's Millionea kind with Tiketi zangu's head, by the address
-    // alone — its own loading file is synchronous and pins nothing (the S5 review of 24ec0d33, HIGH 2). ⛔ Drawn only while
-    // Millionea is visible to this reader (D6): to anyone else these are unknown addresses, and so is their ghost.
-    // Its head is handed `kinds={3}` (the tickets design lane's M9): the Millionea tickets page always draws three kinds.
-    // Round 2 (2026-10-22): How to play and the register too (a week is the pattern below), each its own loading file's
-    // wordless drawing — a reader moving in from another page met the unknown page's spinner there.
+    // file's drawing, naming no word itself (`maswali-ghost.tsx`); Tiketi zangu's Millionea kind with Tiketi zangu's head,
+    // by the address alone — its own loading file is synchronous and pins nothing (the S5 review of 24ec0d33, HIGH 2).
+    // ⛔ Drawn only while Millionea is visible to this reader (D6): to anyone else these are unknown addresses, and so is
+    // their ghost. Its head is handed `kinds={3}` (the tickets design lane's M9): the Millionea tickets page always draws
+    // three kinds. Round 2 (2026-10-22): How to play and the register too (a week is the pattern below), each its own
+    // loading file's drawing — a reader moving in from another page met the unknown page's spinner there. Their static
+    // paragraphs' words are set unseen through the kit's `GhostWords`, which the shell's provider lets set words only for
+    // this same reader (MASWALI-BUILD S5-R3-FIX 8; `maswali-ghost-words.tsx`).
     ...(millionea ? {
       "/millionea": <MillioneaHubGhost />,
       "/millionea/slip": <MillioneaSlipGhost />,

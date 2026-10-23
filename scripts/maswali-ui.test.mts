@@ -134,8 +134,9 @@ const ghostWordDefects = (readAt: (rel: string) => string) => GHOST_FILES.flatMa
   if (strings.length > 0) d.push(`${f}: a string names Millionea (${strings.slice(0, 2).join(", ")})`);
   if (/>[^<>{}]*millionea[^<>{}]*</i.test(c)) d.push(`${f}: its text names Millionea`);
   if (/<GhostText\b|\b(?:weekWord|millioneaWord|productWeek|counted|fill)\(/.test(c)) d.push(`${f}: words set and not shown are still words`);
-  for (const [, names] of c.matchAll(/import\s*\{([^}]*)\}\s*from\s*"[^"]*-words"/g)) {
-    for (const name of names.split(",").map((s) => s.trim().replace(/^type\s+/, "").split(/\s+as\s+/).pop() ?? "").filter(Boolean)) {
+  for (const [, names, from] of c.matchAll(/import\s*\{([^}]*)\}\s*from\s*"([^"]*-words)"/g)) {
+    if (/(?:^|\/)maswali-ghost-words$/.test(from)) continue; // the kit's part and its types: never a recipe
+    for (const name of names.split(",").map((s) => s.trim()).filter((s) => s !== "" && !s.startsWith("type ")).map((s) => s.split(/\s+as\s+/).pop() ?? "")) {
       const named = c.split(new RegExp(`\\b${name}\\b`)).length - 2;
       if (named !== c.split(`words={${name}}`).length - 1) d.push(`${f}: names the recipe ${name} outside words={…} — its words set where the kit's part does not guard them`);
     }
@@ -227,18 +228,22 @@ function uiFromSource<T>(rel: string, source: string): T {
 }
 type H = (type: unknown, props: object | null, ...children: unknown[]) => unknown;
 type KitWords = { GhostWords: unknown; GhostWordsProvider: unknown };
-const wordsWorld = (() => {
+/** An element rendered as a reader's document holds it: inside the app's i18n provider (and the router context it asks for),
+ *  and — only when `provided` — inside the shell's words provider. */
+const inDocument = (() => {
   const React = reqUi("react") as { createElement: H };
   const { renderToStaticMarkup } = reqUi("react-dom/server") as { renderToStaticMarkup: (el: unknown) => string };
   const { I18nProvider } = reqUi("../src/lib/i18n.tsx") as { I18nProvider: unknown };
   const { AppRouterContext } = reqUi("next/dist/shared/lib/app-router-context.shared-runtime") as { AppRouterContext: { Provider: unknown } };
   const router = { push() {}, replace() {}, refresh() {}, prefetch() {}, back() {}, forward() {} };
   const h = React.createElement;
-  return (kit: KitWords, locale: Locale, provided: boolean, recipe: unknown): string => {
-    const part = h(kit.GhostWords, { words: recipe });
-    return renderToStaticMarkup(h(AppRouterContext.Provider, { value: router }, h(I18nProvider, { initial: locale }, provided ? h(kit.GhostWordsProvider, null, part) : part)));
+  return (provider: unknown, locale: Locale, provided: boolean, type: unknown, props: object | null): string => {
+    const el = h(type, props);
+    return renderToStaticMarkup(h(AppRouterContext.Provider, { value: router }, h(I18nProvider, { initial: locale }, provided ? h(provider, null, el) : el)));
   };
 })();
+const wordsWorld = (kit: KitWords, locale: Locale, provided: boolean, recipe: unknown): string =>
+  inDocument(kit.GhostWordsProvider, locale, provided, kit.GhostWords, { words: recipe });
 /** A document's text, as a reader's copy or search would read it. */
 const docText = (html: string) => html.replace(/<[^>]+>/g, "").replace(/&quot;/g, '"').replace(/&#x27;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&");
 type WordsIn = { t: (typeof dict)[Locale]; locale: Locale };
@@ -260,6 +265,35 @@ const renderedWordsDefects = (kit: KitWords) => {
       const bands = count(shown, '<span class="kp-ghost-words"><span class="kp-ghost-words__words">');
       const missing = c.texts(w).filter((s) => !docText(shown).includes(s));
       if (missing.length > 0 || bands !== c.texts(w).length) d.push(`${l}, ${c.name}, with the provider: ${bands} bands, missing ${JSON.stringify(missing.map((s) => s.slice(0, 40)))}`);
+    }
+  }
+  return d;
+};
+/** 1.3e · the drawings that set static words (S5-R3-FIX 8), RUN whole: their recipes' words in the document only inside the
+ *  shell's provider — with it, every recipe's words, one band each; without it, none, the drawing's one text the screen
+ *  reader's "loading". `hiddenProvided` is the control: a shell that hands the provider to a reader it hides Millionea from. */
+type Recipes = Record<string, (w: WordsIn) => { text: string }>;
+const HOW_WORDS = reqUi(`../${APP}/how/how-words.ts`) as Recipes;
+const REG_WORDS = reqUi(`../${APP}/register/register-words.ts`) as Recipes;
+const DRAWINGS: ReadonlyArray<{ name: string; file: string; part: string; texts: (w: WordsIn) => string[] }> = [
+  { name: "How to play's", file: `${APP}/how/how-ghost.tsx`, part: "MillioneaHowGhost", texts: (w) => ["howStepTwo", "howStepFour", "howCaption"].map((r) => HOW_WORDS[r](w).text) },
+  { name: "the register's", file: `${APP}/register/register-ghost.tsx`, part: "MillioneaRegisterGhost", texts: (w) => [REG_WORDS.registerIntro(w).text] },
+  { name: "a week's", file: `${APP}/register/[week]/register-week-ghost.tsx`, part: "MillioneaRegisterWeekGhost",
+    texts: (w) => [...["ledgerSales", "ledgerMoneyIn", "ledgerFloor", "ledgerFee", "ledgerCarriedOut", "ledgerMoneyOut"].map((r) => REG_WORDS[r](w).text),
+      REG_WORDS.commitFingerprint(w).text, REG_WORDS.commitFingerprint(w).text, REG_WORDS.commitExplainer(w).text] },
+];
+const renderedDrawingDefects = (provider: unknown, hiddenProvided = false) => {
+  const d: string[] = [];
+  for (const g of DRAWINGS) {
+    const part = (reqUi(`../${g.file}`) as Record<string, unknown>)[g.part];
+    for (const l of UI_LOCALES) {
+      const w = { t: dict[l], locale: l } as WordsIn;
+      const hidden = docText(inDocument(provider, l, hiddenProvided, part, null)), shownHtml = inDocument(provider, l, true, part, null), shown = docText(shownHtml);
+      const leaked = g.texts(w).filter((s) => hidden.includes(s));
+      if (leaked.length > 0 || hidden !== dict[l].common.loading) d.push(`${l}, ${g.name} drawing, NO provider: ${leaked.length} recipes' words in the document (${JSON.stringify(hidden.slice(0, 50))})`);
+      const missing = g.texts(w).filter((s) => !shown.includes(s));
+      const bands = count(shownHtml, '<span class="kp-ghost-words"><span class="kp-ghost-words__words">');
+      if (missing.length > 0 || bands !== g.texts(w).length) d.push(`${l}, ${g.name} drawing, with the provider: ${bands} bands for ${g.texts(w).length} recipes, missing ${JSON.stringify(missing.map((s) => s.slice(0, 30)))}`);
     }
   }
   return d;
@@ -298,7 +332,7 @@ const renderedWordsDefects = (kit: KitWords) => {
     kit.length === 0, kit.join(" | "));
   const modules = wordsModuleDefects(WORDS_FILES.map((f) => [f, read(f)] as const));
   ok(`1.3b · each page's words module reads its words only from what the part hands its recipes — no dictionary and no language of its own — and is no client module (${WORDS_FILES.length} modules)`,
-    modules.length === 0, modules.join(" | "));
+    WORDS_FILES.length >= 2 && modules.length === 0, modules.join(" | "));
   const shell = shellWordsDefects(read);
   ok("1.3c · the shell hands the words provider ONLY while the rollout's one per-request answer shows Millionea, with no prop, around both of its page slots — a reader it is hidden from is served main's tree and payload — and takes it from the answer's own module, never the part's",
     shell.length === 0, shell.join(" | "));
@@ -326,6 +360,12 @@ const renderedWordsDefects = (kit: KitWords) => {
   const leaked = renderedWordsDefects(leaky);
   ok("1.3d′ CONTROL · RUN: the part with its guard undone writes its words into a document with no provider, and is reported in every language",
     UI_LOCALES.every((l) => leaked.some((x) => x.startsWith(`${l}, `) && x.includes("NO provider"))), leaked.slice(0, 2).join(" | "));
+  const drawings = renderedDrawingDefects(GhostWordsProvider);
+  ok(`1.3e · RUN whole in sw, en and zh, How to play's, the register's and a week's drawings set their static words only inside the shell's provider — every recipe's words, one band each, with it; none without it, the drawing's one text the screen reader's "loading" (${DRAWINGS.length * UI_LOCALES.length * 2} renders)`,
+    drawings.length === 0, drawings.slice(0, 3).join(" | "));
+  const everyReader = renderedDrawingDefects(GhostWordsProvider, true);
+  ok("1.3e′ CONTROL · RUN: a shell that hands the provider to a reader Millionea is hidden from puts the drawings' words in that reader's document, and is reported for every drawing in every language",
+    DRAWINGS.every((g) => UI_LOCALES.every((l) => everyReader.some((x) => x.startsWith(`${l}, ${g.name}`) && x.includes("NO provider")))), everyReader.slice(0, 2).join(" | "));
 }
 
 // ── §2 · the gates ─────────────────────────────────────────────────────────────────────────────────────────────────

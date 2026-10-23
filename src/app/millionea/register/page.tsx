@@ -32,6 +32,7 @@ import { MILLIONEA_HREF, MillioneaReadingLinks } from "../millionea-parts";
 import { millioneaWeekPhase } from "../millionea-view";
 import { keepFact } from "@/components/maswali/maswali-facts";
 import { liveWeekFacts, WeekRow, WeekStateChip, weekFacts } from "./register-parts";
+import { registerIntro } from "./register-words";
 
 export const dynamic = "force-dynamic";
 
@@ -63,8 +64,8 @@ export default async function MillioneaRegisterPage({ searchParams }: { searchPa
         <div className="flex flex-col gap-3">
           <PageHeader eyebrow={t.millionea.productTitle} title={t.millionea.registerTitle} />
           {/* Its phrases kept whole, its dash held to the word before it (the tile read: "— mauzo, ada, …" opened a sw line
-              at 320). */}
-          <p className="max-w-[68ch] text-body text-text-muted text-pretty" data-testid="millionea-register-intro">{keepFact(locale, t.millionea.regIntro)}</p>
+              at 320). Its words said once (`register-words.ts`), which the loading drawing sets unseen too (S5-R3-FIX 8). */}
+          <p className="max-w-[68ch] text-body text-text-muted text-pretty" data-testid="millionea-register-intro">{keepFact(locale, registerIntro({ t, locale }).text)}</p>
         </div>
         {current.length === 0 && total === 0 ? (
           <EmptyState

@@ -54,6 +54,8 @@ import { outcomeStampText } from "../src/components/maswali/maswali-outcome-stam
 import { sourceLabel } from "../src/components/maswali/maswali-format.ts";
 import { keepFact } from "../src/components/maswali/maswali-facts.tsx";
 import { kept, liveWeekFacts, registerEventAt, registerLedgerRows, registerWhen, ticketSalesRuns, weekFacts } from "../src/app/millionea/register/register-parts.tsx";
+import * as REGISTER_WORDS from "../src/app/millionea/register/register-words.ts";
+import { merkleRoot } from "../src/lib/maswali-commitment.ts";
 import { STATUS_TONE, TONE_CHIP } from "../src/lib/status-tone.ts";
 import { DEFAULT_GRANTS } from "../src/lib/server/roles.ts";
 import type { MillioneaRegisterLiveWeek, MillioneaRegisterWeek, MillioneaWeekSummary } from "../src/lib/server/maswali-player.ts";
@@ -100,6 +102,8 @@ const FILES = {
   ledger: "src/components/maswali/maswali-ledger.tsx",
   weekGhost: "src/app/millionea/register/[week]/register-week-ghost.tsx",
   indexGhost: "src/app/millionea/register/register-ghost.tsx",
+  // S5-R3-FIX 8 (the lead's ruling of 2026-10-23): the register's static words, said once — its pages and its drawings read them.
+  words: "src/app/millionea/register/register-words.ts",
   css: "src/app/globals.css",
 } as const;
 type FileKey = keyof typeof FILES;
@@ -117,6 +121,8 @@ type World = {
   ledger: typeof registerLedgerRows;
   eventAt: typeof registerEventAt;
   weekChip: string;
+  /** The register's words module (`register-words.ts`): the recipes its pages and drawings both read. */
+  words: typeof REGISTER_WORDS;
 };
 const REAL: World = {
   src: Object.fromEntries(Object.entries(FILES).map(([k, f]) => [k, raw(f)])) as Record<FileKey, string>,
@@ -132,6 +138,7 @@ const REAL: World = {
   // S5-DESIGN-REGISTER (L2): a settled week's chip reads its own Millionea row in status-tone (slate, an exception to
   // RESOLVED's seal written with its reason) — not VOID's ink borrowed for it.
   weekChip: TONE_CHIP[STATUS_TONE.MILLIONEA_WEEK_SETTLED.player],
+  words: REGISTER_WORDS,
 };
 const code = (w: World, k: FileKey) => squash(decomment(w.src[k]));
 const mln = (w: World, l: (typeof LOCALES)[number]) => w.dict[l].millionea as unknown as Record<string, string>;
@@ -356,16 +363,20 @@ check("5.2", "R4 · L2 · the state chip wears slate for a settled week — its 
 // ⚠️ RE-PINNED IN THE OPEN 2026-10-22 (S5-R2-REGISTER, the lead's item 5): the card fills the column it stands in (on the hub,
 // the questions' width), so the week page holds it at the receipt's measure itself — `className="max-w-receipt"`
 // (test:maswali-design-register 2.17 renders both). The section, its nouns and its words are as before.
+// ⚠️ RE-PINNED IN THE OPEN 2026-10-23 (S5-R3-FIX 8, the lead's ruling on the loading drawings): the closing sentence is said once,
+// in `register-words.ts` (`commitExplainer`), which the card reads and the week's drawing sets unseen — its words are the
+// dictionary's own, in every language. Everything else here is unchanged.
 check("6.1","M12 · L15 · H2 · the commitments are a titled section of nouns: the question set's hash under \"Question set\" with \"Published {when}\"; the tickets' root under \"Tickets at the close\" with its glyph and \"Fixed {when} · {n} tickets\" (the lead's words) — or when it will be published; one explainer once both exist", (w) => {
   const s = code(w, "week"), p = code(w, "parts");
   const drawn = s.includes("<WeekCommitments className=\"max-w-receipt\" t={t} locale={locale} nowMs={nowMs} hash={v.hash} publishedAt={v.publishedAt} root={v.root} closedAt={v.closedAt} tickets={v.tickets} />");
   const nouns = p.includes('<h2 id="mln-reg-commit" className="font-display text-title-sm font-bold text-text text-balance">{t.millionea.commitTitle}</h2>')
     && p.includes("<span>{t.millionea.stubHash}</span>") && p.includes("<I.commitment s={12} className=\"shrink-0\" /> <span>{t.millionea.commitTicketsAtClose}</span>")
     && p.includes("counted(tickets, t.millionea.commitFixedOne, t.millionea.commitFixed, { when: fixed })") && p.includes("{t.millionea.commitAtClose}")
-    && p.includes("{hash && root && <p className=\"text-body-sm text-text-muted text-pretty\">{t.millionea.commitExplainer}</p>}");
+    && p.includes("{hash && root && <p className=\"text-body-sm text-text-muted text-pretty\">{commitExplainer({ t, locale }).text}</p>}");
+  const explainer = LOCALES.every((l) => w.words.commitExplainer({ t: w.dict[l] as never, locale: l }).text === mln(w, l).commitExplainer);
   const words = LOCALES.map((l) => fill(mln(w, l).commitFixed, { when: "27 Nov, 18:00", n: "1,050" }));
   const old = /regHashPublished|regRoot/.test(s + p);
-  return [drawn && nouns && !old && j(words) === j(["Fixed 27 Nov, 18:00 · 1,050 tickets", "Zimefungwa 27 Nov, 18:00 · tiketi 1,050", "锁定于 27 Nov, 18:00 · 1,050 张彩票"]), j({ drawn, nouns, old, words })];
+  return [drawn && nouns && explainer && !old && j(words) === j(["Fixed 27 Nov, 18:00 · 1,050 tickets", "Zimefungwa 27 Nov, 18:00 · tiketi 1,050", "锁定于 27 Nov, 18:00 · 1,050 张彩票"]), j({ drawn, nouns, explainer, old, words })];
 });
 check("6.2", "R6 · the questions' heading names the week — \"Week {week}'s questions\" — and the register never says \"this week's\"", (w) => {
   const s = code(w, "week");
@@ -464,7 +475,10 @@ check("7.5", "H2 · the weeks still running head the index's first page — the 
 check("7.6", "M11 · the index says what it is (an intro at /fairness's reading measure), and launch day is the kit's own empty state — filling its column, the register's glyph, what will appear here, and the way to the hub", (w) => {
   const s = code(w, "index");
   // Its phrases kept whole and its dash held to the word before it (the tile read: "— mauzo, ada, …" opened a sw line at 320).
-  const intro = s.includes('<p className="max-w-[68ch] text-body text-text-muted text-pretty" data-testid="millionea-register-intro">{keepFact(locale, t.millionea.regIntro)}</p>');
+  // ⚠️ RE-PINNED IN THE OPEN 2026-10-23 (S5-R3-FIX 8): its words said once, in `register-words.ts` (`registerIntro`), which the
+  // index's loading drawing sets unseen too — the dictionary's own intro, in every language.
+  const intro = s.includes('<p className="max-w-[68ch] text-body text-text-muted text-pretty" data-testid="millionea-register-intro">{keepFact(locale, registerIntro({ t, locale }).text)}</p>')
+    && LOCALES.every((l) => w.words.registerIntro({ t: w.dict[l] as never, locale: l }).text === mln(w, l).regIntro);
   const empty = s.includes("<EmptyState fill kind=\"fairness\" title={t.millionea.regEmpty} body={t.millionea.regEmptyBody} action={<EmptyStateLink href={MILLIONEA_HREF.hub}>{t.millionea.productTitle}</EmptyStateLink>} />");
   const words = LOCALES.map((l) => mln(w, l).regEmpty);
   return [intro && empty && j(words) === j(["No week is final yet.", "Bado hakuna wiki iliyokamilika.", "尚无已确定的周。"]), j({ intro, empty, words })];
@@ -689,12 +703,48 @@ check("12.1", "the week's ghost opens on the page's bands, in its order: the chi
   const order = at.every((x, i) => x >= 0 && (i === 0 || x > at[i - 1]));
   return [chip && rows && order, j({ chip, rows, at })];
 });
-check("12.2", "the index's ghost: the intro's lines under the head at the reading measure, then the list with its own top edge, dividing rows that carry the week, its chip and its facts as the rows do (beside the week from 768)", (w) => {
+// ⚠️ RE-PINNED IN THE OPEN 2026-10-23 (S5-R3-FIX 8, the lead's ruling on R3-FIX 6's open point): the intro is a STATIC paragraph,
+// so the drawing sets its own words, unseen, through the kit's `GhostWords` in the page's own element at the reading measure —
+// it breaks where the page's does in either engine — and its per-language line table (`INTRO_LINES`) is gone.
+check("12.2", "the index's ghost: the intro's own words set unseen under the head, in the page's own paragraph at the reading measure (no table of its lines), then the list with its own top edge, dividing rows that carry the week, its chip and its facts as the rows do (beside the week from 768)", (w) => {
   const g = code(w, "indexGhost");
-  const intro = g.includes('<span className="block max-w-[68ch] text-body">') && g.includes("const INTRO_LINES: Record<Locale, Tiers> =");
+  const intro = g.includes('<p className="max-w-[68ch] text-body text-text-muted text-pretty"><GhostWords words={registerIntro} /></p>') && !g.includes("INTRO_LINES");
   const list = g.includes('<div className="flex flex-col divide-y divide-border border-t border-border">') && !/border-b border-border py-3/.test(g);
   const row = g.includes('<span className="inline-block h-[23px] w-[88px] rounded-pill bg-bg-overlay" />') && g.includes('<span className="flex flex-col gap-1 md:flex-row md:items-center md:gap-6">');
   return [intro && list && row, j({ intro, list, row })];
+});
+/** The ledger's six labels of a rolled week, in the ONE ledger's order: the week drawing's recipes and the rows' own keys. */
+const LEDGER_WORDS = [["ledgerSales", "sales"], ["ledgerMoneyIn", "moneyIn"], ["ledgerFloor", "floor"], ["ledgerFee", "fee"], ["ledgerCarriedOut", "out"], ["ledgerMoneyOut", "moneyOut"]] as const;
+type LedgerRecipe = (x: { t: unknown; locale: string }) => { text: string };
+// ⭐ S5-R3-FIX 8 (the lead's ruling of 2026-10-23, approved point 5): the ledger's labels are static words — the drawing sets
+// each one's own words, unseen, so a label breaks where the page's does in either engine; its figures are data and stay bars.
+check("12.3", "the week's ghost draws a rolled week's ledger with each label's OWN words, set unseen through the kit's GhostWords — in sw, en and zh the recipes say exactly what the ONE ledger's rows say, in their order, the carry at its two-digit template week — and keeps a table only for its data (the head's facts and times, the root's time line), never for a static label's lines", (w) => {
+  const g = code(w, "weekGhost");
+  const at = LEDGER_WORDS.map(([r]) => g.indexOf(`<LedgerRow words={${r}}`));
+  const drawn = at.every((x, i) => x >= 0 && (i === 0 || x > at[i - 1]));
+  const tables = g.includes("const HEAD_LINES: Record<Locale, { facts: Tiers; times: Tiers }> =") && g.includes("const ROOT_LINES: Record<Locale, Tiers> =")
+    && !/FLOOR_LINES|CARRY_LINES|FINGERPRINT_LINES|explainer: \[/.test(g);
+  const twoDigits = w.words.CARRY_WEEK_TEMPLATE >= 10 && w.words.CARRY_WEEK_TEMPLATE <= 53;
+  const rolled = regWeek({ ...LEDGER_CASES.rolled, carryToCode: `MLN-2026-W${w.words.CARRY_WEEK_TEMPLATE}` } as Partial<MillioneaRegisterWeek>);
+  const differ: string[] = [];
+  for (const l of LOCALES) {
+    const rows = w.ledger(w.dict[l] as never, l, rolled);
+    for (const [r, key] of LEDGER_WORDS) {
+      const got = (w.words[r] as unknown as LedgerRecipe)({ t: w.dict[l], locale: l }).text;
+      const want = textOf((rows.find((row) => row.key === key)?.label ?? "") as ReactNode);
+      if (got !== want) differ.push(`${l} ${key}: ${j(got)} ≠ ${j(want)}`);
+    }
+  }
+  return [drawn && tables && twoDigits && differ.length === 0, j({ drawn, at, tables, twoDigits, differ: differ.slice(0, 3) })];
+});
+check("12.4", "the week's ghost sets each commitment's fingerprint as its same-width template — as many characters as a fingerprint is (SHA-256 in hex), in the numerals' mono, wrapped by character as the page's hash and root are — and the commitments' closing sentence as its own words, each through the kit's GhostWords from the page's words module", (w) => {
+  const g = code(w, "weekGhost"), p = code(w, "parts");
+  const fp = w.words.commitFingerprint();
+  const template = fp.text.length === merkleRoot([]).length && /^0+$/.test(fp.text) && fp.keep === "bare"
+    && g.includes('<span className="font-mono text-body-sm break-all"><GhostWords words={commitFingerprint} /></span>')
+    && p.includes('<span className="font-mono text-body-sm text-text break-all">{hash}</span>') && p.includes('<span className="font-mono text-body-sm text-text break-all">{root}</span>');
+  const sentence = g.includes('<p className="text-body-sm text-text-muted text-pretty"><GhostWords words={commitExplainer} /></p>');
+  return [template && sentence, j({ template, length: fp.text.length, sentence })];
 });
 
 // ── §14 · the register week's right-aligned facts clear the resting fixed controls ──────────────────────────────────
@@ -959,8 +1009,9 @@ const PLANTS: Array<[string, string, World | null]> = [
   ["H2 undone — the weeks still running left off the index", "7.5", plantSrc("index", "const running = page === 1 ? current : [];", "const running: typeof current = [];")],
   ["H2 undone — a running week's row prints its pool", "7.5", { ...REAL, liveFacts: (t, l, w, n) => [...liveWeekFacts(t, l, w, n), "TZS 42,000"] }],
   ["M11 undone — the default empty box under a left heading", "7.6", plantSrc("index", "<EmptyState\n            fill\n            kind=\"fairness\"", "<EmptyState\n            kind=\"fairness\"")],
-  ["M11 undone — the index says nothing of what it is", "7.6", plantSrc("index", "{keepFact(locale, t.millionea.regIntro)}", "{null}")],
-  ["the intro's dash free to open a line again", "7.6", plantSrc("index", "{keepFact(locale, t.millionea.regIntro)}", "{t.millionea.regIntro}")],
+  ["M11 undone — the index says nothing of what it is", "7.6", plantSrc("index", "{keepFact(locale, registerIntro({ t, locale }).text)}", "{null}")],
+  ["the intro's dash free to open a line again", "7.6", plantSrc("index", "{keepFact(locale, registerIntro({ t, locale }).text)}", "{registerIntro({ t, locale }).text}")],
+  ["the intro's words module saying another sentence (the drawing's words no longer the page's)", "7.6", { ...REAL, words: { ...REGISTER_WORDS, registerIntro: ({ t }) => ({ text: t.millionea.regSubRule }) } }],
   ["the second spelling of the close back (\"Sales close Friday 18:00\", no zone)", "7.7", plantSrc("parts", "fill(t.millionea.salesCloseColon, { when: eatWeekdayClock(t, closes) })", "fill(t.millionea.salesCloseAt, { when: eatWeekdayClock(t, closes) })")],
   ["the close said without its zone in Swahili", "7.7", plantWord("sw", "salesCloseColon", "Mauzo yanafungwa: {when}")],
   ["the close's clock in the sentence's face (no `.mono`)", "7.7", { ...REAL, liveFacts: (t, l, wk, n) => liveWeekFacts(t, l, wk, n).map((f) => keepFact(l, textOf(f), [], { numerals: false })) }],
@@ -1006,7 +1057,15 @@ const PLANTS: Array<[string, string, World | null]> = [
   ["the week's ghost without the ledger's card", "12.1", plantSrc("weekGhost", '<div className="mat-flat flex max-w-receipt flex-col rounded-card p-3">', '<div className="flex flex-col">')],
   ["the week's ghost head on a chip row of its own again (not the page's: it never wraps)", "12.1", plantSrc("weekGhost", '<div className="flex flex-wrap items-center gap-x-3 gap-y-1">', '<div className="flex items-center gap-3">')],
   ["the index ghost's rows without the chip", "12.2", plantSrc("indexGhost", '<span className="inline-block h-[23px] w-[88px] rounded-pill bg-bg-overlay" />', "")],
-  ["the index ghost's intro off the reading measure", "12.2", plantSrc("indexGhost", '<span className="block max-w-[68ch] text-body">', '<span className="block text-body">')],
+  ["the index ghost's intro off the reading measure", "12.2", plantSrc("indexGhost", '<p className="max-w-[68ch] text-body text-text-muted text-pretty"><GhostWords words={registerIntro} /></p>', '<p className="text-body text-text-muted text-pretty"><GhostWords words={registerIntro} /></p>')],
+  ["the index ghost's intro as a table of lines again", "12.2", plantSrc("indexGhost", "/** The sections as the index most often opens", "const INTRO_LINES = { en: [8, 7, 4] };\n/** The sections as the index most often opens")],
+  ["the week ghost's floor row setting the fee's words", "12.3", plantSrc("weekGhost", '<LedgerRow words={ledgerFloor} plain="w-[120px]" emphasis="muted" />', '<LedgerRow words={ledgerFee} plain="w-[120px]" emphasis="muted" />')],
+  ["a table of the floor label's lines back", "12.3", plantSrc("weekGhost", "const ROOT_LINES: Record<Locale, Tiers> =", "const FLOOR_LINES = 2;\nconst ROOT_LINES: Record<Locale, Tiers> =")],
+  ["a ledger recipe saying the floor where the ledger says the fee", "12.3", { ...REAL, words: { ...REGISTER_WORDS, ledgerFee: ({ t }) => ({ text: t.millionea.floor, keep: "label" as const }) } }],
+  ["the carry's template week one digit (not the two-digit width class)", "12.3", { ...REAL, words: { ...REGISTER_WORDS, CARRY_WEEK_TEMPLATE: 8 } }],
+  ["the fingerprint's template a character short", "12.4", { ...REAL, words: { ...REGISTER_WORDS, commitFingerprint: () => ({ text: "0".repeat(63), keep: "bare" as const }) } }],
+  ["the closing sentence off its own paragraph", "12.4", plantSrc("weekGhost", '<p className="text-body-sm text-text-muted text-pretty"><GhostWords words={commitExplainer} /></p>', '<GhostWords words={commitExplainer} />')],
+  ["the closing sentence's words module saying another sentence", "6.1", { ...REAL, words: { ...REGISTER_WORDS, commitExplainer: ({ t }) => ({ text: t.millionea.commitAtClose, keep: "bare" as const }) } }],
   // §14
   ["M5 undone — the ledger's 56px right lane back", "14.1", plantSrc("week", 'className="mat-flat flex max-w-receipt flex-col rounded-card p-3"', 'className="mat-flat flex max-w-receipt flex-col rounded-card p-3 pr-[56px] xl:pr-3"')],
   ["M4 undone — the ledger across the whole reading measure", "14.1", plantSrc("week", 'className="mat-flat flex max-w-receipt flex-col rounded-card p-3"', 'className="mat-flat flex flex-col rounded-card p-3"')],
