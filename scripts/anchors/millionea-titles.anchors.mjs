@@ -28,7 +28,7 @@ export const MUTATIONS = [
   {
     name: "(MT5) a filed objection's officer row is not known as Millionea's — its long title cut on one line",
     file: "src/lib/millionea-notice.ts",
-    from: "    || href.startsWith(\"/admin/maswali/integrity#objection-\");",
+    from: "    || href.startsWith(OFFICER_QUEUE + OBJECTION_ROW);",
     to: "    || false;",
     failure: /FAIL 3[.]2 /,
   },
