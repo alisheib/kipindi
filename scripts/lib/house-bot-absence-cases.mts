@@ -67,7 +67,11 @@ export const U43_REVIEWED_BLOBS: Readonly<Record<string, string>> = {
   // planted classic edit is reported); inside them only S5 round 2's ruled player words moved — "Objection window" for
   // the check window (MR-16), the one sales-close wording with its zone, "Buy ticket"/"Ticket bought" (Ali's 2026-10-21
   // ruling 7), the slip's counted asks, the final week's rule (MR-30) — no policy string, no classic word.
-  "src/lib/i18n-dict.ts": "e851d5fa577fb1dc216476a46eb1b78d289adfbd",
+  // 2026-10-23 (S5 round 2: REGISTER, TICKETS' landing door, PLATFORM's rail): e851d5fa5 → d8fb5c6ea. Reviewed the same
+  // way: outside the three `millionea` blocks byte-identical; inside them three keys only — `feeZero` takes the amount
+  // ("fee {fee}", filled with formatTzs(0)), `regTicketsSoldOne` ("1 ticket at {price}"), `landingInvite` (Ali's own words
+  // of 2026-10-22, "Be this week's winner?" / "Kuwa mshindi wa wiki hii?" / "成为本周赢家？").
+  "src/lib/i18n-dict.ts": "d8fb5c6ea72cc6deda795b8211c6541baedc444e",
   "src/app/legal/rules/_content-up-down.tsx": "a2ee86a3f3fd39cba34ddfdfd8ef316f7961cdf9",
   "src/app/legal/rules/up-down/page.tsx": "d6ab15942ad15e0812abf22fe236e27f91e586f5",
 };
@@ -233,6 +237,11 @@ export async function runAbsenceCases(ok: Ok, section: Section, ROOT: string): P
       // Privacy v2026-10-17 entry is amended; production's notice is unchanged).
       ["src/app/legal/privacy/page.tsx", "c58b316ff2116976f5021ad89b242ce09244953e"],
       ["src/app/legal/responsible-gambling/page.tsx", W4],
+      // 2026-10-23 (lane UDDOT, Ali's ruling "Remove Up & Down's dot"; DESIGN_AUTHORITY §K 3): COMMENT ONLY — the legal
+      // nav's DG-P-11 code comment now states the rule in force (every nav tab alike, the old product-line dot and ink
+      // superseded). No published word and no code changed: `git diff origin/main -- src/app/legal/` is that one JSX
+      // comment. Re-pinned at the lane commit that made it (07e643421), on the lead's decision (b) of 2026-10-23.
+      ["src/app/legal/legal-nav.tsx", "07e643421d92bd5c090c8ff511cba35fb9c4c2ce"],
     ]);
     const approvedBlob = (rel: string) => { try { return lf(git("cat-file", "blob", `${APPROVED_REF}:${rel}`)); } catch { return null; } };
     const extraBlob = (rel: string) => { try { return lf(git("cat-file", "blob", `${APPROVED_EXTRA.get(rel)}:${rel}`)); } catch { return null; } };

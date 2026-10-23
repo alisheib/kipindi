@@ -162,6 +162,16 @@ export function SUPPORT_PHONE() { return cfg.get().phone; }
 export function SUPPORT_PHONE_TEL() { return cfg.get().phoneTel; }
 
 /**
+ * ⭐ THE SAVED ROW, RE-READ NOW (`defineConfig`'s `reload`) — for a caller that ACTS on a value rather than printing it:
+ * Millionea's open, whose licence basis can stand on the licence number (the Owner's ruling of 2026-10-23,
+ * `maswali-licence.ts`). It replaces this process's copy as it reads. ⛔ Fails closed: `ok: false` when the store could
+ * not be asked, and the caller refuses rather than act on the copy this container booted with.
+ */
+export function readSupportConfigFresh() {
+  return cfg.reload();
+}
+
+/**
  * ⚠️ TEST SEAM ONLY — never call this from application code.
  *
  * Builds a SECOND instance of the real factory against an injected store, so

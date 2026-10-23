@@ -12,13 +12,17 @@ export function checkOpenChecklist(standing, problems) {
     return { ok: false, reason: "the standing or required guarantee could not be read" };
 
   const expected = ["attestation"];
+  // The licence tile reads None only while the gate truly holds — a recorded None, a record that does not validate, or
+  // no record and no valid licence number (with nothing recorded, the Owner's ruling of 2026-10-23 is the basis).
   if (standing.licence === "None") expected.push("licence");
   // This drive starts either with no capital or with already sufficient capital. Opening a new week
   // adds its own positive floor; pools' existing-open-week figure is only a lower bound here.
   if (current === 0 || current < required) expected.push("guarantee");
   const actual = problems.map((item) => {
     if (/^A second reader has not attested that English, Swahili and Chinese agree/.test(item)) return "attestation";
-    if (/^No licence basis is recorded[.]/.test(item)) return "licence";
+    // Each of the open's three licence refusals names "licence basis", and no other line of the checklist does
+    // (`maswali-licence.ts`; `test:maswali-licence-gate` §1.11–§1.12 feed this the real sentences).
+    if (/licence basis/.test(item)) return "licence";
     const guarantee = /^The guarantee holds (TZS [\d,]+); (TZS [\d,]+) is needed to open/.exec(item);
     if (guarantee && amount(guarantee[1]) === current && amount(guarantee[2]) > current && amount(guarantee[2]) >= required) return "guarantee";
     return "unrecognized";

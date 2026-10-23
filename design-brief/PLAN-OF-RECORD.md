@@ -342,6 +342,8 @@ file:line; re-verify only what a later commit may have moved.
   `--pill-active` + `--text` + 600 — the ONLY active treatment. Up & Down is a destination
   with a 5px `--gilt` dot + `--brand-300` ink (⚠️ verify the gilt dot against
   `test:gold-is-money` before shipping; if the gate objects, the dot goes brand, not gold).
+  ⛔ Struck 2026-10-23: the dot and the ink are gone — Ali's ruling, every nav tab alike
+  (`docs/DESIGN_AUTHORITY.md` §K 3; `docs/COMPLIANCE-DECISIONS.md`, "2026-10-23 · Up & Down loses its golden dot").
   ⚠️ The nav must hold `Jedwali la Washindi` (SW for "Top", 19 chars, ×6.33) through the
   1024–1279 band — the band that already overflowed once.
 - **Bottom rail** (`src/components/layout/bottom-nav.tsx`): today 5 slots authed / 4 guest,
