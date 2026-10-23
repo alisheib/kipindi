@@ -3551,7 +3551,8 @@ Millionea's own surfaces ONLY; everywhere else the laws above stand unchanged.*
       What it cannot know is a SAME-WIDTH TEMPLATE, the width of its whole class (`hub-page-words.ts`):
       - a week's number: two digits in the numerals' face ("Wiki 00"). A week of one digit is one numeral narrower,
         and its line count is unchanged;
-      - the price and the rate: the config's ruled TZS 1,000 and 13%;
+      - the price, the rate and the floor: the config's ruled TZS 1,000, 13% and TZS 1,000,000 (the floor's figure decides
+        where the ledger's floor label wraps beside it);
       - the strip: the template week, opening Monday 00:00 and closing Friday 18:00 EAT, events Saturday to Sunday, and
         results to the final deadline, Monday.
       The page builds the same words with the same functions (`hubIntroText`, `hubRuleText`, `weekStripWords`). A

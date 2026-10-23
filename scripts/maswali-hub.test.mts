@@ -859,6 +859,7 @@ console.log("\n§19 · L7 (round 2) · the drawing's lines are the page's line b
       ...factsOfRule(HPW.hubRuleText(t, HPW.TEMPLATE.pct)).map((f, i) => [`the rule's fact ${i + 1}`, f]),
       ["the carry's label", fill(dict[l].millionea.carriedIn, { week: "00" })],
       ["the floor's label", dict[l].millionea.floor],
+      ["the floor's figure", formatTzs(HPW.TEMPLATE.floor)],
       ["the questions' heading", dict[l].millionea.weekQuestions],
     ] as Array<[string, string]>;
   };
@@ -868,7 +869,7 @@ console.log("\n§19 · L7 (round 2) · the drawing's lines are the page's line b
     return [...missing.map((x) => `${l}: not set as its own words — ${x}`), ...(bands.length === want.length ? [] : [`${l}: ${bands.length} word bands for ${want.length} lines`])];
   };
   const words = LOCALES.flatMap((l) => wordDefects(l, shownOf(l)));
-  ok(`19.5 · in three languages the drawing sets every line it can know as the page's own words, unseen (${wantOf("en").length} bands: the eyebrow's week and the chip's word, the head's line, the strip's labels and runs, the rule's facts, the carry's and the floor's labels, the questions' heading) — each built by the page's own function`,
+  ok(`19.5 · in three languages the drawing sets every line it can know as the page's own words, unseen (${wantOf("en").length} bands: the eyebrow's week and the chip's word, the head's line, the strip's labels and runs, the rule's facts, the carry's and the floor's labels, the floor's figure, the questions' heading) — each built by the page's own function`,
     words.length === 0, words.join(" | "));
   const tabled = shownOf("en").replace(/<span class="kp-ghost-words"><span class="kp-ghost-words__words">This week&#x27;s questions<\/span><\/span>/, '<span class="inline-block h-[0.85em] w-[200px]"></span>');
   ok("19.5′ PLANT · round 1's heading (one 200px bar for every language's words) is reported", tabled !== shownOf("en") && wordDefects("en", tabled).some((x) => x.includes("the questions' heading")));
@@ -898,6 +899,7 @@ console.log("\n§19 · L7 (round 2) · the drawing's lines are the page's line b
     ...LOCALES.filter((l) => !sameClass(fill(dict[l].millionea.week, { week: tpl.week }), wordOf(dict[l] as never, 49))).map((l) => `${l}: the week's template is not a two-digit week`),
     formatTzs(tpl.price) === formatTzs(CFG.ticketPriceTzs) ? null : `the price ${formatTzs(tpl.price)} is not the ruled ${formatTzs(CFG.ticketPriceTzs)}`,
     tpl.pct === Math.round(CFG.jackpotFeeRate * 100) ? null : `the rate ${tpl.pct}% is not the ruled ${CFG.jackpotFeeRate * 100}%`,
+    tpl.floor === CFG.floorTzs ? null : `the floor ${formatTzs(tpl.floor)} is not the ruled ${formatTzs(CFG.floorTzs)}`,
     j(eat(phases.salesFrom)) === j({ weekday: CFG.openWeekday, clock: CFG.openAt }) ? null : `the template opens ${j(eat(phases.salesFrom))}, the config ${CFG.openWeekday} ${CFG.openAt}`,
     j(eat(phases.salesTo)) === j({ weekday: CFG.closeWeekday, clock: CFG.closeAt }) ? null : `the template closes ${j(eat(phases.salesTo))}, the config ${CFG.closeWeekday} ${CFG.closeAt}`,
     j(eat(phases.resultsTo)) === j({ weekday: CFG.finalDeadlineWeekday, clock: CFG.finalDeadlineAt }) ? null : `the template's results end ${j(eat(phases.resultsTo))}, the config's final deadline ${CFG.finalDeadlineWeekday} ${CFG.finalDeadlineAt}`,
@@ -905,7 +907,7 @@ console.log("\n§19 · L7 (round 2) · the drawing's lines are the page's line b
   const oneDigit = LOCALES.map((l) => `${l} "${wordOf(dict[l] as never, 9)}" vs "${fill(dict[l].millionea.week, { week: "00" })}"`).join(", ");
   console.log(`  a week of one digit (1–9) is one numeral narrower than the template — ${oneDigit}; the eyebrow and the carry's label stay one line`);
   const tplOff = templateDefects(HPW.TEMPLATE, HPW.TEMPLATE_PHASES);
-  ok("19.7 · the templates are the width of their class: a two-digit week (\"Wiki 00\"), the config's ruled price (TZS 1,000) and rate (13%), the template week's open, close and final deadline (Monday 00:00, Friday 18:00, Monday 23:59 EAT)",
+  ok("19.7 · the templates are the width of their class: a two-digit week (\"Wiki 00\"), the config's ruled price (TZS 1,000), rate (13%) and floor (TZS 1,000,000), the template week's open, close and final deadline (Monday 00:00, Friday 18:00, Monday 23:59 EAT)",
     tplOff.length === 0, tplOff.join(" | "));
   const drifted = templateDefects({ ...HPW.TEMPLATE, week: "000", pct: 15 }, { ...HPW.TEMPLATE_PHASES, salesTo: HPW.TEMPLATE_PHASES.salesTo - 3_600_000 });
   ok("19.7′ PLANT · a template off its class (a three-digit week, a 15% rate, a close an hour early) is reported", drifted.length >= 5, j(drifted));

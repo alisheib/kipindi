@@ -15,7 +15,7 @@ import type { Locale } from "@/lib/i18n-dict";
 import { cn } from "@/lib/utils";
 import { HUB_DOOR, HUB_EYEBROW, HUB_GRID, HUB_LEDGER, HUB_MINE, HUB_PINNED, HUB_POOL_HEAD, HUB_QUESTIONS, HUB_STRIP, hubAside, hubCell, hubMain } from "./hub-frame";
 import {
-  hubCarry, hubEventsFrom, hubEventsLabel, hubEventsTo, hubFloor, hubIntro, hubOpenChip, hubQuestionsHeading, hubResultsFrom,
+  hubCarry, hubEventsFrom, hubEventsLabel, hubEventsTo, hubFloor, hubFloorValue, hubIntro, hubOpenChip, hubQuestionsHeading, hubResultsFrom,
   hubResultsLabel, hubResultsTo, hubRule, hubSalesFrom, hubSalesLabel, hubSalesTo, hubWeek,
 } from "./hub-page-words";
 import { MillioneaHowGhost } from "./how/how-ghost";
@@ -89,7 +89,7 @@ function LedgerRow({ r }: { r: GhostRow }) {
     <ReceiptRow
       labelStyle="sentence"
       label={label}
-      value={<GhostLine className="w-[84px]" />}
+      value={r.floor ? <GhostWords words={hubFloorValue} plain="w-[84px]" /> : <GhostLine className="w-[84px]" />}
       emphasis={r.total ? "total" : r.muted ? "muted" : undefined}
       divider={r.total}
       alignEnd

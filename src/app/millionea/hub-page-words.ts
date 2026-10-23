@@ -26,13 +26,15 @@ import type { GhostWordsIn, GhostWordsOut } from "@/components/maswali/maswali-g
  *     (1–9, January to early March) is one numeral narrower: its line keeps its count (the eyebrow and the carry's label
  *     are one line at every width), and its chip and its door stand that numeral further left (`qa:maswali-hub-states`
  *     prints it);
- *   · the ticket's price and the fee's rate: Millionea's ruled values (MR-8 TZS 1,000; MR-24 13%) — any four-digit price
- *     in the money face, any two-digit rate in the numerals' face, is one width;
+ *   · the ticket's price, the fee's rate and the floor: Millionea's ruled values (MR-8 TZS 1,000; MR-24 13%; MR-20
+ *     TZS 1,000,000) — any four-digit price and seven-digit floor in the money face, any two-digit rate in the numerals'
+ *     face, is one width. The floor's figure decides where the ledger's floor label wraps beside it: drawn as a bar of
+ *     another width, the label took one line in the drawing and two on the page at sw 1024+ (the floor row 16px short);
  *   · the strip: the template week's own weekdays and clocks — the config's open (Monday 00:00) and close (Friday 18:00
  *     EAT), its events from Saturday to Sunday, its results from Sunday to its final deadline (Monday) — a clock in the
  *     numerals' face is one width whatever its time. A week drafted on other days draws the template's days.
  */
-export const TEMPLATE = { week: "00", price: 1_000, pct: 13 } as const;
+export const TEMPLATE = { week: "00", price: 1_000, pct: 13, floor: 1_000_000 } as const;
 const HOUR = 3_600_000, DAY = 24 * HOUR;
 /** A Monday 00:00 in East Africa Time (2026-11-30), the template week's open. */
 const MONDAY = Date.UTC(2026, 10, 29, 21, 0);
@@ -65,6 +67,8 @@ export const hubOpenChip = ({ t }: GhostWordsIn): GhostWordsOut => ({ text: week
 export const hubRule = ({ t }: GhostWordsIn): GhostWordsOut => ({ facts: factsOf(hubRuleText(t, TEMPLATE.pct)) });
 /** The ledger's carried-in row ("Imehamishwa kutoka Wiki 00"), kept as the ledger keeps it (its week one run). */
 export const hubCarry = ({ t }: GhostWordsIn): GhostWordsOut => ({ text: fill(t.millionea.carriedIn, { week: TEMPLATE.week }), runs: [week00(t)] });
+/** The ledger's floor figure (the template floor, in the money face as the ledger's `money` sets it). */
+export const hubFloorValue = (_: GhostWordsIn): GhostWordsOut => ({ text: formatTzs(TEMPLATE.floor) });
 /** The ledger's floor label, as the kit row sets a string label (`keepConnectives`). */
 export const hubFloor = ({ t }: GhostWordsIn): GhostWordsOut => ({ text: t.millionea.floor, keep: "label" });
 /** The questions' heading of a week on sale, bare as the page's heading. */
