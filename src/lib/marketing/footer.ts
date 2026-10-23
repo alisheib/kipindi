@@ -114,9 +114,10 @@ export type MarketingCompose = {
  *
  * ⭐ HIGH 1 (MASWALI-BUILD S6) · `millionea` is the campaign's DECLARED product and, where a server door read the week, its
  * facts (`millionea-claims.ts`); for any other campaign, the untagged rules where a server door handed them in (S6-LINT 1:
- * the server's alone, `lib/server/marketing/millionea-untagged.ts`; S6-LINT 6: only under Millionea's ACTIVE ceiling). A
- * caller that names none (`UNTAGGED_CAMPAIGN`, the composer's live counter, every door below that ceiling) meets no
- * Millionea rule: its problems are exactly what they were.
+ * the server's alone, `lib/server/marketing/millionea-untagged.ts`; S6-LINT 6: only under Millionea's ACTIVE ceiling;
+ * S6-SHIP 5: off in this release, `MILLIONEA_UNTAGGED_RULES_ON`). A caller that names none (`UNTAGGED_CAMPAIGN`, the
+ * composer's live counter, every door while the rules are off or below that ceiling) meets no Millionea rule: its problems
+ * are exactly what they were.
  */
 export function composeMarketing(
   body: string,

@@ -205,7 +205,7 @@ function templateOf(c: StoredSmsCampaign): CampaignTemplate {
     bodySw: f.bodySw, bodyEn: f.bodyEn, nameFallbackSw: f.nameFallbackSw, nameFallbackEn: f.nameFallbackEn, sourcePhrase: c.sourcePhrase ?? "",
     // ⭐ HIGH 1 · the product the stored name declares, as the test send and the engine read it.
     product: campaignProductOf(c.name),
-    // ⭐ S6-LINT 1 · a campaign not tagged Millionea meets the untagged rules on this server door (`millionea-untagged.ts`).
+    // ⭐ S6-LINT 1 · a campaign not tagged Millionea meets the untagged rules the one decision hands this door (none while off: S6-SHIP 5).
     untaggedRules: untaggedRulesFor(c.name),
   };
 }

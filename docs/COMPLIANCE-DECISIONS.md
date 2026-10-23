@@ -8,6 +8,18 @@
 
 ---
 
+## 2026-10-23 · Marketing — a campaign not tagged Millionea is sent exactly as before the claims lint; only a Millionea campaign meets it (the build lead's ruling; MASWALI-BUILD S6-SHIP 5)
+
+**What it rules.** With Millionea at the ACTIVE ceiling in production, the S6 release ships the Millionea claims lint for
+campaigns tagged Millionea only (a name that begins with "Millionea"), which it judges in full. A campaign not tagged
+Millionea, in any language, is saved, test-sent, previewed and sent exactly as on `main` before S6: the classic marketing
+path is unchanged. The lint's untagged rules stay off (`MILLIONEA_UNTAGGED_RULES_ON`, `millionea-untagged.ts`) until the
+release that fixes and verifies the lint review's open findings (`FAILURE-INVENTORY.md` §9b); until then nothing refuses
+a campaign that speaks of Millionea without the tag, so an officer tags every Millionea campaign. Guards:
+`test:maswali-claims` §11 and `red:maswali-claims` (C42)–(C46).
+
+---
+
 ## 2026-10-23 · Maswali Millionea — a winner whose account cannot sign in is paid by a Compliance officer, as OD-13 decided; the identity and email rules do not change (MASWALI-BUILD S6-MONEY)
 
 **Authority.** OD-13 (`MASWALI-PLAN.md` §9), ruled as recommended on 2026-10-16 (§ "2026-10-16 · Maswali Millionea — the

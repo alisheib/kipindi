@@ -23,6 +23,9 @@
  *      ⛔ A server door hands them in only while Millionea's ceiling is ACTIVE (the lead's ruling 6, S6-LINT 6): below it a
  *      campaign not tagged Millionea is judged, saved and sent exactly as before the lint, and nothing of the lint runs at
  *      boot.
+ *      ⛔ AND IN THIS RELEASE NOT AT ALL (the lead's ruling of 2026-10-23, S6-SHIP 5): the untagged rules are off
+ *      (`MILLIONEA_UNTAGGED_RULES_ON`, `millionea-untagged.ts`), so this lint judges only campaigns tagged Millionea; a
+ *      campaign not tagged Millionea, in any language, goes exactly as before the lint, whatever the ceiling.
  * ⭐ `{pct}` IS NEVER TYPED. The approved wordings hold the placeholder; `maswali-marketing.ts` fills it from the week's own
  *    frozen fee for the officer to copy.
  * ⛔ NEVER A WINNER (OD-30, MB-88): the platform holds no written opt-in to publicity, so a winner is never named, described

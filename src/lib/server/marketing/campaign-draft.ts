@@ -45,7 +45,8 @@
  * ⭐ S6-LINT 1 · A CAMPAIGN NOT TAGGED MILLIONEA MEETS THE UNTAGGED RULES HERE: the save hands them to the ONE verdict
  * (`untaggedRulesFor`), so what the screen's live verdict does not judge — they are the server's alone — is refused at the
  * save, in their words, on the field that holds it. ⛔ S6-LINT 6 · only under Millionea's ACTIVE ceiling: below it such a
- * campaign saves exactly as before the lint, and only a save that hands the rules in stamps their first run.
+ * campaign saves exactly as before the lint, and only a save that hands the rules in stamps their first run. ⛔ S6-SHIP 5 ·
+ * and in this release not at all: the untagged rules are off (`MILLIONEA_UNTAGGED_RULES_ON`), so the decision hands none in.
  *
  * `marketing.campaign_created` is written once, when the draft is born. Owed: U50 registers it.
  *

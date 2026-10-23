@@ -18,6 +18,8 @@
  *    (`instrumentation.ts` runs nothing of the lint), never a door below the ACTIVE ceiling (no untagged rule runs there),
  *    never for a campaign tagged Millionea (never grandfathered), and never the composer's previews (a page that shows a
  *    draft's verdict writes nothing). Only the engine's slice reads it. `test:maswali-claims` §10.
+ * ⛔ S6-SHIP 5 (the build lead's ruling of 2026-10-23) · WHILE THE UNTAGGED RULES ARE OFF (`MILLIONEA_UNTAGGED_RULES_ON`,
+ *    `millionea-untagged.ts`) no door judges with them, so nothing reads or writes it at all (`test:maswali-claims` §11).
  * ⛔ AN INSTANT THAT CANNOT BE READ IS NO INSTANT: no campaign is then grandfathered — and a slice that only Millionea's
  *    rules would stop WAITS for it, never pauses on a transient read (round 5, MEDIUM 4b; `engine.ts`).
  */

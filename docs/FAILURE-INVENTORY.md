@@ -1499,6 +1499,27 @@ Owner, never for the trading officer who seals (MR-14) nor Finance; a report tha
 own critical alert. The words say what the control enforces, never what ties the accounts. Guards:
 `test:maswali-integrity` 4.9–4.13 (both stores); plants (SM18)–(SM21).
 
+#### ⏸ The claims lint's untagged rules would refuse ordinary marketing at production's ceiling — held OFF (S6-SHIP 5, the build lead's ruling of 2026-10-23)
+
+Millionea runs at the ACTIVE ceiling in production since 2026-10-22, and at that ceiling S6-LINT 6 hands the untagged
+rules (a campaign NOT tagged Millionea refused for Millionea's words, and for a body in Chinese characters) to every
+marketing door. The lint review after round 17 left findings open in those rules — some refuse ordinary marketing copy —
+so shipping them would have blocked the owner's ordinary campaigns. THE RULE for this release: the untagged rules are off
+(`MILLIONEA_UNTAGGED_RULES_ON = false`, `src/lib/server/marketing/millionea-untagged.ts`): the one decision
+(`untaggedRulesFor`) hands them to no door, whatever the ceiling; a campaign not tagged Millionea — in any language — is
+saved, test-sent, previewed and sent exactly as before the lint, and the rules' first-run stamp is never written. The
+claims lint judges only campaigns tagged Millionea (a name that begins with "Millionea"), which still meet the tagged
+rules in full. Held by `test:maswali-claims` §11 (11.1 the decision under every ceiling; 11.2–11.5 the save, the test
+send, the slice and the preview at ACTIVE, with Swahili and English bodies in Millionea's words and a Chinese line, each
+against the verdict before the lint; 11.6 no stamp; 11.7 a tagged campaign still judged; 11.8 the seventeen door checks
+held while the rules are off) and the plants of `red:maswali-claims`: (C42) the rules switched back on, (C43)–(C46) a
+door that decides around the one decision; the six plants that need the rules handed in, (C31)–(C34), (C40) and (C41),
+are held while they are off.
+**Open, waiting for the LINT release** (the review's findings, by what each rule does wrongly): 1–4 (HIGH) and 5, 6 and 10
+(MEDIUM) — phrasings of a claim the rules let pass; 7 and 8 (MEDIUM) — ordinary copy the rules refuse; 12 (LOW) — both
+kinds; 11 (LOW) — comments that still describe a way past a rule; 13 (LOW) — gaps in the suite and its red twin. Finding 9 is
+closed (S6-INT 16, S6-LINT 4). The release that fixes and verifies them turns the rules on and re-aims §11.
+
 ## §9c · MASWALI MILLIONEA — the admin console, walked and made plain (S6, 2026-10-22)
 
 Ali, 2026-10-22: "admin make sure full control with the right sorting etc. and management", and his admin guide must be
