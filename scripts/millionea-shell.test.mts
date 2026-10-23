@@ -241,7 +241,9 @@ section("3 · F10 · every programmatic move on a Millionea surface starts the p
     const s = decomment(text);
     const helper = /function navigate\(push: \(\) => void\): void \{\s*([^}]*)\}/.exec(s)?.[1] ?? "";
     const helperStarts = squash(helper).trim().startsWith(DISPATCH) && /push\(\);/.test(helper);
-    return [...s.matchAll(/\brouter\.(?:push|replace)\(/g)].map((m) => {
+    // MASWALI-BUILD FLOW 3: a document request (`window.location.assign/replace`) is a programmatic move too — the slip's
+    // deposit door makes one now, for the journey's payment focus — so the census counts it beside the router's.
+    return [...s.matchAll(/\brouter\.(?:push|replace)\(|\bwindow\.location\.(?:assign|replace)\(/g)].map((m) => {
       const before = s.slice(Math.max(0, m.index! - 240), m.index!);
       const viaHelper = /\bnavigate\(\(\) => $/.test(before) && helperStarts;
       const afterDispatch = squash(before).trimEnd().endsWith(DISPATCH);
@@ -260,7 +262,7 @@ section("3 · F10 · every programmatic move on a Millionea surface starts the p
   ok("3.0b · the stamp's \"View ticket\" is the kit's Link (the slip hands the stamp its address, never a push)",
     squash(decomment(raw(SLIP))).includes("primaryHref={stamp ?") && !/onPrimary=\{[^}]*router\.push/.test(squash(decomment(raw(SLIP)))));
   ok("3.1 · every one dispatches `50pick:navigating` before it pushes (§F10) — no Millionea move waits on a silent screen", silent.length === 0, j(silent));
-  const bare = movesOf(plant(raw(SLIP), "onDeposit={(amount) => navigate(() => router.push(", "onDeposit={(amount) => (() => router.push("));
+  const bare = movesOf(plant(raw(SLIP), "onDeposit={(amount) => navigate(() => window.location.assign(", "onDeposit={(amount) => (() => window.location.assign("));
   ok("3.1′ PLANT · the slip's deposit door pushed bare (no bar first) is reported", bare.some((m) => !m.ok));
   const mute = movesOf(plant(raw(SLIP), `  ${DISPATCH}\n  push();`, "  push();"));
   ok("3.1″ PLANT · the helper that no longer dispatches first (every move through it silent) is reported", mute.length >= 1 && mute.every((m) => !m.ok));

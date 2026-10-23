@@ -20,6 +20,8 @@ import { resolveSimpleJourney } from "@/lib/server/journey-preview";
 import { isMobileMoneyMethodId } from "@/lib/payment-providers";
 import { beginDepositActionClaim, depositRefusalDisposition } from "@/lib/server/deposit-action-recovery";
 import { isFundingUuid } from "@/lib/journey/funding-storage";
+import { slipReturnPath } from "@/lib/journey/slip-return";
+import { resolveMillionea } from "@/lib/server/millionea-preview";
 
 /** Absolute base for the URLs we hand Selcom to send the buyer back to. Must be
  *  the real public host — a relative path is meaningless to the gateway. */
@@ -75,6 +77,14 @@ export async function depositAction(formData: FormData) {
     carry.set("bet", pendingBet.bet);
     carry.set("returnPath", pendingBet.returnPath);
   }
+  // ⭐ MB-57 (MASWALI-BUILD FLOW 3, `lib/journey/slip-return.ts`): the Millionea slip's way back — never beside a saved bet,
+  // only the allowed path, only while Millionea is visible to this player. It survives a refusal (the carry), and a deposit
+  // that goes through lands on the wait page in BOTH shells (below), which waits for the money and then offers the slip,
+  // its answers kept in this tab. It moves no money and is not part of the deposit's funding identity.
+  const slipAsked = pendingBet ? null : slipReturnPath(formData.get("returnPath"));
+  const slipReturn = slipAsked && (await resolveMillionea()).visible ? slipAsked : null;
+  if (slipReturn) carry.set("returnPath", slipReturn);
+  const slipQuery = slipReturn ? `returnPath=${encodeURIComponent(slipReturn)}` : "";
   if (isCard) {
     if (billing.firstName) carry.set("bFirst", billing.firstName);
     if (billing.lastName) carry.set("bLast", billing.lastName);
@@ -92,7 +102,7 @@ export async function depositAction(formData: FormData) {
       let disposition: "release" | "recover" | "conflict" = "recover";
       try { disposition = await depositRefusalDisposition(session.userId, idempotencyKey); }
       catch { /* A failed lookup cannot prove that an order was never reserved. */ }
-      if (focusedIntent && disposition === "recover") redirect(`/wallet/deposit/wait?key=${encodeURIComponent(idempotencyKey)}` as never);
+      if (focusedIntent && disposition === "recover") redirect(`/wallet/deposit/wait?key=${encodeURIComponent(idempotencyKey)}${slipQuery ? `&${slipQuery}` : ""}` as never);
       if (focusedIntent && disposition === "release") {
         const bound = `${session.userId}:${idempotencyKey}`;
         suffix = `&release=${encodeURIComponent(signFlash("deposit-release-key", bound))}`;
@@ -104,7 +114,7 @@ export async function depositAction(formData: FormData) {
 
   if (validKey && idempotencyKey) {
     const claim = await beginDepositActionClaim(session.userId, idempotencyKey);
-    if (claim === "uncertain") redirect(`/wallet/deposit/wait?key=${encodeURIComponent(idempotencyKey)}` as never);
+    if (claim === "uncertain") redirect(`/wallet/deposit/wait?key=${encodeURIComponent(idempotencyKey)}${slipQuery ? `&${slipQuery}` : ""}` as never);
     if (claim === "conflict" || claim === "refused") await fail(t.error.somethingDidntWork);
   }
 
@@ -206,9 +216,11 @@ export async function depositAction(formData: FormData) {
   if (data.redirectUrl) redirect(data.redirectUrl as never);
 
   // A provider may already hold this order after an uncertain dispatch answer. Keep this exact key.
-  if (data.recoveryRequired) redirect(`/wallet/deposit/wait?key=${encodeURIComponent(idempotencyKey!)}` as never);
+  if (data.recoveryRequired) redirect(`/wallet/deposit/wait?key=${encodeURIComponent(idempotencyKey!)}${slipQuery ? `&${slipQuery}` : ""}` as never);
 
-  if (journeyFlow) redirect(`/wallet/deposit/wait/${data.txnId}` as never);
+  // MB-57 (FLOW 3): a deposit started from the Millionea slip waits on the wait page in either shell — it watches an
+  // asynchronous payment arrive and then offers the slip; the wallet's result modal has no way to wait.
+  if (journeyFlow || slipReturn) redirect(`/wallet/deposit/wait/${data.txnId}${slipQuery ? `?${slipQuery}` : ""}` as never);
 
   // status is CONFIRMED for synchronous providers, PROCESSING when the provider
   // collects asynchronously (we credit on the webhook). The modal reflects both.

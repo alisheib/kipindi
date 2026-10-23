@@ -38,11 +38,12 @@ import { clusterReport, clusterWinnerLine, consoleOfficerName } from "./maswali-
 import { canView } from "./rbac";
 import type { Role } from "./roles";
 import { snapshotOrLegacy } from "./market-config";
-import { MAIN_COUNT, settlementGate, weekVoidCertain } from "@/lib/maswali-score";
+import { MAIN_COUNT, settlementGate, slotLabel, weekVoidCertain } from "@/lib/maswali-score";
 import { guaranteeRequirement } from "@/lib/maswali-money";
 import type { RolloutState } from "@/lib/millionea-rollout";
 import { formatTzs } from "@/lib/utils";
-import { eatInText, fmtEat } from "@/lib/maswali-admin-format";
+import { agoInText, eatInText, fmtEat } from "@/lib/maswali-admin-format";
+import { MASWALI_VOID_REASON_LABEL } from "@/lib/maswali-void-reason";
 import { parseWeekListQuery, selectWeekPage, type WeekListQuery } from "@/lib/maswali-week-list";
 import { parseIntegrityListQuery, selectHeldShares, selectWinnerTickets, selectSealWeeks, selectVoidableWeeks, type IntegrityListQuery } from "@/lib/maswali-integrity-list";
 
@@ -116,7 +117,8 @@ export type ConsoleWeekDetail = {
    * never a refusal (MB-85: a public holiday the close falls on). Null once the close has passed.
    */
   warnings: string[] | null;
-  /** Slots whose void deadline passed unsealed: the system proposes a void, an officer seals it (MR-15). */
+  /** Slots whose void deadline passed unsealed, flagged for an officer: the result from its source if the source gave it
+   *  by the deadline, the void only when it gave none by then (MR-15; `voidDeadlineAlertText`). */
   proposedVoids: number[];
 };
 
@@ -189,9 +191,41 @@ export type ConsoleAlert = { level: "critical" | "warning"; text: string; weekId
 
 /** The alert for a week whose release waits past the live "Alert when a release waits (hours)" (`releaseAlertHours`, read
  *  for every week at once). ⭐ S6-SHIP 6 (the lead's ruling of 2026-10-23): "Finance" — the console's one word for the
- *  role that releases (`ROLE_LABEL.FINANCE`), never "Accounting". `test:maswali-admin-plain` §9.3. */
-export function releaseWaitAlertText(weekCode: string, hours: number): string {
-  return `${weekCode}: its results are final and its window closed ${hours} h ago, and it is not settled. Finance releases it.`;
+ *  role that releases (`ROLE_LABEL.FINANCE`), never "Accounting". `test:maswali-admin-plain` §9.3.
+ *  ⭐ FLOW 8 (the lead's rulings of 2026-10-23): (a) the time since the window closed is the REAL elapsed time (`agoInText`:
+ *  hours under 48, days from 48) — it printed the setting's threshold, "closed 4 h ago" a week after the close (GUIDE's
+ *  finding); (b) while an objection still stands the week cannot be settled — a release is refused until every objection
+ *  is decided — so the alert says so and sends the reader to Compliance, never "Finance releases it" (FLOW's finding). */
+export function releaseWaitAlertText(weekCode: string, elapsedMs: number, standing = 0): string {
+  const ago = agoInText(elapsedMs);
+  if (standing > 0) {
+    return `${weekCode}: its window closed ${ago} and ${standing === 1 ? "an objection still stands" : `${standing} objections still stand`}, so it cannot be settled. Compliance rules on ${standing === 1 ? "it" : "them"} on the integrity page.`;
+  }
+  return `${weekCode}: its results are final and its window closed ${ago}, and it is not settled. Finance releases it.`;
+}
+
+/**
+ * The alert for a week with questions past their void deadline and unsealed. ⭐ FLOW 1 (the GUIDE lane's finding, the
+ * lead's word of 2026-10-23): it states the binding rule (the Millionea rules' section 5, MR-15) — a result the source
+ * gave by the deadline is sealed from its source, and only a question with no result by then is voided, on one of the two
+ * grounds the deadline opens, named as the seal form offers them. It said "void each one, with its ground", which told
+ * officers to void a question whose source had answered. `test:maswali-admin-plain` §9.6.
+ */
+export function voidDeadlineAlertText(weekCode: string, count: number): string {
+  return `${weekCode}: ${count} question(s) passed their void deadline unsealed. Seal each from its source if the source gave its result by the deadline; void only a question with no result by then, on “${MASWALI_VOID_REASON_LABEL.not_played}” or “${MASWALI_VOID_REASON_LABEL.no_source}”.`;
+}
+
+/**
+ * ⭐ FLOW 12 (the lead's ruling of 2026-10-23, from GUIDE's Weeks picture): an alert names a question by its LABEL — M1–M10,
+ * A1–A5, `slotLabel`, as the seal console, the objections, the integrity page and the guide name it — never "slot 14", a
+ * storage number no officer sees anywhere else. `test:maswali-admin-plain` 9.8.
+ */
+export function unsealedAlertText(weekCode: string, slot: number, hours: number): string {
+  return `${weekCode}: ${slotLabel(slot)} is unsealed ${hours} hours after its event started.`;
+}
+/** A seal that disagrees with its linked Yes/No market's resolution, its question by its label (FLOW 12). */
+export function linkedMismatchAlertText(weekCode: string, slot: number, ours: string, theirs: string): string {
+  return `${weekCode}: ${slotLabel(slot)} is sealed ${ours}, but its linked Yes/No market resolved ${theirs}.`;
 }
 
 /** `deps.readFloat` reads the payout float (the payments provider's by default; a suite hands its own); `deps.readTakeover`
@@ -221,8 +255,8 @@ export async function consoleAlerts(
       for (const q of qs) {
         if (q.outcome !== null) continue;
         const since = nowMs - Date.parse(q.eventStartsAt);
-        if (since >= 12 * HOUR) out.push({ level: "critical", weekId: w.id, text: `${w.code}: slot ${q.slot} is unsealed 12 hours after its event started.` });
-        else if (since >= 2 * HOUR) out.push({ level: "warning", weekId: w.id, text: `${w.code}: slot ${q.slot} is unsealed 2 hours after its event started.` });
+        if (since >= 12 * HOUR) out.push({ level: "critical", weekId: w.id, text: unsealedAlertText(w.code, q.slot, 12) });
+        else if (since >= 2 * HOUR) out.push({ level: "warning", weekId: w.id, text: unsealedAlertText(w.code, q.slot, 2) });
       }
       // A question drafted from a Yes/No market must seal the same way that market resolved: a mismatch is either a wrong
       // seal or a wrong resolution, and both are money (S4 item 5).
@@ -231,14 +265,20 @@ export async function consoleAlerts(
         const linked = await marketStore.get(q.linkedMarketId).catch(() => null);
         const theirs = linked?.resolvedOutcome;
         if ((theirs === "YES" || theirs === "NO") && theirs !== q.outcome) {
-          out.push({ level: "critical", weekId: w.id, text: `${w.code}: slot ${q.slot} is sealed ${q.outcome}, but its linked Yes/No market resolved ${theirs}.` });
+          out.push({ level: "critical", weekId: w.id, text: linkedMismatchAlertText(w.code, q.slot, q.outcome, theirs) });
         }
       }
       const proposed = await proposeVoidsAtDeadline(w.id, now);
-      // MR-15 · a question unsealed at its void deadline voids on a ground from the closed list, sealed by an officer.
-      if (proposed.length) out.push({ level: "warning", weekId: w.id, text: `${w.code}: ${proposed.length} question(s) passed their void deadline unsealed; void each one, with its ground.` });
+      // MR-15 · a question unsealed at its void deadline is sealed from its source if the source gave its result by then;
+      // only one with no result by then voids, on a ground from the closed list, sealed by an officer.
+      if (proposed.length) out.push({ level: "warning", weekId: w.id, text: voidDeadlineAlertText(w.code, proposed.length) });
       if (w.objectionsCloseAt && Date.parse(w.objectionsCloseAt) + cfg.releaseAlertHours * HOUR < nowMs) {
-        out.push({ level: "critical", weekId: w.id, text: releaseWaitAlertText(w.code, cfg.releaseAlertHours) });
+        // FLOW 8 · the real time since the window closed, and whether an objection still holds the week (an OPEN one
+        // freezes its settlement). A failed count keeps the release's words; the release re-checks and refuses while one stands.
+        // (Loaded at the use, as market-service loads it: objections-service imports market-service.)
+        const { countOpenObjections } = await import("./objections-service");
+        const standing = w.marketId ? await countOpenObjections(w.marketId).catch(() => 0) : 0;
+        out.push({ level: "critical", weekId: w.id, text: releaseWaitAlertText(w.code, nowMs - Date.parse(w.objectionsCloseAt), standing) });
       }
     }
   }

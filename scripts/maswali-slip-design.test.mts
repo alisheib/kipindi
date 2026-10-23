@@ -428,8 +428,9 @@ section("§6 · the short main balance asks the bet sheet's own plan");
   ok("6.6 · MR-10 · bonus money never buys a ticket: the plan is asked with a bonus of nothing",
     code("src/lib/millionea-slip-money.ts").includes("wallet: { status: facts.walletStatus, balance: main, bonusBalance: 0 },"));
   const client = code("src/app/millionea/slip/slip-client.tsx");
-  ok("6.7 · H4 · the door goes where the bet sheet's goes, tagged as a low-balance deposit, the progress bar first (§F10)",
-    client.includes('`/wallet/deposit?${new URLSearchParams({ amount: String(amount), from: "low-balance" })}`') && client.includes('window.dispatchEvent(new Event("50pick:navigating"));'));
+  // Re-pinned at MASWALI-BUILD FLOW 3 (MB-57): the door also carries the slip's way back (`returnPath`, test:deposit-slip-return).
+  ok("6.7 · H4 · the door goes where the bet sheet's goes, tagged as a low-balance deposit, with the slip's way back, the progress bar first (§F10)",
+    client.includes('`/wallet/deposit?${new URLSearchParams({ amount: String(amount), from: "low-balance", returnPath: MILLIONEA_SLIP_RETURN })}`') && client.includes('window.dispatchEvent(new Event("50pick:navigating"));'));
   ok("6.1′ CONTROL · the raw shortfall the old door offered is under the minimum the deposit takes", 600 < DEPOSIT_MIN_TZS);
 }
 
@@ -536,7 +537,9 @@ section("§9 · the batch stamp's dwell lives with every other dwell");
   ok("9.2 · motion M4 · \"View ticket\" starts the progress bar on its press — it is the kit's Link, which NavProgress's own listener starts on (§F10) — and the deposit door, a programmatic move, still raises `50pick:navigating`",
     client.includes("primaryHref={stamp ? (many ? MILLIONEA_HREF.tickets : millioneaTicketHref(stamp.serials[0])) : undefined}")
       && nav.includes('document.addEventListener("click", onClick, { capture: true });') && nav.includes('closest("a[href]")')
-      && /onDeposit=\{\(amount\) => navigate\(\(\) => router\.push\(/.test(client) && client.includes('window.dispatchEvent(new Event("50pick:navigating"));'));
+      // Re-pinned at MASWALI-BUILD FLOW 3: the door is a document request now (window.location.assign, the journey's
+      // payment focus), still raised through `navigate` and its event.
+      && /onDeposit=\{\(amount\) => navigate\(\(\) => window\.location\.assign\(/.test(client) && client.includes('window.dispatchEvent(new Event("50pick:navigating"));'));
   ok("9.3 · motion M3 · the stamp keeps its words through its exit: its content is the last cut shown (`shownCut`), and closing clears only `cut`",
     client.includes("const stamp = shownCut;") && client.includes("onClose={() => setCut(null)}") && !/setShownCut\(null\)/.test(client));
   ok("9.4 · M10 · a block on the money path stays until read (`durationMs: 0` for `danger`)",

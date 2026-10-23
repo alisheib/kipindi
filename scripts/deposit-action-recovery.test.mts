@@ -10,6 +10,8 @@ import { prisma } from "../src/lib/server/prisma.ts";
 import { beginDepositActionClaim, depositRefusalDisposition } from "../src/lib/server/deposit-action-recovery.ts";
 import { readDepositStatus } from "../src/lib/server/deposit-status.ts";
 import { fundingStorageKey, isFundingUuid, releaseStoredFunding, writeStoredFunding } from "../src/lib/journey/funding-storage.ts";
+// MASWALI-BUILD FLOW 3 (MB-57): the action reads the Millionea slip's way back (pure) and asks Millionea's visibility.
+import { slipReturnPath } from "../src/lib/journey/slip-return.ts";
 
 const root = resolve(import.meta.dirname, "..");
 const pg = process.argv.includes("--pg");
@@ -73,6 +75,7 @@ function action(disposition = depositRefusalDisposition, dispatch?: () => Promis
     parseSavedDepositBet: () => null, isMobileMoneyMethodId: (provider: string) => provider === "MPESA",
     DEPOSIT_MIN_TZS: 1_000, DEPOSIT_MAX_TZS: 10_000_000, db,
     BASE_URL: () => "https://www.50pick.tz",
+    slipReturnPath, resolveMillionea: async () => ({ state: "ACTIVE", visible: true, preview: false }),
   };
   const fn = new Function(...Object.keys(dependencies), `${js}\nreturn depositAction;`)(...Object.values(dependencies)) as (data: FormData) => Promise<never>;
   return { fn, calls: () => calls };

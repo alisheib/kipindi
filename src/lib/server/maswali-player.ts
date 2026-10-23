@@ -733,10 +733,16 @@ export async function millioneaSlip(viewer: MillioneaViewer, now: Date = new Dat
   const terms = await termsOf(week);
   if (!terms) return null;
   const qs = await questionStore.listForWeek(week.id);
-  let held: number | null = null, balance: number | null = null, staff = false;
+  let held: number | null = null, balance: number | null = null, staff = false, frozen = false;
   if (viewer.userId) {
     held = await ticketStore.countLiveForUser(week.id, viewer.userId);
-    try { balance = (await db.wallet.findByUserId(viewer.userId))?.balance ?? null; } catch { balance = null; }
+    try {
+      const wallet = await db.wallet.findByUserId(viewer.userId);
+      balance = wallet?.balance ?? null;
+      // ⭐ FLOW 10 (the lead's ruling of 2026-10-23): a held wallet hears the buy's own refusal before any pick — the buy's
+      // own condition (`purchaseMaswaliTickets`: a wallet whose status is not ACTIVE is `wallet_frozen`); the buy still decides.
+      frozen = !!wallet && wallet.status !== "ACTIVE";
+    } catch { balance = null; }
     try { staff = isStaffRole((await db.user.findById(viewer.userId))?.role); } catch { staff = false; }
   }
   const closesMs = Date.parse(week.closesAt);
@@ -745,8 +751,9 @@ export async function millioneaSlip(viewer: MillioneaViewer, now: Date = new Dat
       : closesMs <= nowMs ? "millionea_sales_closed"
         : getSalesPause().paused ? "millionea_paused"
           : staff ? "millionea_staff_barred"
-            : held !== null && held >= terms.rules.ticketCapPerWeek ? "millionea_cap_reached"
-              : null;
+            : frozen ? "wallet_frozen"
+              : held !== null && held >= terms.rules.ticketCapPerWeek ? "millionea_cap_reached"
+                : null;
   return {
     week: { id: week.id, code: week.code, visibility: week.visibility, isFinal: week.isFinal, closesAt: week.closesAt },
     firstEventAt: firstEventOf(qs), questions: questionsOf(qs, gradable(qs)),

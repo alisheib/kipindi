@@ -8,7 +8,9 @@
  *
  *   · OPEN and past its close            → `closeWeek` (the commitment, exactly once); a close the database's clock
  *     refused (a timer that fired a few ms early on the container's clock) is asked again the moment that clock arrives
- *   · CLOSED / RESOLVING                 → `recomputeGate`; a void deadline passed unsealed → a proposal for an officer
+ *   · CLOSED / RESOLVING                 → `recomputeGate`; a void deadline passed unsealed → flagged for an officer, who
+ *     seals the result from its source if the source gave it by the deadline, and voids only a question that had none
+ *     (`VOID_DEADLINE_NOTE`)
  *   · a certain week void, window closed → `voidWeek` (stamped VOIDED, then every ticket refunded in one bulk transaction)
  *   · VOIDED and its refunds not landed  → `voidWeek` again, every tick until they land (R1: a refusal or a rollback
  *     after the stamp is retried, never stranded)
@@ -50,6 +52,15 @@ const proposed = (globalThis.__50PICK_MLN_PROPOSED ??= new Set<string>());
  * attempt, or a week no longer OPEN, ends it.
  */
 const closeRetry = (globalThis.__50PICK_MLN_CLOSE_RETRY ??= new Map<string, number>());
+
+/**
+ * The audit log's note on a question flagged at its void deadline (`maswali.question.void_proposed`, which the evidence
+ * pack carries). ⭐ FLOW 1 (the GUIDE lane's finding, the lead's word of 2026-10-23): the binding rule (the Millionea rules'
+ * section 5, MR-15) — the result is sealed from its source when the source gave it by the deadline; only a question with
+ * no result by then is voided. It said "an officer seals the void". `test:maswali-admin-plain` §9.6b.
+ */
+export const VOID_DEADLINE_NOTE =
+  "the void deadline passed unsealed; an officer seals the result from its source if the source gave it by the deadline, and voids the question only if it had no result by then";
 
 export function maswaliSchedulerEnabled(): boolean {
   return process.env.MASWALI_SCHEDULER !== "false";
@@ -106,7 +117,7 @@ export function runMaswaliTick(now: Date = new Date()): Promise<TickReport> {
             const q = (await questionStore.listForWeek(w.id)).find((x) => x.slot === slot);
             audit({ category: "ADMIN", action: "maswali.question.void_proposed", actorId: "system_maswali", targetType: "MaswaliQuestion", targetId: q?.id ?? `${w.id}#${slot}`,
               // MR-15 · the record's note is read in the audit log: words, never the code (S6-ADMIN, §M8a item 29).
-              payload: { week: w.code, slot, voidDeadlineAt: q?.voidDeadlineAt ?? null, note: "the void deadline passed unsealed; an officer seals the void" } });
+              payload: { week: w.code, slot, voidDeadlineAt: q?.voidDeadlineAt ?? null, note: VOID_DEADLINE_NOTE } });
           }
           const fresh = await weekStore.get(w.id);
           if (g.ok && g.gate.ready && g.gate.weekVoid && fresh?.objectionsCloseAt && Date.parse(fresh.objectionsCloseAt) <= nowMs) {

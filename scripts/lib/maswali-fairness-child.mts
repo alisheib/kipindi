@@ -798,11 +798,15 @@ if (STORE === "memory") {
     // what to tell a player; the desk's scripts themselves live on the Ticket lookup page, read from their one source.
     const p1 = guide.indexOf('<h2 id="part-1">'), p2 = guide.indexOf('<h2 id="part-2">');
     const told = p1 < 0 || p2 < p1 ? "" : guide.slice(p1, p2);
-    const row = (name: string) => told.slice(told.indexOf(`<tr><td>${name}</td>`), told.indexOf("</tr>", told.indexOf(`<tr><td>${name}</td>`)));
+    // MASWALI-BUILD S6-GUIDE 4 · Ali, 2026-10-23: "on the first paragraph please set the general rules in bullet points" —
+    // part 1 is one list of one-line rules, so each rule is read from the bullet that states it (it was a table's row).
+    const bullets = [...told.matchAll(/<li>([\s\S]*?)<\/li>/g)].map((m) => m[1].replace(/\s+/g, " "));
+    const bullet = (rule: RegExp) => bullets.find((b) => rule.test(b)) ?? "";
+    const win = bullet(/wins only on 10 of 10/), rollover = bullet(/roll into the next jackpot/);
     ok("H.11 · ⛔ round 3, M3 · the admin guide promises no unbuilt path — no fault void, no player objection pulling a reserve in — and its part 1 carries the final week's exception where it states the win and the rollover, and states the exception itself (the highest score shares)",
       !guide.includes("a platform fault voids the whole week") && !guide.includes("An objection that voids a main later")
-        && /final week/.test(row("Ten counted of fifteen")) && /final\s+week/.test(row("Rollover")) && /highest score share/.test(row("The final week"))
-        && told.length > 1000, J({ told: told.length }));
+        && /final week/.test(win) && /highest score share/.test(win) && /final\s+week/.test(rollover)
+        && bullets.length >= 10 && told.length > 1000, J({ bullets: bullets.length, told: told.length }));
   }
   {
     const page = decomment(read("src/app/fairness/page.tsx"));

@@ -22,9 +22,11 @@ import { useT, type Dict, type Locale } from "@/lib/i18n";
 import { haptics } from "@/lib/haptics";
 import { fillNodes } from "@/lib/fill-nodes";
 import { refusalReason, refusalVariant, renderFailure, type ReasonedFailure } from "@/lib/failure-reasons";
+import { millioneaRefusalBody } from "@/lib/millionea-refusal";
 import { millioneaTicketHref } from "@/lib/position-permalink";
 import { DWELL_MILLIONEA_BATCH_STAMP_MS } from "@/lib/feedback-timing";
 import { depositLeftAfterFor, depositRequestFor, type DepositOption, type ShortfallPlan } from "@/lib/journey/shortfall";
+import { MILLIONEA_SLIP_RETURN } from "@/lib/journey/slip-return";
 import { pendingBand, type SheetLine } from "@/lib/journey/sheet-state";
 import { useServerNowGated } from "@/lib/use-shared-second";
 import type { MaswaliPick } from "@/lib/maswali-score";
@@ -131,7 +133,9 @@ function DepositOffer({ t, locale, plan, fallback, railNames, amount, onAmount, 
       </Callout>
     );
   }
-  // A held wallet takes neither a deposit nor a ticket: the purchase's own refusal says so at the buy.
+  // A held wallet takes neither a deposit nor a ticket. It is told before any pick, in the buy's own refusal — the slip page
+  // says it instead of the slip (`millioneaSlip`'s `wallet_frozen`, FLOW 10) — and the buy still decides, so a wallet held
+  // while the slip is open meets the same refusal at the buy, in the one Millionea sentence (`millioneaRefusalBody`, FLOW 13).
   if (plan?.kind === "blocked" || plan?.kind === "enough") return null;
   const option = plan?.kind === "short" ? (plan.options.find((o) => o.kind === "deposit") as DepositOption | undefined) : undefined;
   if (plan?.kind === "short" && !option) {
@@ -386,8 +390,9 @@ export function SlipClient({
         setConfirmOpen(false);
         const said = renderFailure(failure, t.error as unknown as Record<string, string>, t.common.couldNotPlace, (n) => formatTzs(n));
         const variant = refusalVariant(reason);
-        // A block on the money path stays until it is read (§F2, §F8; the slip critic's M10).
-        toast({ title: t.millionea.refusedTitle, description: said.body, variant, ...(variant === "danger" ? { durationMs: 0 } : {}) });
+        // A block on the money path stays until it is read (§F2, §F8; the slip critic's M10). A held wallet in Millionea's
+        // own words, the one sentence the slip and the hub say too (`millioneaRefusalBody`, FLOW 13).
+        toast({ title: t.millionea.refusedTitle, description: millioneaRefusalBody(reason, t) ?? said.body, variant, ...(variant === "danger" ? { durationMs: 0 } : {}) });
         router.refresh();
       } catch {
         setConfirmOpen(false);
@@ -405,7 +410,10 @@ export function SlipClient({
     <DepositOffer t={t} locale={locale} plan={plan} fallback={slipFallbackDeposit(fundsNow, total)} railNames={plan ? depositFacts?.deposit.railNames ?? [] : []}
       amount={depositAmount} onAmount={setDepositAmount}
       onClose={() => setConfirmOpen(false)}
-      onDeposit={(amount) => navigate(() => router.push(`/wallet/deposit?${new URLSearchParams({ amount: String(amount), from: "low-balance" })}` as never))} />
+      // ⭐ MB-57 (FLOW 3): the deposit carries the slip's way back, and nothing else of it — the answers stay in this tab. A
+      // DOCUMENT request, as the bet sheet's door makes (`bet-sheet-host.tsx`): the journey's payment focus is chosen by the
+      // root shell on a document request, and a soft route kept the board's header and tabs over the deposit (FLOW's walk).
+      onDeposit={(amount) => navigate(() => window.location.assign(`/wallet/deposit?${new URLSearchParams({ amount: String(amount), from: "low-balance", returnPath: MILLIONEA_SLIP_RETURN })}`))} />
   ) : undefined;
 
   // The stamp's facts as the receipt's rows (§3.7; the Up & Down receipt's `details`): the serials of a batch, the price or

@@ -26,6 +26,18 @@ export function eatInText(at: string | number | null | undefined): string {
   return `${fmtEat(iso)} (EAT)`;
 }
 
+/**
+ * ⭐ HOW LONG AGO, AS THE CONSOLE SAYS IT (MASWALI-BUILD FLOW 8, the lead's ruling of 2026-10-23, from the GUIDE lane's walk):
+ * the platform console's own wording ("4 h ago", "3 d ago" — the house console's `relativeEat`), in whole hours under 48
+ * hours and whole days from 48. The real time since the instant, never a setting's threshold (the release-wait alert
+ * printed "Alert when a release waits (hours)" as if it were the time since the window closed). A negative elapsed time
+ * (a clock behind) reads as "0 h ago", never as a future.
+ */
+export function agoInText(elapsedMs: number): string {
+  const hours = Math.max(0, Math.floor((Number.isFinite(elapsedMs) ? elapsedMs : 0) / 3_600_000));
+  return hours < 48 ? `${hours} h ago` : `${Math.floor(hours / 24)} d ago`;
+}
+
 const EAT_DAY = new Intl.DateTimeFormat("en-GB", { timeZone: "Africa/Dar_es_Salaam", weekday: "short", day: "2-digit", month: "short" });
 const EAT_CLOCK = new Intl.DateTimeFormat("en-GB", { timeZone: "Africa/Dar_es_Salaam", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
 
@@ -76,6 +88,15 @@ export const EVENT_KIND_LABEL: Readonly<Record<string, string>> = {
   WEATHER: "Weather reading",
   ANNOUNCEMENT: "Announcement",
 };
+
+/**
+ * ⭐ MASWALI-BUILD FLOW 2 (the lead's ruling of 2026-10-23) · THE SEAL TABLE'S MARK ON A QUESTION STILL UNSEALED AT ITS VOID
+ * DEADLINE. A fact, not a verdict: the officer seals the result from its source if the source gave it by the deadline,
+ * and voids only a question with no result by then (the rules' section 5; the console's alert says so in full,
+ * `voidDeadlineAlertText`). It read "void proposed", which leaned toward a void the rule may not allow. The console is
+ * English only. `test:maswali-admin-plain` 9.7.
+ */
+export const VOID_DEADLINE_PASSED = "past its void deadline";
 
 type ChipVariant = "neutral" | "live" | "pending" | "resolved" | "success" | "danger" | "info";
 

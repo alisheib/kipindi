@@ -123,7 +123,17 @@ export const U43_REVIEWED_BLOBS: Readonly<Record<string, string>> = {
   // NOT RE-PINNED AT S6-SHIP 16 (the merge of S7 at 2a1f6fc72: S7-SHIP 2-5): this branch already held S7's dictionary
   // (S6-INT 21) and round 2's three keys (S6-SHIP 9), so the merged dictionary is S6-SHIP 10's, byte for byte, and the
   // pin stays 2ef1a9d9f.
-  "src/lib/i18n-dict.ts": "2ef1a9d9f7b5e334ab134adf9ee014b923921a03",
+  // D19a RE-PINNED AT MASWALI-BUILD FLOW 3 (was 2ef1a9d9f7b5, S6-SHIP 10's; the lead's ruling of 2026-10-23, MB-57): inside
+  // the three `millionea` blocks only, two keys each — `depositPaidSlip` and `depositReturnSlip`, the deposit wait page's
+  // sentence and door once a deposit started from the slip has arrived — and one two-line comment in the English block.
+  // Its diff against 2ef1a9d9f7b5 is those 8 added lines; no line removed, no other line changed. FLOW 11 (the merge of the
+  // release at 79db50fdc, S6-SHIP 16-18) changes no line of the dictionary: the merged blob is FLOW 3's, byte for byte.
+  // D19a RE-PINNED AT MASWALI-BUILD FLOW 13 (was 1341177e5, FLOW 3's; the lead's ruling of 2026-10-23, the held wallet in
+  // Millionea's buy words): the strip-mln check — outside the three `millionea` blocks byte-identical, its control (a
+  // planted classic edit) reported; inside them one key each, `walletFrozen` (the lead's three sentences, the English
+  // apostrophe the dictionary's typographic one), and one two-line comment in the English block. Its diff against
+  // 1341177e5 is those 5 added lines; no line removed, no other line changed — `error.failWalletFrozen` stays as it was.
+  "src/lib/i18n-dict.ts": "989199be69c9eaf5fbd8b916e527f0bb54e77e9a",
   "src/app/legal/rules/_content-up-down.tsx": "a2ee86a3f3fd39cba34ddfdfd8ef316f7961cdf9",
   "src/app/legal/rules/up-down/page.tsx": "d6ab15942ad15e0812abf22fe236e27f91e586f5",
 };

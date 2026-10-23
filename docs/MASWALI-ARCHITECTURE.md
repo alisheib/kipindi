@@ -96,9 +96,11 @@ product (`npm run test:maswali-fairness` H.7; S5's ghosts are wordless for the s
   `withdraw` (its `lockedWinnerShare` option) — to the registered number, at the live fee, behind the identity and email
   gates, within the per-withdrawal maximum — through the self-exclusion's freeze and never around another hold, keyed per
   ticket and attempt, under `maswali:chain` and then the wallet lock, recorded as `maswali.share.paid_locked`.
-- **Nothing runs a winning settlement on its own.** The scheduler (`maswali-scheduler.ts`) closes a week, proposes
-  voids at their deadlines and completes a certain week void; an officer seals, an officer opens, and one accounting
-  officer releases from a preview whose digest the release re-checks.
+- **Nothing runs a winning settlement on its own.** The scheduler (`maswali-scheduler.ts`) closes a week, flags each
+  question still unsealed at its void deadline for an officer — who seals its result from the source if the source gave
+  it by the deadline, and voids only a question with no result by then (the rules' section 5) — and completes a certain
+  week void; an officer seals, an officer opens, and one accounting officer releases from a preview whose digest the
+  release re-checks.
 - `npm run ops:maswali-invariants` reports the nightly invariants on demand; `npm run ops:maswali-heal` heals a stuck
   close or void refund; `npm run ops:maswali-pause` is the containment pause.
 
@@ -111,7 +113,7 @@ product (`npm run test:maswali-fairness` H.7; S5's ghosts are wordless for the s
 | `src/lib/server/maswali-pause.ts` | The sales pause: sales only — never a cancel, a settlement or a refund |
 | `src/lib/server/maswali-dal.ts` | The three stores (weeks, questions, tickets), Prisma and in-memory |
 | `src/lib/server/maswali-service.ts` | The lifecycle: draft (and a never-opened draft's discard), attestation, open (its checklist in words), the close and its moves, seals, corrections, the gate, the week void, the carry, the sunset |
-| `src/lib/server/maswali-scheduler.ts` | ONE idempotent tick for the product: closes, void proposals, the certain week void |
+| `src/lib/server/maswali-scheduler.ts` | ONE idempotent tick for the product: closes, questions past their void deadline flagged for an officer, the certain week void |
 | `src/lib/server/maswali-money-service.ts` | The money path: purchase, cancel, the guarantee's ceremonies, ledger posting |
 | `src/lib/server/maswali-settlement.ts` | The preview, the release, holds, releases and forfeits of a share, the sunset's top score |
 | `src/lib/server/maswali-void.ts` | The week void's refunds, exactly once, at any size |

@@ -26,6 +26,7 @@ await runTwoStores({
   // P8 12b.4a, P10 13.3a; 4.3 and 8.21 re-pinned in the open).
   // S5 integration (2026-10-21, int1): 187 printed on each store — S5-FIX-PLATFORM D7's 11.2e beside the seven above.
   // S7 × S5 merge (claude/maswali-s7-s5): both sides' cases run — 194 printed on each store at dfb438dd2 (2026-10-22).
-  minPass: { memory: 194, postgres: 194 },
+  // MASWALI-BUILD FLOW 10 (2026-10-23): 195 printed on each store — 4.7b, a held wallet meets the buy's refusal before the slip.
+  minPass: { memory: 195, postgres: 195 },
   dbPrefix: "mlw_player",
 });

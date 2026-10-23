@@ -1285,8 +1285,35 @@ re-reads. It is the write-once guarantee working, logged by Prisma rather than b
 S7's acceptance (`docs/MASWALI-PLAN.md` §7b S7): every finding is fixed or recorded here. These three were booked as
 KNOWN-RED cases in `test:maswali-adversarial` (a case that reports, never fails the suite, until the work lands) and
 stood on the launch gate as Gate B line 14 (`MASWALI-PLAN.md` §6.1). All three are closed (2026-10-22): RD.5 and TK.2 by
-S7-F9, each with its commits, and OB.0 by S7-OB — each case passes now. The last entry is a finding of S7's ship that is
-older than S7, recorded here only.
+S7-F9, each with its commits, and OB.0 by S7-OB — each case passes now. One more, QL.1 (found 2026-10-23), is OPEN: it
+stands first below; the last entry is a finding of S7's ship that is older than S7, recorded here only. What is live on
+production is `MASWALI-PLAN.md` §0's to say.
+
+#### ⏳ QL.1 · two of the question rules are not checked on a week drafted in the console — OPEN (found 2026-10-23; for Ali's list)
+
+Found by the GUIDE lane's walk; checked by MASWALI-BUILD FLOW against the code. The accepted rule for building questions
+(OD-14, `MASWALI-PLAN.md` §9, accepted 2026-10-16) says a week carries no two questions on one event and at most 4 from
+one competition (the Owner's rules form: "Questions from one competition, at most", default 4). Neither is enforced for a
+question drafted in the console, because nothing on such a question says which event or competition it is about: a
+stored question (`MaswaliQuestion`, `StoredQuestion`) has its texts, criteria, category, source, event kind, start and
+zone, its chance and an optional linked Yes/No market — no event and no competition. The builder's calendar suggestions
+carry an event's id, and filling a slot from one drops it (`fillFrom`, `week-builder.tsx`). So the open's checklist
+(`openProblems`, `maswali-service.ts`) can only:
+- catch the SAME question twice — its "same event" check keys on the source's host, the start and the English criterion's
+  words, so two questions on one match with different criteria ("Simba win?", "Simba score 2 or more?") both pass;
+- count questions per LINKED Yes/No market, not per competition — so it never fires for a console-drafted week, counts
+  five questions linked to five Premier League markets as five competitions, and, when it fires, names the market by its
+  id ("5 questions share mkt_…"), against the console's names-never-ids rule (G3 in §9c).
+Until it is built, Trading keeps both limits by hand (the admin guide's step B1 says so). WHAT IT WOULD TAKE: (1) two
+nullable fields on a question — its competition (a key of `src/lib/markets/competitions.ts`, as a Yes/No market's
+`competition` is) and its event (the events calendar's id when filled from a suggestion, else a fixture key the officer
+types) — an additive migration on both stores, frozen at the open like the question's other fields; (2) the builder asks
+for both and `fillFrom` keeps the suggestion's; (3) `openProblems` refuses more questions from one competition than the cap
+allows (a fifth, at the default) and two questions on one event, each in words naming the competition by its label and
+the slots by their labels (the checklist and the open read the same function), with cases on both stores and plants; (4) a decision on drafts made
+before the fields exist (refuse their open until each is filled, or check what they carry); (5) the guide's one sentence
+then changes. The rest of OD-14 that needs the same identity — no dependent pairs, and sports only from competitions with
+public integrity monitoring — waits on the same fields.
 
 #### ✅ OB.0 · MB-23 · a player objects to one question — CLOSED (S7-OB, 2026-10-22)
 
@@ -1758,3 +1785,108 @@ code does, and a link names a page its reader may open. Each is fixed as ruled:
   page" is said only beside the weeks link.
 Held by `test:maswali-admin-plain` §9 (9.1–9.4 on the words an officer reads, each against the code it describes; 9.5 a
 case per role, 9.5b–c the last line and the page's wiring) and the plants (AP15)–(AP21) of `red:maswali-admin-plain`.
+
+#### ✅ GD.2 · the void-deadline alert and its audit note told officers to void — fixed by FLOW 1 (the lead's word of 2026-10-23)
+
+Found by the GUIDE lane's walk for the final admin guide. A week with questions past their void deadline and unsealed
+raised "… passed their void deadline unsealed; void each one, with its ground." on the weeks page and the front page's
+card, and the scheduler wrote "an officer seals the void" into the audit log (which the evidence pack carries). Both
+told officers to void a question whose source had answered. THE RULE is the binding Millionea rules' section 5 (MR-15):
+a result the source gave by the void deadline is sealed from its source; only a question with no result by then is
+voided — on "Not played by its void deadline" or "No reading from the sources", the seal form's own words. The alert now
+reads "MLN-…: n question(s) passed their void deadline unsealed. Seal each from its source if the source gave its result
+by the deadline; void only a question with no result by then, on “Not played by its void deadline” or “No reading from
+the sources”." (`voidDeadlineAlertText`, the two grounds drawn from `MASWALI_VOID_REASON_LABEL`), and the audit note
+says the same (`VOID_DEADLINE_NOTE`). The code comments that said "the system proposes a void, an officer seals it" and
+the architecture document's lines were corrected with it. The seal table marked such a row "void proposed", which leaned
+toward a void the rule may not allow: it reads "past its void deadline", the fact alone (FLOW 2, the lead's ruling of
+2026-10-23; `VOID_DEADLINE_PASSED`, `maswali-admin-format.ts` — the console is English only), and the admin guide quotes
+the new label. Held by `test:maswali-admin-plain` 9.6 (the rendered alert and its wiring), 9.6b (the note) and 9.7 (the
+mark, and no console page saying "void proposed"), with the plants (AP22)–(AP26) of `red:maswali-admin-plain`.
+
+#### ✅ GD.3 · the release-wait alert printed its threshold as the elapsed time, and sent Finance to release a week an objection held — fixed by FLOW 8 (the lead's rulings of 2026-10-23)
+
+Two findings on one alert. The GUIDE lane's: `consoleAlerts` called `releaseWaitAlertText(w.code, cfg.releaseAlertHours)`, so
+the alert always said "its window closed 4 h ago" — the "Alert when a release waits (hours)" setting — even a week after the
+window closed. FLOW's: an objection filed in the window and still OPEN after it closes freezes the week (settlement and the
+week void refuse while one stands), yet the alert said "Finance releases it", a release Finance cannot make. THE RULE: the
+alert states the REAL time since the window closed, in the console's own relative wording (`agoInText`,
+`maswali-admin-format.ts`: whole hours under 48, whole days from 48 — "30 h ago", "7 d ago" — the house console's
+"N h ago" / "N d ago"), never a setting; and while an objection still stands it says "…its window closed 30 h ago and an
+objection still stands, so it cannot be settled. Compliance rules on it on the integrity page." (plural: "2 objections
+still stand … on them"), never "Finance releases it" (`releaseWaitAlertText`, the count read with `countOpenObjections`
+on the week's market; a failed count keeps the release's words, and the release re-checks). Held by
+`test:maswali-admin-plain` 9.3 (re-pinned), 9.3b (elapsed, never the threshold), 9.3c (the days form) and 9.3d (the
+objection variant and its read), with the plants (AP27)–(AP30) of `red:maswali-admin-plain`.
+
+#### ✅ GD.4 · three alerts named a question "slot 14" — fixed by FLOW 12 (the lead's ruling of 2026-10-23)
+
+Found in the GUIDE lane's Weeks picture: "MLN-2026-W46: slot 14 is unsealed 12 hours after its event started." — the
+storage number of a question, which no officer reads anywhere else; the seal console, the objections, the integrity page and
+the guide name it M1–M10, A1–A5. THE RULE: everything an officer reads names a question by its label (`slotLabel`). The
+two unsealed-question alerts and the linked-market mismatch alert now read "MLN-2026-W46: A4 is unsealed 12 hours after its
+event started." and "… A4 is sealed YES, but its linked Yes/No market resolved NO." (`unsealedAlertText`,
+`linkedMismatchAlertText`, `maswali-console.ts`), and the seal table's partial-seal message falls back to the label, never
+"slot n" (`week-controls.tsx`). The grep of the console, its services, integrity and the notices for a bare slot found
+nothing else an officer reads (the rest are internal keys and developer errors). Held by `test:maswali-admin-plain` 9.8 (the
+rendered alerts, their wiring, a census of the console's sources) with the plants (AP31)–(AP32) of `red:maswali-admin-plain`.
+
+## §9d · MASWALI MILLIONEA — the final flow evaluation's fixes (FLOW, 2026-10-23)
+
+Ali, 2026-10-23: *"evaluate the final redirections and workflow of maswali … fix anything you notice not in place
+perfectly"*. The FLOW lane walked the release (`claude/maswali-s6-release`) at production's setting, ACTIVE, as a player.
+Each entry is the rule as it stands, where it is enforced, and the case and the plant that hold it.
+
+#### ✅ FL.1 · a deposit started from the slip never led back to it — fixed by FLOW 3 (MB-57)
+
+Found in a browser on the release (both shells, en 360): the slip's low-balance door sent the player to `/wallet/deposit`
+with no way back. Classic — production's reader — ended on the wallet's "Funds added" result with one door, "Done"; the
+journey's wait page offered "View receipt" and "Back to wallet". The answers were still in the tab, and nothing led there.
+And in the journey the door's soft hop (`router.push`) kept the board's header and tabs over the deposit, which the root
+shell replaces with the payment focus only on a document request (the bet sheet's door makes one, `bet-sheet-host.tsx`).
+THE RULE is MASWALI-PLAN MB-57's ("after a deposit, return to the slip with picks intact and never place the ticket
+automatically"), as built and recorded in its row and in `docs/FLOWS.md` § 4 ("A deposit started from the Millionea
+slip"): only the way back travels, in the addresses (`returnPath=/millionea/slip`, `src/lib/journey/slip-return.ts`, its
+one allowed return), the door a document request; honoured only with no saved bet beside it and only while Millionea is
+visible to the reader; the deposit lands on the wait page in both shells and, once paid, offers "Return to your answers";
+a card deposit gets no door (the gateway's fixed return address, accepted by the lead). Held by `test:deposit-slip-return`
+(the allow-list, the wiring, the document request, the words) with plants (DSR1)–(DSR7) of `red:deposit-slip-return` —
+(DSR1) drops the slip from the allowed returns — and
+`qa:maswali-deposit-return` (sw/en/zh × 360/1280 × classic/journey, two tickets in each shell, a plain deposit's control,
+the dark mode on a WITHDRAWN server, and its own plant).
+
+#### ✅ FL.2 · the wallet's deposit result left one character of its reference alone — fixed by FLOW 4
+
+Found on the same walk: at 360 the classic wallet's result drew `txn_b7f5f7cd59628ee1bb86d11` over a lone `3` — the
+28-character id 1–2px wider than its box, wrapped greedily by `break-all`. THE RULE is DESIGN_AUTHORITY §M4a rule 5: a
+result modal's value that is one unbroken token of 16+ characters breaks only between near-equal chunks (14/14 for the id;
+`src/lib/even-break.ts`, drawn by `OperationResultModal`'s `DetailValue`), one line when it fits, the exact string on a copy.
+Classic-visible for every caller whose value is such a token; no classic parity cell draws a result modal. Held by
+`test:result-reference` with plants (RR1)–(RR5) of `red:result-reference`, and `qa:result-reference` (a real deposit's
+reference at 320/360 × sw/en/zh, measured character by character, with an in-page control that the old wrap is caught).
+
+#### ✅ FL.3 · a held wallet answered fifteen questions before hearing it could not buy — fixed by FLOW 10 (the lead's ruling of 2026-10-23)
+
+Found in the code on the same walk: the slip says paused, sales closed, staff and the cap BEFORE any pick
+(`millioneaSlip`'s refusal, said instead of the slip), but not a held wallet — an officer's hold, a self-exclusion's freeze —
+which the buy refuses (`wallet_frozen`). Such a player answered all fifteen and pressed Continue to be refused, while the
+landing's line already hides itself from a frozen wallet (DESIGN_AUTHORITY §M8a item 21) and the deposit page says so
+first. THE RULE: a held wallet meets the buy's own refusal, in the buy's own words, before any pick — the slip page says it
+instead of the slip, as it says the cap — and the buy still decides (a wallet held while the slip is open meets the same
+refusal at the buy). The condition is the buy's own (a wallet whose status is not ACTIVE). Held by `test:maswali-player`
+4.7b on both stores (the slip's refusal, the buy's same reason, and the lift), with a recorded plant (the pre-refusal
+dropped: 4.7b failed on the memory store, 194/1, and the file was restored byte for byte). The words since FLOW 13: FL.4.
+
+#### ✅ FL.4 · a held wallet heard "bets", and the hub still offered it the slip — fixed by FLOW 13 (the lead's ruling of 2026-10-23)
+
+FL.3's follow-ups, put to the lead: the refusal FL.3 drew was the platform's sentence, "Your wallet is frozen, so bets can’t
+be placed." — a Millionea ticket is bought, never placed as a bet (Ali's ruling 7: "Buy ticket", "Kata tiketi", 出票) — and
+the hub still offered a held wallet "Fill a ticket", one tap from that refusal. THE RULE: a held wallet hears ONE Millionea
+sentence, `millionea.walletFrozen` — "Your wallet is frozen, so tickets can’t be bought. Contact support to resolve it." /
+"Pochi yako imegandishwa, kwa hiyo huwezi kukata tiketi. Wasiliana na msaada kutatua hili." / "您的钱包已冻结，无法出票。请联系客服处理。"
+— chosen in one place (`src/lib/millionea-refusal.ts`, `millioneaRefusalBody`) and said by three surfaces: the slip's
+pre-refusal (instead of the slip), the buy's refusal (the slip's toast) and the hub's buy block, which says it in place of
+the fill door (after a break's notice and a guest's door, before the cap's line; `millioneaWalletHeld`, the buy's own
+condition, failing open — the slip and the buy still refuse). Every other reason keeps the registry's sentence, and the
+platform's `error.failWalletFrozen` stays for every other product. Held by `test:millionea-held-wallet` (the one choice, the
+three surfaces and their order, the one condition, the words) with plants (HW1)–(HW6) of `red:millionea-held-wallet`.

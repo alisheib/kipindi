@@ -19,11 +19,14 @@
  *      Millionea rules page), named in part 1; never the repository or a programme document. (MASWALI-BUILD S6-GUIDE,
  *      the lead's brief of 2026-10-23 under Ali's standard — "no unneeded wording, no unneeded things": the rule-number
  *      links into the repository's plan are gone; part 1 states each rule in words.)
+ *   §5 EVERY PICTURE IS THERE: each screenshot the guide shows (Ali, 2026-10-23: "make it clear to my admin with
+ *      screenshots as needed") is a committed image beside it — never one from the network — exists, and says in its
+ *      alt text what it shows. The pictures come from a local dev server's demo data, never production.
  *   --prove-red: each check catches its own plant, made in memory on the guide's text.
  *
  * Pure and static: it reads files and parses source; no server, no database.
  */
-import { readFileSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import ts from "typescript";
@@ -122,6 +125,19 @@ const RULES_PAGE = "https://www.50pick.tz/legal/rules/millionea";
 /** Every link target the guide carries, in order. */
 const linksOf = (html: string): string[] => [...stripStyle(html).matchAll(/<a\b[^>]*?\bhref="([^"]*)"/g)].map((m) => m[1]);
 
+/** S6-GUIDE 4 · every picture the guide shows: a committed image beside it (docs/…), present, with alt text in words. */
+function picturesOf(html: string): Array<{ src: string; problem: string | null }> {
+  return [...stripStyle(html).matchAll(/<img\b[^>]*>/g)].map((m) => {
+    const src = /\bsrc="([^"]*)"/.exec(m[0])?.[1] ?? "";
+    const alt = /\balt="([^"]*)"/.exec(m[0])?.[1] ?? "";
+    if (!src) return { src, problem: "no source" };
+    if (/^(?:[a-z]+:|\/\/|\/)/i.test(src)) return { src, problem: "not a committed image beside the guide" };
+    if (!existsSync(join(root, "docs", src))) return { src, problem: "the file is missing" };
+    if (alt.trim().split(/\s+/).length < 3) return { src, problem: "no alt text in words" };
+    return { src, problem: null };
+  });
+}
+
 // ── The Millionea audit actions the source writes ─────────────────────────────────────────────────
 function sourceAuditActions(): Set<string> {
   const dir = join(root, "src/lib/server");
@@ -180,6 +196,10 @@ function judge(html: string): Verdict {
   v.audit = { ok: audit.length > 0 && notInSource.length === 0 && notInGuide.length === 0,
     detail: [...notInSource.map((a) => `not written by the source: ${a}`), ...notInGuide.map((a) => `missing from the guide: ${a}`)].join(" · ") };
 
+  const pictures = picturesOf(html);
+  const badPictures = pictures.filter((p) => p.problem);
+  v.pictures = { ok: badPictures.length === 0, detail: badPictures.map((p) => `${p.src || "(no src)"}: ${p.problem}`).join(" · ") };
+
   const stray = linksOf(html).filter((href) => href !== RULES_PAGE);
   const named = p1 >= 0 && p2 > p1 && linksOf(html.slice(p1, p2)).includes(RULES_PAGE);
   v.refs = { ok: stray.length === 0 && named,
@@ -197,15 +217,19 @@ const NAMES: Record<string, string> = {
   names: "3 · no file, path, code identifier, type or table name reaches the reader",
   audit: "3 · the audit table lists exactly the Millionea audit actions the source writes",
   refs: "4 · the guide links only to the binding rules players accept, and part 1 names them",
+  pictures: "5 · every screenshot is a committed image beside the guide, present, with alt text in words",
 };
 for (const [k, n] of Object.entries(NAMES)) ok(n, verdict[k].ok, verdict[k].detail);
-const steps = stepsOf(guide).length, labels = labelsOf(guide).length;
-console.log(`  (${steps} steps · ${labels} quoted labels over ${new Set(labelsOf(guide).map((l) => l.screen)).size} screens · ${linksOf(guide).length} link(s) · ${SOURCE_ACTIONS.size} audit actions)`);
-// Floors, at the counts a green run printed: the guide never quietly loses its steps or its quoted labels.
-// S6-GUIDE 3 · 27 → 28 steps (S6-MONEY's payment of a winner who cannot sign in) and 318 → 353 labels: the counts the
-// run on the final guide printed.
+const steps = stepsOf(guide).length, labels = labelsOf(guide).length, pictureCount = picturesOf(guide).length;
+console.log(`  (${steps} steps · ${labels} quoted labels over ${new Set(labelsOf(guide).map((l) => l.screen)).size} screens · ${pictureCount} screenshots · ${linksOf(guide).length} link(s) · ${SOURCE_ACTIONS.size} audit actions)`);
+// Floors, at the counts a green run printed: the guide never quietly loses its steps, its quoted labels or its pictures.
+// S6-GUIDE 3 · 27 → 28 steps (S6-MONEY's payment of a winner who cannot sign in) and 318 → 353 labels.
+// S6-GUIDE 4 · the label floor FALLS 353 → 288 by the owner's own order (Ali, 2026-10-23: "guide no unneeded words, no
+// unneeded titles"; the lead approved the fall): each list's spelled-out search, filter and sort names are cut, because
+// the screenshots now show those controls. It is a deliberate cut, recorded — never a quiet loss. Nine screenshots.
 ok("1 · floor: at least 28 steps in part 2", steps >= 28, `${steps}`);
-ok("2 · floor: at least 353 quoted labels", labels >= 353, `${labels}`);
+ok("2 · floor: at least 288 quoted labels", labels >= 288, `${labels}`);
+ok("5 · floor: at least 9 screenshots", pictureCount >= 9, `${pictureCount}`);
 
 if (PROVE_RED) {
   const plant = (name: string, check: string, from: RegExp | string, to: string) => {
@@ -235,6 +259,9 @@ if (PROVE_RED) {
     'It is not a void and not a stop (<a href="https://github.com/alisheib/kipindi/blob/main/docs/RULES.md">the rules</a>).');
   plant("part 1 without the published rules", "refs", /<a href="https:\/\/www\.50pick\.tz\/legal\/rules\/millionea">([^<]*)<\/a>/, "$1");
   plant("a part missing", "parts", '<h2 id="part-3">', '<h2 id="part-three">');
+  plant("a screenshot whose file is gone", "pictures", 'src="guide-img/maswali/weeks.png"', 'src="guide-img/maswali/weeks-gone.png"');
+  plant("a screenshot from the network", "pictures", 'src="guide-img/maswali/weeks.png"', 'src="https://www.50pick.tz/weeks.png"');
+  plant("a screenshot without alt text", "pictures", /(<img src="guide-img\/maswali\/weeks\.png") alt="[^"]*"/, '$1 alt=""');
 }
 
 console.log(`\nmaswali-admin-guide: ${passed} passed, ${failed} failed`);

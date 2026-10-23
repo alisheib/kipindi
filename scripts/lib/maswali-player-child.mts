@@ -230,6 +230,18 @@ section("§4 · the slip");
   const full = await W.user({ balance: 100_000 });
   const fb = await W.buy(full, A.id, Array.from({ length: cap }, () => W.LOSE), { key: "player-full-a-0001" });
   ok("4.7 · a viewer holding the cap meets the cap before filling the slip", fb.ok && (await P.millioneaSlip(viewer(full)))?.refusal === "millionea_cap_reached", why(fb));
+  // ⭐ FLOW 10 (the lead's ruling of 2026-10-23): a held wallet hears the buy's own refusal before filling fifteen picks —
+  // the slip page says it instead of the slip, in the buy's words — and the buy still refuses with the same reason.
+  const { addWalletFreeze, removeWalletFreeze }: any = await import("../../src/lib/server/wallet-freeze.ts");
+  const heldWallet = await W.user({ balance: 50_000 });
+  await addWalletFreeze(heldWallet, "OFFICER", { actorId: "usr_mln_compliance", note: "player suite · a held wallet's slip" });
+  const heldSlip = await P.millioneaSlip(viewer(heldWallet));
+  const heldBuy = seen(await W.buy(heldWallet, A.id, [W.LOSE], { key: "player-held-a-0001" }));
+  await removeWalletFreeze(heldWallet, "OFFICER", { actorId: "usr_mln_compliance", note: "player suite · the hold lifted" });
+  const liftedSlip = await P.millioneaSlip(viewer(heldWallet));
+  ok("4.7b · ⭐ a held wallet meets the buy's own refusal before filling the slip — the reason the buy itself gives — and the lifted hold lifts it",
+    heldSlip?.refusal === "wallet_frozen" && heldBuy?.ok === false && heldBuy.reason === "wallet_frozen" && liftedSlip?.refusal === null,
+    J({ slip: heldSlip?.refusal, buy: why(heldBuy), lifted: liftedSlip?.refusal }));
   const pause: any = await import("../../src/lib/server/maswali-pause.ts");
   await pause.pauseMaswaliSales({ officerId: "usr_mln_compliance", reason: "player suite pause check" });
   const paused = await P.millioneaSlip(viewer(P1));

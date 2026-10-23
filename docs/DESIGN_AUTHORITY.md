@@ -3027,6 +3027,18 @@ the corrections are recorded here rather than tidied away.
    legitimate *paired with* `title`, which keeps the full string reachable. `/admin/proposals` and
    `/admin/compliance` truncated their primary content with no affordance (**33px box, 486px of
    content**).
+5. ⛔ **AN UNBROKEN TOKEN NEVER LEAVES ONE CHARACTER ALONE** (MASWALI-BUILD FLOW 4, the lead's ruling of 2026-10-23).
+   A reference has no space, so `break-all` was its only break, and `break-all` is greedy: the wallet's deposit result
+   drew `txn_b7f5f7cd59628ee1bb86d11` over a lone `3` at 360 (its 28 mono characters 1–2px wider than the box). A result
+   modal's detail value that is one token of 16 characters or more now breaks ONLY between near-equal chunks
+   (`lib/even-break.ts`: two halves, or one chunk per ~14 characters; `<wbr>` between them, so a copy is the exact string):
+   it stays one line when it fits, and otherwise its last line holds a whole chunk — 14/14 for the transaction id.
+   `overflow-wrap: break-word` is the floor for a box narrower than a chunk. ⚠️ Classic-visible, for every caller of
+   `OperationResultModal` whose value is such a token (the wallet's deposit and withdrawal reference; a Millionea batch's
+   serials, which fit on one line at 320 and so do not move); no classic parity cell draws a result modal. Guards:
+   `test:result-reference` (the chunks, the drawn markup, the wiring, with its plants) and `qa:result-reference` (a real
+   deposit's reference at 320/360 × sw/en/zh, the line lengths measured, with an in-page control that the old wrap is
+   caught).
 
 ⚠️ **THE INSTRUMENT NEEDED TWO CORRECTIONS BEFORE IT MEASURED ANYTHING REAL,** and both were
 false POSITIVES that would have "fixed" correct code: it first reported every cell of tables
