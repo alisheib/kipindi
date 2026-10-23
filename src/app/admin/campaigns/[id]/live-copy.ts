@@ -198,9 +198,8 @@ export function waitSentence(reason: string, until: string | null): string {
     // side after three at any size (`tooSlowCounts`) — "if it keeps taking too long" is true of both.
     case "slice_too_slow":
       return "Waiting — getting the last group of people ready to send took too long, so they were put back unsent. It tries again by itself, with a smaller group when it can; if it keeps taking too long, the campaign pauses.";
-    // ⭐ MASWALI-BUILD S6 (round 5, MEDIUM 4b) · the engine answers it while the start of Millionea's claims rules cannot be read.
-    case "rules_unreadable":
-      return "Waiting — the start of Millionea's claims rules couldn't be read, so this message waits until it can be. It tries again by itself.";
+    // ⛔ MASWALI-BUILD S6-LINT 7 · no wait of Millionea's claims rules: an unreadable stamp is read as the process's start
+    // (`engine.ts`), so the engine never answers one, and this page has no sentence for it.
   }
   return `Waiting — engine reason: ${reason}.`;
 }

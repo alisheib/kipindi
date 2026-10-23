@@ -4,9 +4,13 @@
  *
  * ⭐ THE RULE. A campaign whose name does not declare Millionea (`campaignProductOf`, `millionea-claims.ts`) is refused when
  *    its text speaks Millionea's words — the product's name in any spelling, millionaire, jackpot, milioni, 10/10, or a
- *    figure of a million or more in a claim — in words: tag it Millionea, or reword it (`MILLIONEA_UNTAGGED`). A body in
- *    Chinese characters is refused too (OD42: a campaign is written in Swahili, with an optional English body — the two
- *    languages these rules read). Every reading runs on the composer's normal form (`normalizeClaimText`).
+ *    figure of a million or more in a claim — in words: tag it Millionea, or reword it (`MILLIONEA_UNTAGGED`). Every reading
+ *    runs on the composer's normal form (`normalizeClaimText`).
+ * ⛔ S6-LINT 7 · NEVER FOR ITS SCRIPT. A body in Chinese characters is refused here for a Millionea claim it makes — its
+ *    Chinese words for a prize, a win, a figure of a million or more, the jackpot and a millionaire read with the rest —
+ *    and never because it is Chinese: these rules hold a campaign not tagged Millionea to Millionea's claims, not to OD42's
+ *    languages (a Millionea campaign is, `CAMPAIGN_HAN_SCRIPT`), and the composer's own alphabet rule judges such a body
+ *    exactly as before the lint.
  * ⭐ THE SERVER'S ALONE (ruling 6's correction). These rules never reach a browser: a server door — the save, the test send,
  *    the engine's slice, the composer's previews — asks `untaggedRulesFor` and hands what it answers to the composer's one
  *    door (`footer.ts`) in the campaign's context (`MillioneaComposeContext.untagged`, `CampaignTemplate.untaggedRules`).
@@ -17,13 +21,13 @@
  *    tagged Millionea is judged, saved and sent exactly as before the lint, and nothing reads or writes the rules' stamp
  *    (`millionea-lint-epoch.ts`). `test:maswali-claims` §10 holds every door to it, under each ceiling.
  * ⭐ FINDING 9 (S6-LINT 4). The signal reader's cost grows with the square of a long run, so a body past one SMS
- *    (`CLAIMS_MAX_CHARS`) is read here by nothing: the untagged path and the reader each refuse it first, whoever calls
- *    them (`test:maswali-claims` §8).
+ *    (`CLAIMS_MAX_CHARS`) is read here by nothing: the reader refuses it first, whoever calls it — and it is all the untagged
+ *    path reads with (S6-LINT 7) (`test:maswali-claims` §8).
  * Pure: no database, no I/O. ⛔ No client module imports it, ever.
  */
 import {
-  CAMPAIGN_HAN_SCRIPT, CLAIMS_MAX_CHARS, CURRENCY, CURRENCY_SIGN, GET_BEFORE, LOOK_ALIKE_DIGITS, baseForm, campaignProductOf,
-  foldWords, foldedForm, holdsHanScript, normalizeClaimText, pastOneSms, tenOfTen, type UntaggedCampaignRules,
+  CLAIMS_MAX_CHARS, CURRENCY, CURRENCY_SIGN, GET_BEFORE, LOOK_ALIKE_DIGITS, baseForm, campaignProductOf,
+  foldWords, foldedForm, normalizeClaimText, tenOfTen, type UntaggedCampaignRules,
 } from "@/lib/marketing/millionea-claims";
 import { millioneaCeiling } from "@/lib/millionea-rollout";
 
@@ -78,6 +82,15 @@ const PHONE_AFTER = /^\s*(?:(?:kwenye|kwa|on|via|kupitia)\s+)?(?:whatsapp|simu|s
 /** The nouns a count is written with — people, plays, sales — read right after a figure (rounds 5, 6 and 11).
  *  ⭐ Enforced (round 17, L2): every figure is judged as a claim unless the noun it counts stands at once after it. */
 const COUNT_AFTER = /^\s*[+]?\s*(?:tanzanians?|watanzania|kenyans?|wakenya|views?|likes?|followers?|fans?|subscribers?|downloads?|players?|members?|people|users?|shares?|comments?|streams?|plays?|votes?|wafuasi|watazamaji|wachezaji|watu|wanachama|watumiaji|mashabiki|wapiga\s+kura|kura|maoni|vipakuliwa|watazamaji|tickets?\s+sold|zimeuzwa)\b/;
+/** ⭐ S6-LINT 7 · Chinese words, built from their code points (none is typed here): a prize or a win (U+5956 an award, U+8D62
+ *  to win) — read wherever a prize word is; a figure of a million or more (U+767E U+4E07 a million, U+5343 U+4E07 ten
+ *  million, U+4EBF a hundred million); the product's own (U+5927 U+5956 its jackpot, the dictionary's `millionea.jackpot`;
+ *  U+767E U+4E07 U+5BCC U+7FC1 a millionaire). A Chinese body is refused for a claim it makes, never for its script. */
+const zh = (...words: number[][]): string[] => words.map((w) => String.fromCharCode(...w));
+const ZH_PRIZE = zh([0x5956], [0x8D62]).join("|");
+const ZH_FIGURES = new RegExp(zh([0x767E, 0x4E07], [0x5343, 0x4E07], [0x4EBF]).join("|"), "g");
+const ZH_SIGNALS = new RegExp(zh([0x5927, 0x5956], [0x767E, 0x4E07, 0x5BCC, 0x7FC1]).join("|"), "g");
+
 /** A prize or a win, in either language, read by its stem (round 5, MEDIUM 7b; round 6, H1 and M3): a figure in a sentence
  *  that says one is a claim. ⭐ Round 17 (M4) · "mfuko" (a fund) is a prize word in a prize's sense — the week's fund, a
  *  prize fund, a fund of a figure — and a wait is one only where it waits for the reader. */
@@ -86,6 +99,8 @@ const PRIZE_WORDS = new RegExp([
   String.raw`zawadi|tuz[ow]|(?:na|ta|me)ku(?:subiri|ngoj)|\bawait(?:s|ing)?\s+you\b|\bwaiting\s+for\s+you\b|\bup\s+for\s+grabs\b`,
   String.raw`(?:ta|me|na)?kuwa\s+(?:yako|zako|yenu|zenu)\b`,
   String.raw`\bmfuko\s+(?:(?:mkubwa|mnono|huu|wetu|wenu|wako|mpya)\s+)?(?:wa|ya)\s+(?:wiki|zawadi|milioni|bilioni|laki|${CURRENCY}\b|[0-9])`,
+  // ⭐ S6-LINT 7 · the Chinese prize and win words.
+  ZH_PRIZE,
 ].join("|"));
 /** "It is yours" right before the figure (round 7). */
 const YOURS_BEFORE = /\b(?:it.?s|ni|is)\s+(?:yours|yako|zako|yenu|zenu)\s*[:-]?\s*$/;
@@ -367,6 +382,14 @@ function millionFigure(n: string): boolean {
     taken.push([at, end]);
     figures.push({ at, end });
   }
+  // ⭐ S6-LINT 7 · …and the Chinese figure words.
+  for (const m of n.matchAll(ZH_FIGURES)) {
+    const at = m.index ?? 0;
+    const end = at + m[0].length;
+    if (!free(at, end)) continue;
+    taken.push([at, end]);
+    figures.push({ at, end });
+  }
   for (const [re, kind] of [[GROUPED_MARKS, "marks"], [GROUPED_SPACES, "spaces"], [BARE, "bare"]] as const) {
     for (const m of n.matchAll(re)) {
       const at = m.index ?? 0;
@@ -432,6 +455,8 @@ export function millioneaSignals(text: string): string[] {
   const counted = (s: string, m: RegExpMatchArray) => m[0].endsWith("milioni") && COUNT_BEFORE.test(s.slice(Math.max(0, (m.index ?? 0) - 24), m.index ?? 0));
   for (const m of n.matchAll(SIGNAL_WORDS)) if (!counted(n, m)) out.add(m[0]);
   for (const m of folded.matchAll(SIGNAL_WORDS)) if (!counted(folded, m)) out.add(m[0]);
+  // ⭐ S6-LINT 7 · the product's own Chinese words.
+  for (const m of n.matchAll(ZH_SIGNALS)) out.add(m[0]);
   if (out.size === 0) {
     for (const word of squeezedWords(text)) {
       const squeezed = SIGNAL_SQUEEZED.exec(word);
@@ -455,15 +480,15 @@ export function millioneaUntaggedProblem(signals: readonly string[]): string {
 /* ══ THE RULES, AND WHO MEETS THEM ═══════════════════════════════════════════════════════════════════════════════════ */
 
 /**
- * ⭐ THE UNTAGGED RULES — every problem a campaign not tagged Millionea has under them, one sentence each: its Millionea
- * signals, refused in words (`millioneaUntaggedProblem`), and a body in Chinese characters (`CAMPAIGN_HAN_SCRIPT`). A body
- * past one SMS is read by none of them (finding 9).
+ * ⭐ THE UNTAGGED RULES — every problem a campaign not tagged Millionea has under them: its Millionea signals, refused in
+ * words (`millioneaUntaggedProblem`) — a Chinese body's among them, never its script (S6-LINT 7). A body past one SMS is
+ * read by none of them (finding 9).
  */
 export const untaggedCampaignProblems: UntaggedCampaignRules = (text: string): string[] => {
-  // ⭐ Finding 9 (S6-LINT 4) · the server door's untagged path guards itself, first: past one SMS its length is its refusal.
-  if (pastOneSms(text)) return [];
+  // ⭐ Finding 9 · past one SMS nothing here reads the body: the signal reader, all this path reads with, guards itself first
+  // (S6-LINT 7: the path's own guard went with the Chinese-characters rule, the one other thing it read).
   const signals = millioneaSignals(text);
-  return [...(signals.length > 0 ? [millioneaUntaggedProblem(signals)] : []), ...(holdsHanScript(text) ? [CAMPAIGN_HAN_SCRIPT] : [])];
+  return signals.length > 0 ? [millioneaUntaggedProblem(signals)] : [];
 };
 
 /**

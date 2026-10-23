@@ -218,11 +218,11 @@ export const MUTATIONS = [
   },
   /* ── L4 · OD42: a campaign in Swahili and English ── */
   {
-    name: "(C26) L4 · a body in Chinese characters is admitted unread",
-    file: UNTAGGED,
-    from: "  return [...(signals.length > 0 ? [millioneaUntaggedProblem(signals)] : []), ...(holdsHanScript(text) ? [CAMPAIGN_HAN_SCRIPT] : [])];",
-    to: "  return [...(signals.length > 0 ? [millioneaUntaggedProblem(signals)] : [])];",
-    expect: "7.7 · ⭐ round 17 (L4)",
+    name: "(C26) L4 · a Millionea campaign's body in Chinese characters is admitted unread (S6-LINT 7: the rule holds a tagged campaign alone)",
+    file: LINT,
+    from: "  const script = holdsHanScript(text) ? [CAMPAIGN_HAN_SCRIPT] : [];",
+    to: "  const script: string[] = [];",
+    expect: "7.7b · ⭐ round 17 (L4)",
   },
   /* ── Finding 9 (the lint review after round 17) · an oversized body is read by no rule ── */
   {
@@ -272,13 +272,6 @@ export const MUTATIONS = [
   },
   /* ── S6-LINT 4 · finding 9's two other guards, each on its own ── */
   {
-    name: "(C35) S6-LINT 4 · finding 9 · the server's untagged path reads a body past one SMS",
-    file: UNTAGGED,
-    from: "  if (pastOneSms(text)) return [];",
-    to: "  if (false) return [];",
-    expect: "8.6b · ⭐ finding 9",
-  },
-  {
     name: "(C36) S6-LINT 4 · finding 9 · the composer's door hands a body past one SMS to its rules",
     file: LINT,
     from: "  if ((text ?? \"\").length > CLAIMS_MAX_CHARS) return [];",
@@ -320,5 +313,62 @@ export const MUTATIONS = [
     from: "  if (template.untaggedRules !== undefined) await stampUntaggedRun(deps.millioneaLintEpoch, deps.now());",
     to: "  if (false) await stampUntaggedRun(deps.millioneaLintEpoch, deps.now());",
     expect: "10.4a · ⭐ S6-LINT 6",
+  },
+  /* ── S6-LINT 7 · ruling 6 at the ACTIVE ceiling: an unreadable stamp never waits, a Chinese body judged by its claims, no product named while dark, nothing throws ── */
+  {
+    name: "(C42) S6-LINT 7 · an unreadable stamp grandfathers nothing: a classic campaign sending since before this process is paused by it",
+    file: "src/lib/server/marketing/engine.ts",
+    from: "  const epoch = read === null ? processStartOn(deps.now()).toISOString() : read;",
+    to: "  const epoch = read;",
+    expect: "4.8h · ⭐ S6-LINT 7 · with the stamp unread",
+  },
+  {
+    name: "(C43) S6-LINT 7 · the Chinese prize and win words are not read: a Chinese body's prize claim passes",
+    file: UNTAGGED,
+    from: "  ZH_PRIZE,",
+    to: "  // (planted: the Chinese prize and win words unread)",
+    expect: "7.7 · ⭐ round 17 (L4), S6-LINT 7",
+  },
+  {
+    name: "(C44) S6-LINT 7 · the Chinese figure words are not read: a Chinese figure of a million or more beside a win passes",
+    file: UNTAGGED,
+    from: "  for (const m of n.matchAll(ZH_FIGURES)) {",
+    to: "  for (const m of \"\".matchAll(ZH_FIGURES)) {",
+    expect: "11.2 · ⭐ S6-LINT 7 · a classic campaign's Chinese body with a Chinese figure of a million or more",
+  },
+  {
+    name: "(C45) S6-LINT 7 · the product's own Chinese words are not read: its jackpot and a millionaire in Chinese pass",
+    file: UNTAGGED,
+    from: "  for (const m of n.matchAll(ZH_SIGNALS)) out.add(m[0]);",
+    to: "  // (planted: the product's Chinese words unread)",
+    expect: "11.2 · ⭐ S6-LINT 7 · a classic campaign's Chinese body with its jackpot in Chinese",
+  },
+  {
+    name: "(C46) S6-LINT 7 · a classic campaign's Chinese body is refused for its script again",
+    file: UNTAGGED,
+    from: "  return signals.length > 0 ? [millioneaUntaggedProblem(signals)] : [];",
+    to: "  return [...(signals.length > 0 ? [millioneaUntaggedProblem(signals)] : []), ...([...text].some((c) => (c.codePointAt(0) ?? 0) >= 0x4E00 && (c.codePointAt(0) ?? 0) <= 0x9FFF) ? [\"Campaign messages are written in Swahili or English: remove the Chinese characters from this body.\"] : [])];",
+    expect: "7.7c · ⭐ S6-LINT 7",
+  },
+  {
+    name: "(C47) S6-LINT 7 · the refusal of a tagged campaign while Millionea is dark names the product",
+    file: LINT,
+    from: "export const MILLIONEA_NOT_LIVE = \"The product this campaign is tagged for is not open to everyone yet, so no campaign may be about it.\";",
+    to: "export const MILLIONEA_NOT_LIVE = \"Millionea is not open to everyone yet, so no campaign may be about it.\";",
+    expect: "11.3 · ⭐ S6-LINT 7 (ruling 6)",
+  },
+  {
+    name: "(C48) S6-LINT 7 · the stamp's reader throws through the door that asks it: a save, a test or a slice throws",
+    file: "src/lib/server/marketing/millionea-lint-epoch.ts",
+    from: "  if (typeof stamp !== \"function\") return null;",
+    to: "  if (typeof stamp !== \"function\") return null;\n  return await stamp(clock);",
+    expect: "11.4 · ⭐ S6-LINT 7 · nothing throws",
+  },
+  {
+    name: "(C49) S6-LINT 7 · every figure of a million or more is a claim: ordinary copy is refused at the save",
+    file: UNTAGGED,
+    from: "  const sentence = sentenceOf(n, at, end);",
+    to: "  if (at >= 0) return true;\n  const sentence = sentenceOf(n, at, end);",
+    expect: "11.5 · ⭐ S6-LINT 7 · at the ACTIVE ceiling every one of §1's controls",
   },
 ];

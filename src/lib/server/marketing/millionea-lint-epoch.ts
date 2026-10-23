@@ -18,8 +18,11 @@
  *    (`instrumentation.ts` runs nothing of the lint), never a door below the ACTIVE ceiling (no untagged rule runs there),
  *    never for a campaign tagged Millionea (never grandfathered), and never the composer's previews (a page that shows a
  *    draft's verdict writes nothing). Only the engine's slice reads it. `test:maswali-claims` §10.
- * ⛔ AN INSTANT THAT CANNOT BE READ IS NO INSTANT: no campaign is then grandfathered — and a slice that only Millionea's
- *    rules would stop WAITS for it, never pauses on a transient read (round 5, MEDIUM 4b; `engine.ts`).
+ * ⛔ AN INSTANT THAT CANNOT BE READ IS ANSWERED NULL here — a failed read, a malformed row (never stamped over), never a
+ *    throw — and S6-LINT 7 · the engine's slice then reads it as its own process's start, the latest the stamp can be (the
+ *    untagged rules judge in that process): it can grandfather only a campaign sending since before the process (flagged,
+ *    sent as written), never pause one the stamp would grandfather, and it NEVER WAITS (round 5's wait is gone: a malformed
+ *    row held a classic campaign for good). `test:maswali-claims` §11.
  */
 import { createConfigIfAbsent, loadConfigResult } from "@/lib/server/config-store";
 import { hasDatabase } from "@/lib/server/prisma";

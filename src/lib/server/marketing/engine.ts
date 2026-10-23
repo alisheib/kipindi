@@ -124,7 +124,7 @@ import type { CampaignTemplate, CampaignVariant, RecipientOrigin } from "@/lib/m
 import { footerMeasurementToken } from "@/lib/marketing/footer";
 import { campaignProductOf, type MillioneaFacts } from "@/lib/marketing/millionea-claims";
 import { untaggedRulesFor } from "@/lib/server/marketing/millionea-untagged";
-import { CAMPAIGN_FLAGGED_ACTION, millioneaLintEpoch, sendingSincePreLint, stampUntaggedRun } from "@/lib/server/marketing/millionea-lint-epoch";
+import { CAMPAIGN_FLAGGED_ACTION, millioneaLintEpoch, processStartOn, sendingSincePreLint, stampUntaggedRun } from "@/lib/server/marketing/millionea-lint-epoch";
 import { ledgerStamp } from "@/lib/server/marketing/ledger-stamp";
 import { assertSettle, fillRecipientCounts } from "@/lib/server/marketing/campaign-model";
 import { recipientRows, zeroRecipientStatusCounts } from "@/lib/marketing/campaign-status";
@@ -286,7 +286,7 @@ export type EngineDeps = {
   /** ⭐ Round 4, rule 6 · the instant Millionea's claims rules first ran (`millioneaLintEpoch`, stamped once, on the slice's
    *  own clock) — read only for a campaign the untagged rules judge (S6-LINT 6). Optional, so a dependency set written
    *  before it still type-checks; a set without it holds every campaign to the rules, and an instant that cannot be read
-   *  grandfathers none (round 5, MEDIUM 4b: such a slice waits). */
+   *  is read as this process's start (S6-LINT 7: never a wait). */
   millioneaLintEpoch?: (clock: Date) => Promise<string | null>;
   /** THE ONE loop (`dispatchSlice`) — called, never rewritten. */
   dispatch: typeof dispatchSlice;
@@ -778,21 +778,18 @@ async function sliceStep(campaignId: string, state: EngineProcessState, deps: En
   // not tagged Millionea, under the ACTIVE ceiling (`templateOf` → `untaggedRulesFor`); below it, or for a tagged one,
   // nothing reads it, and the campaign is judged exactly as before the lint.
   const facts = await withMillioneaFacts(templateOf(c), deps.millioneaFacts);
-  const epoch = facts.untaggedRules !== undefined && deps.millioneaLintEpoch
+  const read = facts.untaggedRules !== undefined && deps.millioneaLintEpoch
     ? await stampUntaggedRun(deps.millioneaLintEpoch, deps.now())
     : undefined;
+  // ⛔ S6-LINT 7 · AN UNREADABLE STAMP NEVER HOLDS A CLASSIC SEND (round 5's wait is gone): it is read as this process's start,
+  // the latest the stamp can be — the untagged rules judge in this process — so it can only grandfather a campaign sending
+  // since before this process (flagged, sent exactly as written), never pause one the stamp would grandfather, never wait.
+  const epoch = read === null ? processStartOn(deps.now()).toISOString() : read;
   const template: CampaignTemplate = sendingSincePreLint(c, epoch ?? null) ? { ...facts, millioneaLint: "flag" } : facts;
   let flagged: string | null = null;
   for (const variant of variantsOf(template)) {
     const dry = deps.render(template, { variant, name: null, token: footerMeasurementToken(), origin: "account" });
-    if (!dry.ok) {
-      // ⭐ Round 5, MEDIUM 4b · the stamp unread, and only Millionea's rules refuse a classic campaign: it may be one sending
-      // since before them, so it WAITS for the stamp (④d's rule: a signal that cannot be read costs only time) — never a pause.
-      const onlyTheRules = epoch === null && campaignProductOf(c.name) !== "MILLIONEA"
-        && deps.render({ ...facts, millioneaLint: "flag" }, { variant, name: null, token: footerMeasurementToken(), origin: "account" }).ok;
-      if (onlyTheRules) return { kind: "waiting", reason: "rules_unreadable", until: null };
-      return pauseFor(c, "template_invalid", dry.problems[0] ?? "the saved message failed its own check", deps);
-    }
+    if (!dry.ok) return pauseFor(c, "template_invalid", dry.problems[0] ?? "the saved message failed its own check", deps);
     flagged ??= dry.flagged?.[0] ?? null;
   }
   if (flagged !== null) await flagOnce(c, flagged, state, deps);

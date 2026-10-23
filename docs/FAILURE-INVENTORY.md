@@ -1326,12 +1326,13 @@ every campaign meets (a classic one too), and its signal patterns cost time that
 save or composer request (the save action has no length cap of its own) could hold the server's one process for minutes.
 THE RULE: a body longer than `CLAIMS_MAX_CHARS` (640 characters) is read by no claims rule — nothing that long can be sent
 (one SMS at most), and the composer's length rule refuses it in its own sentence. WHERE IT IS ENFORCED (S6-LINT 4, after
-S6-LINT 1 moved the untagged rules to the server): three guards, each the first line of its function and each needed on
-its own — the composer's one door (`millioneaCampaignProblems`, every rule), and in
-`src/lib/server/marketing/millionea-untagged.ts` the server's untagged path (`untaggedCampaignProblems`) and the
-quadratic signal reader itself (`millioneaSignals`), whoever calls them. Held by `test:maswali-claims` §8 (the review's
-1 MB body answered in under 50 ms; a claim padded to the limit still refused; past it, nothing read) and the plants of
-`red:maswali-claims`: (C27) the reader's guard (8.1), (C35) the path's (8.6b), (C36) the door's (8.6).
+S6-LINT 1 moved the untagged rules to the server): two guards, each the first line of its function and each needed on its
+own — the composer's one door (`millioneaCampaignProblems`, every rule), and in
+`src/lib/server/marketing/millionea-untagged.ts` the quadratic signal reader itself (`millioneaSignals`), whoever calls it;
+the server's untagged path (`untaggedCampaignProblems`) reads with that reader alone (S6-LINT 7: its own guard, which
+S6-LINT 4 added, went with the Chinese-characters rule, the one other thing it read). Held by `test:maswali-claims` §8 (the
+review's 1 MB body answered in under 50 ms; a claim padded to the limit still refused; past it, nothing read, on the door
+and on the path) and the plants of `red:maswali-claims`: (C27) the reader's guard (8.1), (C36) the door's (8.6).
 
 #### ✅ M-1 · a winner SMS that did not go was counted as sent by the next run (the lead's ruling 1; S6-INT 17)
 
@@ -1398,6 +1399,35 @@ save, the test send or the engine's slice, each through `stampUntaggedRun` (`mil
 and never refuses — and nothing reads or writes it before: not below the ceiling, not for a campaign tagged Millionea, not on
 the composer's preview. Held by `test:maswali-claims` §10 (10.1 a census of the boot's code; 10.2–10.3 every door under no
 environment, WITHDRAWN and STAFF_PREVIEW; 10.4 each door first at ACTIVE) and the plants (C37)–(C41) of `red:maswali-claims`.
+
+#### ✅ Ruling 6 at ACTIVE · an unreadable stamp held a classic campaign for good (S6-LINT 7)
+
+With Millionea's ceiling ACTIVE in production (2026-10-23), the untagged rules judge every classic campaign, and the
+engine's slice WAITED (`rules_unreadable`, round 5) whenever their stamp could not be read and only they refused the body —
+a failed read for as long as it failed, and a malformed stamp row (never stamped over) for good: a classic send held with
+no pause and no sentence the officer could act on. THE RULE: an unreadable stamp never holds a classic send. The slice reads
+it as its own process's start — the latest the stamp can be, since the untagged rules judge in that process — so it can only
+grandfather a campaign sending since before that process (flagged on its page, sent exactly as written), never pause one the
+stamp would grandfather, and never wait; the wait, its type and its page sentence are gone (`engine.ts`, `engine-rules.ts`,
+`live-copy.ts`). Held by `test:maswali-claims` 4.8h and the plant (C42); `test:campaign-visuals` counts seven waits.
+
+#### ✅ Ruling 6 at ACTIVE · a classic campaign's Chinese body was refused for its script (S6-LINT 7)
+
+The untagged rules refused any body holding a Chinese character (round 17, L4: they could not read Chinese), so at the ACTIVE
+ceiling a classic campaign was refused for its script whatever it said. THE RULE (the lead, 2026-10-23): a body in Chinese
+characters is refused for a Millionea claim it makes and never for its script — the untagged rules read Chinese words for a
+prize or a win, a figure of a million or more, the jackpot and a millionaire with the rest (`millionea-untagged.ts`); the
+composer's own alphabet rule judges such a body exactly as before the lint; a Millionea campaign stays refused for a Chinese
+body (OD42, `CAMPAIGN_HAN_SCRIPT`). Held by `test:maswali-claims` 7.7–7.7c, 9.2, 11.2 and the plants (C26), (C43)–(C46).
+
+#### ✅ Ruling 6 · the refusal of a tagged campaign while Millionea is dark named the product (S6-LINT 7)
+
+`MILLIONEA_NOT_LIVE`, said to an officer while the product is WITHDRAWN or STAFF_PREVIEW, began with the product's name.
+THE RULE (the lead's ruling 6): it is worded without the product's name; and below the ACTIVE ceiling no sentence a door says
+of a campaign not tagged Millionea names the product (L-8: the untagged rules do not run there). Held by `test:maswali-claims`
+11.3 and the plant (C47). With it, at the ACTIVE ceiling: the go-live (a classic campaign sending since before the first
+judging process is flagged and sent, a restart binds it — 11.1), nothing throws on any path a send takes (11.4, plant (C48))
+and every one of §1's ordinary sentences is saved through the SAVE door (11.5, plant (C49)).
 
 #### ✅ Item 1 · a holder's inclusion proof asked the product's gate (S6-DOCS 4)
 

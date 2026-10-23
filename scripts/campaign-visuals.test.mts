@@ -1000,8 +1000,9 @@ async function runAssertions(impl: Impl): Promise<void> {
       if (masked.ok && json(masked.step) !== json({ kind: "waiting", busy: x === "busy", until })) wrong.push(`${x}: step ${json(masked.step)}`);
     }
     const neutral = !/network|batch|credit|check|slow|switch|window|money|code/i.test(COPY.LIVE_WAIT_HIDDEN);
-    // MASWALI-BUILD S6 (round 5, MEDIUM 4b) · an eighth: the start of Millionea's claims rules unread (`rules_unreadable`).
-    return [WAITS.length === 8 && unworded.length === 0 && wrong.length === 0 && neutral,
+    // MASWALI-BUILD S6 (round 5, MEDIUM 4b) added an eighth, the start of Millionea's claims rules unread; S6-LINT 7 removed
+    // it (an unreadable stamp never waits), so seven.
+    return [WAITS.length === 7 && unworded.length === 0 && wrong.length === 0 && neutral,
       `waits [${WAITS.join(",")}] · without their own words [${unworded.join(",")}] · wrong [${wrong.slice(0, 3).join("; ")}] · the hidden wait names no cause ${neutral}`];
   });
 

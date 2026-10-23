@@ -17,7 +17,7 @@
  *    · WHERE THE SERVER READ THE WEEK (the save, the test send, the real send: `millioneaFactsProblems`), N is the week's
  *      own fee, and the campaign is refused while Millionea is not open to everyone, or while the facts cannot be read;
  *    · a campaign NOT tagged Millionea meets the UNTAGGED RULES (its Millionea signals refused in words — tag it Millionea,
- *      or reword it — and a body in Chinese characters) only where a server door hands them in
+ *      or reword it — a Chinese body's among them, never its script: S6-LINT 7) only where a server door hands them in
  *      (`MillioneaComposeContext.untagged`): they are the server's alone (`lib/server/marketing/millionea-untagged.ts`,
  *      S6-LINT 1), and without them nothing here reads an untagged campaign — its problems are exactly what they were.
  *      ⛔ A server door hands them in only while Millionea's ceiling is ACTIVE (the lead's ruling 6, S6-LINT 6): below it a
@@ -87,10 +87,12 @@ export const MILLIONEA_EXEMPT: MillioneaComposeContext = Object.freeze({ product
 
 /** A Millionea campaign while its facts cannot be read. */
 export const MILLIONEA_FACTS_UNREAD = "The week's fee at payout could not be read, so a Millionea campaign cannot be saved or sent now.";
-/** A Millionea campaign while Millionea is not open to everyone. */
-export const MILLIONEA_NOT_LIVE = "Millionea is not open to everyone yet, so no campaign may be about it.";
-/** ⭐ Round 17 (L4) · a body in Chinese characters, refused for a Millionea campaign and wherever the untagged rules run
- *  (OD42: a campaign is written in Swahili, with an optional English body — and these rules read those two languages alone). */
+/** A Millionea campaign while Millionea is not open to everyone. ⛔ Ruling 6 (S6-LINT 7) · worded without the product's name:
+ *  it is said while the product is dark. */
+export const MILLIONEA_NOT_LIVE = "The product this campaign is tagged for is not open to everyone yet, so no campaign may be about it.";
+/** ⭐ Round 17 (L4) · a body in Chinese characters, refused for a Millionea campaign (OD42: a Millionea campaign is written
+ *  in Swahili, with an optional English body). ⛔ S6-LINT 7 · never for a campaign not tagged Millionea: the untagged rules
+ *  refuse a Chinese body only for a Millionea claim it makes (`millionea-untagged.ts`). */
 export const CAMPAIGN_HAN_SCRIPT = "Campaign messages are written in Swahili or English: remove the Chinese characters from this body.";
 
 /** A door's read of the week's facts, never throwing: a reader that is absent, fails or answers nothing is unread (null). */
@@ -393,8 +395,8 @@ export function millioneaFactsProblems(text: string, facts: MillioneaFacts | nul
 /** ⭐ Round 17 (L4) · a body that holds a Chinese (Han) character. */
 const HAN = /\p{Script=Han}/u;
 
-/** ⭐ Round 17 (L4) · true when the text holds a Chinese (Han) character — refused for a Millionea campaign here, and for any
- *  other where the untagged rules run (`untaggedCampaignProblems`). */
+/** ⭐ Round 17 (L4) · true when the text holds a Chinese (Han) character — refused for a Millionea campaign here (OD42), and
+ *  for no other campaign (S6-LINT 7). */
 export function holdsHanScript(text: string): boolean {
   return HAN.test(text ?? "");
 }
@@ -406,16 +408,12 @@ export function holdsHanScript(text: string): boolean {
  * 500 ms; 8,000 digit groups, 735 ms), and a server door holds a classic campaign to them too (S6-LINT 1). One oversized
  * save or composer body (the save action has no cap of its own) could hold the server's one process for minutes. So a
  * body past this is read by no rule: its length is its refusal (`test:maswali-claims` §8; recorded in
- * docs/FAILURE-INVENTORY.md §9b). ⭐ S6-LINT 4 · it guards three places, each first: this door (every rule), and on the
- * server, where the untagged rules moved, their path (`untaggedCampaignProblems`) and their quadratic signal reader
- * itself (`millioneaSignals`), so neither depends on a caller to guard it.
+ * docs/FAILURE-INVENTORY.md §9b). ⭐ S6-LINT 4 · it guards, each first: this door (every rule), and on the server, where the
+ * untagged rules moved, their quadratic signal reader itself (`millioneaSignals`), so it depends on no caller to guard it.
+ * (S6-LINT 7 · the untagged path's own guard went with the Chinese-characters rule, the one other thing it read: the path
+ * reads with the guarded signal reader alone.)
  */
 export const CLAIMS_MAX_CHARS = 640;
-
-/** ⭐ Finding 9 · a body past one SMS (`CLAIMS_MAX_CHARS`): read by no claims rule. */
-export function pastOneSms(text: string): boolean {
-  return (text ?? "").length > CLAIMS_MAX_CHARS;
-}
 
 /**
  * ⭐ THE ONE POLICY, for the composer's one door: a Millionea campaign is held to the whole lint, a body in Chinese characters
