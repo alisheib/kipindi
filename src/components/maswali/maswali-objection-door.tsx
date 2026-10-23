@@ -1,10 +1,11 @@
+import type { ReactNode } from "react";
 import type { Dict, Locale } from "@/lib/i18n-dict";
 import { millioneaObjectionDoor, type MillioneaObjectionRow } from "@/lib/server/maswali-objections";
 import type { MillioneaQuestion } from "@/lib/server/maswali-player";
 import { outcomeWord } from "@/lib/side-label";
 import { eatWeekdayClock } from "./maswali-format";
 import { fill } from "@/lib/utils";
-import { noticeBody } from "@/components/ui/empty-state-text";
+import { noticeBody, type KeptBody } from "@/components/ui/empty-state-text";
 import { I } from "@/components/ui/glyphs";
 import { MaswaliObjectionDialog, type ObjectableQuestion } from "./maswali-objection-dialog";
 
@@ -34,9 +35,14 @@ export async function MaswaliObjectionDoor({ t, locale, userId, week, questions,
   // A failed read draws no door: the ticket and its results stand on their own, and the next render asks again.
   const door = await millioneaObjectionDoor(userId, week.id, nowMs).catch(() => null);
   if (!door) return null;
-  // An instant as the ticket's own live line says one ("Objection window until Ijumaa 18:00"): its weekday and EAT clock,
-  // held together on one line (a no-break space between them), never "Ijumaa" at a line's end and its clock on the next.
-  const when = (iso: string) => eatWeekdayClock(t, Date.parse(iso)).split(" ").join(String.fromCharCode(160));
+  // An instant as the ticket's own live line says one ("Objection window until Ijumaa 18:00"): its weekday and EAT clock
+  // held together on one line — one kept run of the sentence (`noticeBody`'s `keep`; DESIGN_AUTHORITY §M8a item 24: a
+  // clock with its day is one run), never a character slipped into the words (`test:visual-pass-r5e` 6.5) — so "Ijumaa"
+  // never ends a line with its clock on the next. `qa:maswali-objection-door` reads each instant whole in one run.
+  const kept = (sentence: string, iso: string): KeptBody => {
+    const when = eatWeekdayClock(t, Date.parse(iso));
+    return { text: fill(sentence, { when }), keep: [when] };
+  };
   const label = (slot: number) => questions.find((q) => q.slot === slot)?.label ?? String(slot);
   const textOf = (q: MillioneaQuestion) => q.text[locale] ?? q.text.en;
   const taken = new Set(door.mine.map((o) => o.slot));
@@ -45,12 +51,12 @@ export async function MaswaliObjectionDoor({ t, locale, userId, week, questions,
     ? questions.filter((q) => q.outcome !== null && !taken.has(q.slot))
       .map((q) => ({ slot: q.slot, label: q.label, text: textOf(q), result: outcomeWord(t, q.outcome!, "MASWALI") }))
     : [];
-  const closedLine = door.window.state === "CLOSED" ? fill(t.millionea.objDoorClosed, { when: when(door.window.closesAt) }) : null;
+  const closedLine = door.window.state === "CLOSED" ? kept(t.millionea.objDoorClosed, door.window.closesAt) : null;
   if (!canFile && !closedLine && door.mine.length === 0) return null;
 
-  const stateLine = (o: MillioneaObjectionRow): string => {
+  const stateLine = (o: MillioneaObjectionRow): ReactNode => {
     const now = questions.find((q) => q.slot === o.slot)?.outcome ?? null;
-    if (o.status === "OPEN") return fill(t.millionea.objMineOpen, { when: when(o.createdAt) });
+    if (o.status === "OPEN") return noticeBody(kept(t.millionea.objMineOpen, o.createdAt));
     if (o.status === "REJECTED") return t.millionea.objMineRejected;
     switch (o.remedy) {
       case "VOID": return t.millionea.objMineVoided;
@@ -65,7 +71,7 @@ export async function MaswaliObjectionDoor({ t, locale, userId, week, questions,
         {canFile ? t.millionea.objDoorTitle : t.millionea.objMineTitle}
       </h2>
       {canFile && door.window.state === "OPEN" && (
-        <p className="text-body-sm leading-relaxed text-text-muted">{noticeBody(fill(t.millionea.objDoorBody, { when: when(door.window.closesAt) }))}</p>
+        <p className="text-body-sm leading-relaxed text-text-muted">{noticeBody(kept(t.millionea.objDoorBody, door.window.closesAt))}</p>
       )}
       {closedLine && <p className="text-body-sm leading-relaxed text-text-muted">{noticeBody(closedLine)}</p>}
       {canFile && objectable.length > 0 && <div><MaswaliObjectionDialog weekId={week.id} questions={objectable} /></div>}
