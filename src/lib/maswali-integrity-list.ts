@@ -55,7 +55,7 @@ export function parseIntegrityListQuery(sp: Record<string, string | string[] | u
     // A line's key is `<weekId>.<line id>` (an id and 16 hex): anything longer is no line of this page.
     cluster: { page: pageOf(first(sp.cpage)), group: first(sp.cgroup).trim().slice(0, 80), groupPage: pageOf(first(sp.gpage)) },
     unreached: { page: pageOf(first(sp.npage)) },
-    locked: { page: pageOf(first(sp.lpage)) },
+    locked: { page: pageOf(first(sp.ppage)) },
   };
 }
 
@@ -87,7 +87,7 @@ export function integrityListParams(query: IntegrityListQuery): Record<string, s
     cgroup: query.cluster.group || undefined,
     gpage: query.cluster.groupPage > 1 ? String(query.cluster.groupPage) : undefined,
     npage: query.unreached.page > 1 ? String(query.unreached.page) : undefined,
-    lpage: query.locked.page > 1 ? String(query.locked.page) : undefined,
+    ppage: query.locked.page > 1 ? String(query.locked.page) : undefined,
   };
 }
 

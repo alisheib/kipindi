@@ -1460,7 +1460,7 @@ if (runs("TK")) {
   //    possible takeover to review — in its reviewed words, and nothing more. Read on the alert as raised and on the card.
   const { readFileSync } = await import("node:fs");
   const page = readFileSync("src/app/admin/maswali/integrity/page.tsx", "utf8");
-  const said = `${wk.code}: 1 winning account may have been taken over since this week's payout. Compliance reviews it on the integrity page and may hold the share (MB-96).`;
+  const said = `${wk.code}: 1 winning account may have been taken over since this week's payout. Compliance reviews it on the integrity page and may hold the share.`; // S6-ADMIN G1: the code stays in a comment
   ok("TK.4b · the alert and the integrity card say what the control enforces, in their reviewed words — a possible account takeover after a payout, to review — and nothing more (the lead's ruling of 2026-10-22)",
     alert?.text === said && page.includes('title="Possible account takeovers after a payout"') && page.includes("Review the account with its owner before its money leaves"),
     J({ alert: alert?.text }));

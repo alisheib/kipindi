@@ -19,7 +19,7 @@ import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 await runTwoStores({
   suite: "test:maswali-share-payout",
   casesFile: "scripts/lib/maswali-share-payout-child.mts",
-  minPass: { memory: 29, postgres: 29 },
+  minPass: { memory: 30, postgres: 30 },
   dbPrefix: "mlw_sharepay",
   timeoutMs: 20 * 60_000,
 });

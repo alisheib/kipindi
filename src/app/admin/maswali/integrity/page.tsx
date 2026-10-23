@@ -119,7 +119,7 @@ async function Content({ searchParams }: IntegrityPageProps) {
     console.error("[maswali-integrity] the shares owed to winners who cannot sign in could not be read:", (err as Error)?.message ?? err);
     return null;
   });
-  const lpage = parsePage(clusterQuery.lpage, locked?.length ?? 0, CONSOLE_PER_PAGE);
+  const ppage = parsePage(clusterQuery.ppage, locked?.length ?? 0, CONSOLE_PER_PAGE);
   // S7-OB · the objection queue's ruling (MR-16): Compliance's, the Owner the fallback.
   const canRule = await canUseControl(role, "ruleMaswaliObjection");
   // The cluster report for the latest weeks whose ticket set is fixed (closed, being sealed, or just settled).
@@ -138,7 +138,7 @@ async function Content({ searchParams }: IntegrityPageProps) {
     voidable: { ...query.voidable, page: v?.voidablePage.page ?? query.voidable.page },
     cluster: query.cluster,
     unreached: { page: v?.unreachedPage?.page ?? query.unreached.page },
-    locked: { page: lpage },
+    locked: { page: ppage },
   };
   const listParams = integrityListParams(linkQuery);
 
@@ -385,7 +385,7 @@ async function Content({ searchParams }: IntegrityPageProps) {
                   <th scope="col" className="text-right">Left</th><th scope="col" className="text-left">Payment</th>
                 </tr></thead>
                 <tbody>
-                  {locked.slice((lpage - 1) * CONSOLE_PER_PAGE, lpage * CONSOLE_PER_PAGE).map((s) => (
+                  {locked.slice((ppage - 1) * CONSOLE_PER_PAGE, ppage * CONSOLE_PER_PAGE).map((s) => (
                     <tr key={s.ticketId}>
                       <td className="text-left tabular">{s.weekCode}</td><td className="text-left tabular">{s.serial}</td><td className="text-left">{s.holder}</td>
                       <td className="text-left">{s.standingLabel}</td>
@@ -403,8 +403,8 @@ async function Content({ searchParams }: IntegrityPageProps) {
           )}
           {locked && locked.length > CONSOLE_PER_PAGE && (
             <div className="border-t border-border-subtle px-4 py-2">
-              <AdminPagination page={lpage} total={locked.length} perPage={CONSOLE_PER_PAGE}
-                baseHref={buildBaseHref(INTEGRITY_HREF, listParams, "lpage")} param="lpage" />
+              <AdminPagination page={ppage} total={locked.length} perPage={CONSOLE_PER_PAGE}
+                baseHref={buildBaseHref(INTEGRITY_HREF, listParams, "ppage")} param="ppage" />
             </div>
           )}
         </AdminCard>

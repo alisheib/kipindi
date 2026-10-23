@@ -1131,10 +1131,10 @@ export const MUTATIONS = [
     suite: "adversarial:GU",
   },
   {
-    name: "(SM15) MB-11 · a short or unreadable payout float stops the release: the winners' credit waits on an external read (the reading the lead ruled out)",
+    name: "(SM15) MB-11 · a short payout float stops the release: the winners' credit waits on an external figure (the reading the lead ruled out)",
     file: SETTLE,
     from: "  const floatBefore = pays > 0 ? await readFloatCover(pays, input.readFloat) : null;",
-    to: "  const floatBefore = pays > 0 ? await readFloatCover(pays, input.readFloat) : null;" + LF + "  if (floatBefore && floatBefore.state !== \"covered\") return refuse(\"The payout float is short of this week's shares; nothing was paid.\");",
+    to: "  const floatBefore = pays > 0 ? await readFloatCover(pays, input.readFloat) : null;" + LF + "  if (floatBefore && floatBefore.state === \"short\") return refuse(\"The payout float is short of this week's shares; nothing was paid.\");",
     expect: "FL.1 · ⭐",
     suite: "adversarial:GU",
   },
