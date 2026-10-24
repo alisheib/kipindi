@@ -304,6 +304,7 @@ scripts/.out/
 scripts/.red-house-bot-console.lock
 scripts/.red-house-bot-money.lock
 scripts/.red-house-bot-engine.lock
+scripts/.red-second-officer-switch.lock
 *.red-tmp
 
 # Pre-launch reset (2026-09-11) — carries staff phone numbers + emails; never commit PII.
