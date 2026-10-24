@@ -1,7 +1,8 @@
 import { AdminPageGate } from "@/components/admin/admin-section-gate";
 import { AdminPageHead, AdminCard } from "@/components/admin/admin-shell";
 import { FormColumn } from "@/components/ui/form-column";
-import { getGlobalConfig } from "@/lib/server/market-config";
+import { getGlobalConfig, readMarketConfigFresh } from "@/lib/server/market-config";
+import { describeFeeModel } from "@/lib/payout";
 import { getPlatformTimezone } from "@/lib/server/platform-config";
 import { NewMarketWizard } from "./wizard";
 
@@ -15,13 +16,19 @@ export default async function NewMarketPage() {
 async function NewMarketPageContent() {
   // What this market WILL freeze at creation — shown read-only in the wizard so the
   // officer can see the fee model + estimate that new polls apply.
-  const config = await getGlobalConfig();
+  // FEE-TAX-2026-10 (R2c) · read FRESH, as `createMarket` itself reads it, so the summary is what this market will freeze
+  // — not this container's copy; a read that fails falls back to that copy for display only (creation reads fresh again).
+  const fresh = await readMarketConfigFresh().catch(() => null);
+  const config = fresh?.ok ? fresh.config : await getGlobalConfig();
+  // The one caption every fee label reads — the model named and the rate it charges.
+  const caption = (() => { try { return describeFeeModel(config).caption; } catch { return "unreadable rates"; } })();
   // FEE-TAX-2026-10 · every model the config can name gets its own summary — a stake-share platform must never be told
-  // its new polls freeze a capped commission. R2c: the wizard's fee panel.
+  // its new polls freeze a capped commission.
   const feeInfo =
     config.feeModel === "loser-share"
       ? {
           model: "loser-share" as const,
+          caption,
           feePct: ((config.platformFeeRate + config.operatorFeeRate) * 100).toFixed(0),
           estMult: (1 + config.estimatedWinningsRate).toFixed(2),
           showEstimate: config.showEstimatedWinnings,
@@ -29,11 +36,13 @@ async function NewMarketPageContent() {
       : config.feeModel === "stake-share"
         ? {
             model: "stake-share" as const,
+            caption,
             feePct: String(Number(((config.platformFeeRate + config.operatorFeeRate) * 100).toFixed(2))),
             taxPct: config.winningsTaxRate === undefined ? null : String(Number((config.winningsTaxRate * 100).toFixed(2))),
           }
         : {
             model: "capped-commission" as const,
+            caption,
             commissionPct: (config.commissionRate * 100).toFixed(0),
             ceilingPct: (config.feeCeilingRate * 100).toFixed(0),
           };

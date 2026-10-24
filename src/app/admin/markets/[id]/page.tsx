@@ -15,7 +15,7 @@ import { Chip } from "@/components/ui/chip";
 import { Sensitive } from "@/components/ui/sensitive";
 import { Stat } from "@/components/ui/stat";
 import { Callout } from "@/components/ui/callout";
-import { chargedFee, poolFee, payoutViewFor } from "@/lib/payout";
+import { chargedFee, describeFeeModel, poolFee, payoutViewFor, stakeSharePct } from "@/lib/payout";
 import { ratesFor } from "@/lib/server/market-service";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { Select } from "@/components/ui/select";
@@ -187,8 +187,10 @@ async function MarketPredictorsContent({
   // actually settle at — not whatever is currently set in admin config.
   const marketRates = ratesFor(m);
   const isLoserShare = marketRates.feeModel === "loser-share";
-  // FEE-TAX-2026-10 · a stake-share poll gets its own arm below — never the capped-commission grid. R2c rebuilds this card.
+  // FEE-TAX-2026-10 · a stake-share poll gets its own arm below — never the capped-commission grid — captioned by the one
+  // fee caption (`describeFeeModel`: "13% of stakes"), from THIS poll's frozen rates.
   const isStakeShare = marketRates.feeModel === "stake-share";
+  const stakeShareCaption = isStakeShare ? describeFeeModel(marketRates).caption : "";
   // capped-commission is outcome-neutral (one fee). loser-share depends on the
   // winner, so show BOTH scenarios (and, once resolved, the fee actually charged).
   // Before a verdict: the outcome-neutral projection (capped-commission). After: what settlement debits.
@@ -311,14 +313,15 @@ async function MarketPredictorsContent({
               ) : (
                 <>
                   {isStakeShare ? (
-                    /* FEE-TAX-2026-10 · the fee is the same whichever side wins; the winnings tax is not. R2c. */
+                    /* FEE-TAX-2026-10 · the fee is the same whichever side wins; the winnings tax is not — and neither is
+                       what the winners share (pool − fee − tax), shown per side with its multiple per shilling staked. */
                     <>
                       <Stat
                         label="Fee (either side wins)"
                         value={formatTzs(Math.round(feeIfYes.fee))}
                         tone="gold"
                         money
-                        hint={`${Number(((marketRates.platformFeeRate + marketRates.operatorFeeRate) * 100).toFixed(2))}% of every stake`}
+                        hint={stakeShareCaption}
                       />
                       <Stat
                         label="Winnings tax if YES wins"
@@ -331,6 +334,18 @@ async function MarketPredictorsContent({
                         value={formatTzs(feeIfNo.winningsTax ?? 0)}
                         money
                         hint="withheld from the YES side's net stakes"
+                      />
+                      <Stat
+                        label="Winners share if YES wins"
+                        value={formatTzs(Math.round(feeIfYes.netPool))}
+                        money
+                        hint={m.yesPool > 0 ? `${(feeIfYes.netPool / m.yesPool).toFixed(3)}× per shilling on YES` : "—"}
+                      />
+                      <Stat
+                        label="Winners share if NO wins"
+                        value={formatTzs(Math.round(feeIfNo.netPool))}
+                        money
+                        hint={m.noPool > 0 ? `${(feeIfNo.netPool / m.noPool).toFixed(3)}× per shilling on NO` : "—"}
                       />
                     </>
                   ) : (
@@ -409,9 +424,10 @@ async function MarketPredictorsContent({
               Winners split the rest of the pool; a correct call always gets back at least its stake.
             </Callout>
           ) : isStakeShare ? (
-            /* FEE-TAX-2026-10 · never the capped callout, and never "a correct call gets back its stake". R2c. */
+            /* FEE-TAX-2026-10 · never the capped callout, and never "a correct call gets back its stake". The rate is the
+               one the arithmetic charges, in whole basis points (`stakeSharePct`). */
             <Callout tone="info" className="mt-3" title="STAKE-SHARE — the fee is a slice of every stake">
-              We take {Number(((marketRates.platformFeeRate + marketRates.operatorFeeRate) * 100).toFixed(2))}% of every stake,
+              We take {stakeSharePct(marketRates)}% of every stake,
               on both sides: {formatTzs(Math.round(feeIfYes.fee))} whichever side wins. The winnings tax is withheld from the
               losing side&apos;s net stakes: {formatTzs(feeIfYes.winningsTax ?? 0)} if YES wins, {formatTzs(feeIfNo.winningsTax ?? 0)} if NO
               wins. On a lopsided poll a winner on the bigger side can be paid back less than their stake.

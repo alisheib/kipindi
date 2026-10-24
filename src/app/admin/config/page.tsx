@@ -3,9 +3,12 @@ import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-she
 import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
 import { I } from "@/components/ui/glyphs";
 import { ScrollX } from "@/components/ui/scroll-x";
-import { getGlobalConfig, getStoredStakeBounds, listMarketOverrides, DEFAULT_GLOBAL_CONFIG } from "@/lib/server/market-config";
-import { PLATFORM_MIN_STAKE, worstCaseWinnerRatio } from "@/lib/payout";
+import { getGlobalConfig, getStoredStakeBounds, listMarketOverrides, readMarketConfigFresh, DEFAULT_GLOBAL_CONFIG } from "@/lib/server/market-config";
+import { listChains, rateProfileOf, readUpDownConfigFresh } from "@/lib/server/updown-config";
+import { PLATFORM_MIN_STAKE, describeFeeModel, resolveFeeModel, worstCaseWinnerRatio, type FeeModel } from "@/lib/payout";
+import { chainFeeCensus } from "@/lib/updown-fee-profile";
 import { FeeSimulator } from "./fee-simulator";
+import { UpDownFeePanel } from "./updown-fee-panel";
 import { getMarket } from "@/lib/server/market-service";
 import { getAuditPage } from "@/lib/server/audit";
 import { currentSession } from "@/lib/server/auth-service";
@@ -36,10 +39,29 @@ export default async function AdminConfigPage(props: ConfigProps) {
 
 async function AdminConfigContent({ searchParams }: ConfigProps) {
   const sp = await searchParams;
-  const config = await getGlobalConfig().catch(() => DEFAULT_GLOBAL_CONFIG);
+  /* ⭐ READ FRESH, FIRST (FEE-TAX-2026-10, R2c; the independent review of R2a). Every form on this page is drawn from the
+     row as stored NOW — the read replaces this container's copy, overrides included — and posts what it was drawn with as
+     its `baseline`, so a page served by a container that booted before another officer's save can no longer write that
+     officer's change back. ⛔ When the read fails, no form that saves is drawn (the figures below fall back to this
+     container's copy for reading only, as they always did). */
+  const fresh = await readMarketConfigFresh().catch((e: unknown) => ({ ok: false as const, error: String((e as Error)?.message ?? e) }));
+  const config = fresh.ok ? fresh.config : await getGlobalConfig().catch(() => DEFAULT_GLOBAL_CONFIG);
   // The stake bounds as STORED, beside the enforced ones the form shows (2026-10-07 · the floor is applied on read).
   const storedStake = await getStoredStakeBounds().catch(() => null);
   const overrides = await listMarketOverrides().catch(() => []);
+  /* Up & Down's half of the Fees & taxes card: its default profile as stored NOW and every chain counted by the model its
+     profile resolves to — archived ones included (a restarted chain freezes its profile on its next round). */
+  const udFresh = await readUpDownConfigFresh().catch((e: unknown) => ({ ok: false as const, error: String((e as Error)?.message ?? e) }));
+  const udConfig = udFresh.ok ? udFresh.config : null;
+  const udChains = udConfig ? await listChains().catch(() => null) : null;
+  const modelOfProfile = (p: Parameters<typeof resolveFeeModel>[0]): FeeModel | "unreadable" => {
+    try { return resolveFeeModel(p); } catch { return "unreadable"; }
+  };
+  const udCensus = udConfig && udChains
+    ? chainFeeCensus(udChains.map((c) => ({ state: c.state, model: modelOfProfile(rateProfileOf(c, udConfig)) })))
+    : null;
+  // The caption every fee label on this page reads — the model NAMED and the rate it charges (`describeFeeModel`).
+  const feeCaption = (() => { try { return describeFeeModel(config).caption; } catch { return "unreadable rates"; } })();
   const oPage = parsePage(sp.opage, overrides.length);
   const overridesPage = overrides.slice((oPage - 1) * PER_PAGE, oPage * PER_PAGE);
   const oBase = buildBaseHref("/admin/config", sp, "opage");
@@ -75,8 +97,8 @@ async function AdminConfigContent({ searchParams }: ConfigProps) {
         sw="Mipangilio ya soko"
         actions={
           <Chip size="md" variant="resolved">
-            {/* FEE-TAX-2026-10 · every model named, never folded into "capped". R2c: the Fees & taxes card. */}
-            {config.feeModel === "loser-share" ? "Pari-mutuel · loser-share" : config.feeModel === "stake-share" ? "Pari-mutuel · stake-share" : "Pari-mutuel · capped fee"}
+            {/* FEE-TAX-2026-10 · the model named and its rate, from the one caption — never folded into "capped". */}
+            Pari-mutuel · {feeCaption}
           </Chip>
         }
       />
@@ -87,14 +109,17 @@ async function AdminConfigContent({ searchParams }: ConfigProps) {
             label="Fee model (new polls)"
             sw="Modeli ya ada"
             value={config.feeModel === "loser-share" ? "Loser-share" : config.feeModel === "stake-share" ? "Stake-share" : "Capped"}
-            delta={
-              config.feeModel === "loser-share"
-                ? `${((config.platformFeeRate + config.operatorFeeRate) * 100).toFixed(0)}% of losing pool · players see ${(1 + config.estimatedWinningsRate).toFixed(1)}× estimate`
-                : config.feeModel === "stake-share"
-                  ? `${Number(((config.platformFeeRate + config.operatorFeeRate) * 100).toFixed(2))}% of every stake · ${config.winningsTaxRate === undefined ? "no winnings tax saved" : `${Number((config.winningsTaxRate * 100).toFixed(2))}% winnings tax`}`
-                  : "min(commission, ceiling) · outcome-neutral"
-            }
+            delta={feeCaption}
           />
+          {/* FEE-TAX-2026-10 · the winning tax — stake-share's alone, and saved by an officer: there is no default. */}
+          {config.feeModel === "stake-share" ? (
+            <AdminKpi
+              label="Winning tax"
+              sw="Kodi ya ushindi"
+              value={config.winningsTaxRate === undefined ? "—" : `${Number((config.winningsTaxRate * 100).toFixed(2))}%`}
+              delta={config.winningsTaxRate === undefined ? "none saved — no poll can be created" : "of the prize, to TRA"}
+            />
+          ) : null}
           <AdminKpi label="Commission"        sw="Faida"   value={`${(config.commissionRate * 100).toFixed(1)}%`} delta="of the whole pool" />
           <AdminKpi label="Fee ceiling"       sw="Kikomo"  value={`${(config.feeCeilingRate * 100).toFixed(1)}%`} delta="of the smaller side" />
           {/* THE KPI THAT MATTERS. If this ever reads below 1.00×, a player who
@@ -145,7 +170,7 @@ async function AdminConfigContent({ searchParams }: ConfigProps) {
           </AdminCard>
         ) : null}
         {/* FEE-TAX-2026-10 · the stake-share law, stated as the loser-share one is — reachable only once `fee-law-gate.ts`
-            is open and an admin has saved it. R2c: rebuilt as the Fees & taxes card. */}
+            is open and an admin has saved it. Its rates and the winning tax are set in the Fees & taxes card (R2c). */}
         {config.feeModel === "stake-share" ? (
           <AdminCard className="border-warning-border bg-warning-bg">
             <div className="flex items-start gap-3">
@@ -265,15 +290,17 @@ async function AdminConfigContent({ searchParams }: ConfigProps) {
           <FormColumn measure="form"><FeeSimulator config={config} /></FormColumn>
         </AdminCard>
 
-        {/* Global config form.
+        {/* ⭐ FEES & TAXES (FEE-TAX-2026-10, R2c) — the global rates form, whose first panel is the polls' fee model, its
+            rates, the winning tax and the two levies on our fees; then Up & Down's default profile and every chain, moved
+            in one act. ONE form saves (one Save on screen); the Up & Down panel acts through its own confirm.
 
             DG-A-14: "changes apply on next bet — no redeploy" is a full statement
             about when a saved rate takes effect, not a label, so the uppercase and
             the 0.10em tracking came off and the size moved from text-micro (10px)
             to text-body-sm (13px), the smallest rung above the reading floor. */}
         <AdminCard
-          title="Global rates"
-          sw="Viwango vya jumla"
+          title="Fees & taxes"
+          sw="Ada na kodi"
           action={
             <span className="font-mono text-body-sm text-text-tertiary">
               changes apply on next bet — no redeploy
@@ -284,7 +311,23 @@ async function AdminConfigContent({ searchParams }: ConfigProps) {
               console each cell was ~780px wide for a value like "10.0". Bounding
               the column puts each cell back around 310px. */}
           <FormColumn measure="form">
-            <GlobalConfigForm config={config} storedStake={storedStake} />
+            {fresh.ok ? (
+              <GlobalConfigForm config={config} storedStake={storedStake} />
+            ) : (
+              <p className="text-body-sm text-danger-fg">
+                The platform rates could not be read, so they cannot be shown or changed now. Reload the page to try again.
+              </p>
+            )}
+            <div className="mt-4">
+              {udConfig && udCensus ? (
+                <UpDownFeePanel defaultProfile={udConfig.defaultRateProfile} census={udCensus} />
+              ) : (
+                <p className="text-body-sm text-danger-fg">
+                  The Up &amp; Down settings could not be read, so its fee profile cannot be shown or changed now. Reload the
+                  page to try again.
+                </p>
+              )}
+            </div>
           </FormColumn>
         </AdminCard>
         </>)}
@@ -309,7 +352,17 @@ async function AdminConfigContent({ searchParams }: ConfigProps) {
           <div className="space-y-4">
             <div className="glass-panel p-4">
               <p className="font-mono text-micro uppercase eyebrow font-bold text-text-subtle mb-3">Add override</p>
-              <FormColumn measure="form"><MarketOverrideForm globalConfig={config} /></FormColumn>
+              {/* ⭐ The overrides as the fresh read left them, so the one for the market typed rides as the writer's
+                  baseline (FEE-TAX-2026-10, R2c). No fresh read, no form that saves. */}
+              {fresh.ok ? (
+                <FormColumn measure="form">
+                  <MarketOverrideForm globalConfig={config} existing={Object.fromEntries(overrides.map((o) => [o.marketId, o.over]))} />
+                </FormColumn>
+              ) : (
+                <p className="text-body-sm text-danger-fg">
+                  The overrides could not be read, so they cannot be changed now. Reload the page to try again.
+                </p>
+              )}
             </div>
 
             {/* DG-A-14: the empty state is a sentence — "No active overrides —

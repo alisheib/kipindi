@@ -42,11 +42,13 @@ const COMPETITION_OPTIONS = [
   ...COMPETITIONS.map((c) => ({ value: c, label: competitionLabel(dict.en, c) })),
 ];
 
-type FeeInfo =
+/** `caption` — `describeFeeModel`'s, the one fee caption every console label reads (FEE-TAX-2026-10, R2c). */
+type FeeInfo = { caption: string } & (
   | { model: "loser-share"; feePct: string; estMult: string; showEstimate: boolean }
   | { model: "capped-commission"; commissionPct: string; ceilingPct: string }
   // FEE-TAX-2026-10 · `taxPct` null = no winnings tax saved (such a market could not be created: stamping refuses it).
-  | { model: "stake-share"; feePct: string; taxPct: string | null };
+  | { model: "stake-share"; feePct: string; taxPct: string | null }
+);
 
 export function NewMarketWizard({ feeInfo, platformTz }: { feeInfo: FeeInfo; platformTz: string }) {
   const [step, setStep] = useState(0);
@@ -217,6 +219,7 @@ export function NewMarketWizard({ feeInfo, platformTz }: { feeInfo: FeeInfo; pla
           /admin/config → Fee model. A poll settles by the model it was created under. */}
       <div className="rounded-md border border-border bg-bg-overlay px-3 py-2.5 text-[11.5px] text-text-muted">
         <span className="font-mono text-micro uppercase eyebrow text-text-subtle">Fee model frozen at creation</span>
+        <span className="ml-2 font-mono text-text">{feeInfo.caption}</span>
         {feeInfo.model === "loser-share" ? (
           <p className="mt-1">
             <strong className="text-text">Loser-share</strong> — fee = <strong className="text-text">{feeInfo.feePct}%</strong> of the losing pool.
@@ -225,7 +228,7 @@ export function NewMarketWizard({ feeInfo, platformTz }: { feeInfo: FeeInfo; pla
               : <> The pre-bet estimate is hidden.</>}
           </p>
         ) : feeInfo.model === "stake-share" ? (
-          /* FEE-TAX-2026-10 · its own sentence, never the capped one. R2c. */
+          /* FEE-TAX-2026-10 · its own sentence, never the capped one. */
           <p className="mt-1">
             <strong className="text-text">Stake-share</strong> — fee = <strong className="text-text">{feeInfo.feePct}%</strong> of every stake,
             {feeInfo.taxPct === null
