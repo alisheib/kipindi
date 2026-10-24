@@ -39,7 +39,7 @@ import {
   readUpDownConfigFresh, feeModelMismatch,
   type Duration, type UpDownConfig,
 } from "./updown-config";
-import type { RateConfig } from "./market-config";
+import { getGlobalConfig, type RateConfig } from "./market-config";
 import { hostMatchesDomain } from "./updown-feed";
 import type { StoredAsset } from "./updown-dal";
 
@@ -902,11 +902,15 @@ export async function armProposal(id: string, opts: { officerId: string }): Prom
   // start an existing chain whose fee model is not the product default's (a chain the one act has not reached — or left
   // on another model by an explicit override), checked against the settings read FRESH, before anything is written.
   // A chain it creates takes the default, which `createChain` holds to the same rule.
+  // ⭐ Both sides are read as what their rounds will FREEZE, the platform's terms under them (FEE-TAX R2 review): a chain
+  // whose profile names no model stamps the platform's, and is judged as that — never as "capped".
   {
     const fresh = await readUpDownConfigFresh();
     if (!fresh.ok) return { ok: false, error: "Cannot arm — the Up & Down settings could not be read. Nothing was changed; try again." };
     const current = (await listChains({ assetId: asset.id })).find((c) => c.durationMinutes === p.durationMinutes);
-    const mismatch = current ? feeModelMismatch(current.rateProfile as Partial<RateConfig> | null, fresh.config) : null;
+    const mismatch = current
+      ? feeModelMismatch(current.rateProfile as Partial<RateConfig> | null, fresh.config, await getGlobalConfig())
+      : null;
     if (mismatch) return { ok: false, error: `Cannot arm — ${mismatch}` };
   }
 
