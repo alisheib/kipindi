@@ -10,7 +10,8 @@
  * resolution panel printed the same phantom (E-419; fixed on the panel in C1-A).
  *
  * ⭐ THE GUARD DRIVES THE REAL SETTLEMENT. For every branch settlement has — two-sided YES win, two-sided NO win,
- * one-sided resolved FOR its money, one-sided resolved AGAINST it, VOID — under both fee models, it builds the
+ * one-sided resolved FOR its money, one-sided resolved AGAINST it, VOID — under every pool model (stake-share too, since
+ * FEE-TAX-2026-10's R2b, where the house retains the fee AND the winnings tax leaves for TRA), it builds the
  * market through the real services (in memory), settles it, measures what the house RETAINED (Σ stakes −
  * Σ amounts paid back), and pins `chargedFee` equal to it. The fixtures are sized so every fee is a whole
  * shilling, so the comparison is exact: no tolerance.
@@ -25,6 +26,7 @@ import { db, type StoredWallet } from "../src/lib/server/store.ts";
 import { chargedFee, poolFee, type FeeRates } from "../src/lib/payout.ts";
 import { createMarket, buyPosition, resolveMarket, settleMarket, listPositionsForMarket, getMarket, ratesFor } from "../src/lib/server/market-service.ts";
 import { setGlobalConfig } from "../src/lib/server/market-config.ts";
+import { __setFeeLawLiveForTest } from "../src/lib/fee-law-gate.ts";
 
 import "./lib/verified-fixtures.mts";
 
@@ -53,13 +55,23 @@ async function fundedUser(id: string, balance = 1_000_000): Promise<void> {
 type Outcome = "YES" | "NO" | "VOID";
 type Case = { name: string; yes: number[]; no: number[]; outcome: Outcome };
 
-/** Build, bet, resolve, settle — through the real services — and read what settlement kept. */
-async function settle(tag: string, c: Case) {
-  const m = await createMarket({
-    titleEn: `charged-fee ${tag} ${c.name}`, titleSw: "Soko la ada", category: "macro",
-    sourceUrl: "https://bot.go.tz", resolutionCriterion: "Resolves at the official date.",
-    resolutionAt: new Date(Date.now() + 7 * 864e5).toISOString(), proposedBy: "test",
-  } as never);
+/**
+ * Build, bet, resolve, settle — through the real services — and read what settlement kept. `rateOverrides` freezes a
+ * model the global config cannot (stake-share, gated until R5): the gate is opened IN THIS PROCESS for the one stamp.
+ */
+async function settle(tag: string, c: Case, rateOverrides?: Record<string, unknown>) {
+  if (rateOverrides) __setFeeLawLiveForTest(true);
+  let m: Awaited<ReturnType<typeof createMarket>>;
+  try {
+    m = await createMarket({
+      titleEn: `charged-fee ${tag} ${c.name}`, titleSw: "Soko la ada", category: "macro",
+      sourceUrl: "https://bot.go.tz", resolutionCriterion: "Resolves at the official date.",
+      resolutionAt: new Date(Date.now() + 7 * 864e5).toISOString(), proposedBy: "test",
+      ...(rateOverrides ? { rateOverrides } : {}),
+    } as never);
+  } finally {
+    if (rateOverrides) __setFeeLawLiveForTest(null);
+  }
   let n = 0;
   for (const [side, stakes] of [["YES", c.yes], ["NO", c.no]] as const) {
     for (const stake of stakes) {
@@ -130,37 +142,45 @@ ok("control · …and AGREES on every two-sided win (the guard is not merely rej
   !disagreements.some((d) => /two-sided (?:YES|NO) wins/.test(d)));
 
 // ── FEE-TAX-2026-10 · stake-share — `fee` is OUR fee ONLY, and the tax stands beside it ─────────────────────────────────
-// No market can freeze stake-share before release R5 (`fee-law-gate.ts`), and settlement learns its split in R2b — which
-// then pins this reader to the REAL settlement as the loops above do. Until then the reader is pinned to the ONE
-// arithmetic settlement will pay by (`stakeShareSplit`), over the same six shapes: the refund branches unchanged, and on a
-// two-sided win  staked − paid back = fee + winningsTax  — so "paid back = pool − fee" no longer holds for this model.
+// ⭐ PINNED TO THE REAL SETTLEMENT SINCE R2b, as the loops above are. No market can freeze stake-share before release R5
+// (`fee-law-gate.ts`), so each market below is stamped with the gate opened IN THIS PROCESS (the test seam), then built,
+// bet, resolved and settled through the real services — and the reader is held to what settlement actually did, over the
+// same six shapes: the refund branches charge nothing (ruling 2), and on a two-sided win
+//   staked − paid back = fee + winningsTax
+// — so "paid back = pool − fee" no longer holds for this model (the tax is withheld too), and `fee` is OUR fee only.
 {
-  console.log("\n── stake-share (the reader against `stakeShareSplit`)");
+  console.log("\n── stake-share (the reader against the REAL settlement)");
   const { stakeShareSplit } = await import("../src/lib/payout.ts");
-  const SS = { feeModel: "stake-share" as const, platformFeeRate: 0.03, operatorFeeRate: 0.10, winningsTaxRate: 0.15, commissionRate: 0.10, feeCeilingRate: 1 / 3 };
+  const SS = { feeModel: "stake-share" as const, platformFeeRate: 0.03, operatorFeeRate: 0.10, winningsTaxRate: 0.15 };
   for (const c of CASES) {
-    const yesPool = c.yes.reduce((a, s) => a + s, 0), noPool = c.no.reduce((a, s) => a + s, 0);
-    const charged = chargedFee({ yesPool, noPool, resolvedOutcome: c.outcome }, SS);
-    const refund = c.outcome === "VOID" || yesPool === 0 || noPool === 0;
+    const { m, retained, staked, allSettled } = await settle("stake-share", c, SS);
+    const rates = ratesFor(m);
+    const outcome = m.resolvedOutcome as Outcome;
+    const charged = chargedFee({ yesPool: m.yesPool, noPool: m.noPool, resolvedOutcome: outcome }, rates);
+    ok(`stake-share · ${c.name} · the market froze stake-share and settled every position (precondition, staked ${staked})`,
+      rates.feeModel === "stake-share" && allSettled && m.settledAt != null, JSON.stringify(rates.feeModel));
+    const refund = outcome === "VOID" || m.yesPool === 0 || m.noPool === 0;
     if (refund) {
-      ok(`stake-share · ${c.name} · refunded in full at no fee and no tax (ruling 2, as today)`,
-        charged.refunded && charged.fee === 0 && charged.winningsTax === undefined && charged.netPool === yesPool + noPool, JSON.stringify(charged));
+      ok(`stake-share · ${c.name} · refunded in full at no fee and no tax (ruling 2): settlement retained 0`,
+        charged.refunded && charged.fee === 0 && charged.winningsTax === undefined && retained === 0 && charged.netPool === staked,
+        `${JSON.stringify(charged)} · retained ${retained}`);
       continue;
     }
-    const outcome = c.outcome as "YES" | "NO";
-    const ids = (side: string, xs: number[]) => xs.map((stake, i) => ({ id: `${side}${i}`, stake }));
+    ok(`stake-share · ${c.name} · ★ staked − paid back = fee + winningsTax — exactly what settlement retained (${retained})`,
+      charged.fee + (charged.winningsTax ?? 0) === retained && charged.netPool === staked - retained,
+      `fee ${charged.fee} + tax ${charged.winningsTax} vs retained ${retained} · netPool ${charged.netPool}`);
+    // The split over the market's OWN positions — the arithmetic settlement paid by — names the same F and T.
+    const positions = await listPositionsForMarket(m.id);
+    const w = outcome as "YES" | "NO";
     const split = stakeShareSplit({
-      yesPool, noPool, outcome,
-      winners: ids(outcome, outcome === "YES" ? c.yes : c.no),
-      losers: ids(outcome === "YES" ? "NO" : "YES", outcome === "YES" ? c.no : c.yes),
-    }, SS);
-    const paidBack = [...split.perWinner.values()].reduce((a, w) => a + w.payout, 0);
+      yesPool: m.yesPool, noPool: m.noPool, outcome: w,
+      winners: positions.filter((p) => p.side === w).map((p) => ({ id: p.id, stake: p.stake })),
+      losers: positions.filter((p) => p.side !== w).map((p) => ({ id: p.id, stake: p.stake })),
+    }, rates);
     ok(`stake-share · ${c.name} · fee === the split's fee (our fee only) and the tax stands beside it`,
       !charged.refunded && charged.fee === split.fee && charged.winningsTax === split.winningsTax && charged.prizeFund === split.prizeFund,
       `fee ${charged.fee}/${split.fee} · tax ${charged.winningsTax}/${split.winningsTax}`);
-    ok(`stake-share · ${c.name} · ★ staked − paid back = fee + winningsTax (${split.fee} + ${split.winningsTax})`,
-      yesPool + noPool - paidBack === charged.fee + (charged.winningsTax ?? 0) && charged.netPool === paidBack, `paid back ${paidBack}`);
-    ok(`stake-share · ${c.name} · ⛔ and so NOT pool − fee: the tax is withheld too`, charged.netPool !== yesPool + noPool - charged.fee);
+    ok(`stake-share · ${c.name} · ⛔ and so NOT pool − fee: the tax is withheld too`, charged.netPool !== staked - charged.fee);
   }
 }
 

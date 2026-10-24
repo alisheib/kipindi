@@ -43,7 +43,7 @@ import { readFileSync } from "node:fs";
 // RED harness. Four separate copies of this pattern drifted apart — see the file itself.
 import { locateHandoff } from "./campaign-handoff.mjs";
 import {
-  poolFee, settledPayoutFor, DEFAULT_FEE_MODEL,
+  poolFee, settledPayoutFor, stakeShareSplit, DEFAULT_FEE_MODEL,
   DEFAULT_PLATFORM_FEE_RATE, DEFAULT_OPERATOR_FEE_RATE,
 } from "../src/lib/payout";
 
@@ -260,6 +260,34 @@ const YES_POOL = 2000, NO_POOL = 2000, ALPHA_STAKE = 2000;
       Number(expected[1].replace(/,/g, "")),
       settledPayoutFor({ yesPool: YES_POOL, noPool: NO_POOL, side: "YES", stake: ALPHA_STAKE }, SNAP).payout);
   }
+}
+
+// ── §6 · the THIRD model on the same pools — stake-share (FEE-TAX-2026-10; decided, gated off until release R5) ────
+// The expectation an operator would write for this very market had it been frozen under the new law, pinned so it is
+// never re-derived by hand: the fee is 13% of EVERY stake (F = 260 + 260 = 520 — the capped figure's number, for a
+// different reason), the prize fund is the losers' net stakes P = 2,000 − 260 = 1,740, the winnings tax is 15% of it
+// (T = 261), and alpha is paid 4,000 − 520 − 261 = 3,219 — its net stake 1,740 back plus the prize after tax.
+// ⛔ A winner's floor under this law is the NET stake, not the stake (ruling 1): at the hostile end a correct call on
+// 100,000 against a 1-shilling losing pool is paid 87,001 — below its stake, above its net stake of 87,000.
+{
+  const SS = { ...SNAP, v: 3, feeModel: "stake-share" as const, winningsTaxRate: 0.15 };
+  const f = poolFee(YES_POOL, NO_POOL, SS, "YES");
+  eq("§6 stake-share · fee = 13% of every stake (260 + 260)", f.fee, 520);
+  eq("§6 stake-share · prize fund = the losers' net stakes", f.prizeFund, 1_740);
+  eq("§6 stake-share · winnings tax = 15% of 1,740, rounded half up", f.winningsTax, 261);
+  eq("§6 stake-share · netPool = 4,000 − 520 − 261", f.netPool, 3_219);
+  const alpha = settledPayoutFor({ yesPool: YES_POOL, noPool: NO_POOL, side: "YES", stake: ALPHA_STAKE }, SS);
+  eq("§6 stake-share · alpha's payout", alpha.payout, 3_219);
+  const split = stakeShareSplit({ yesPool: YES_POOL, noPool: NO_POOL, outcome: "YES", winners: [{ id: "alpha", stake: ALPHA_STAKE }], losers: [{ id: "beta", stake: NO_POOL }] }, SS);
+  eq("§6 stake-share · …and the settlement's own split pays the same 3,219", split.perWinner.get("alpha")?.payout, 3_219);
+  eq("§6 stake-share · …of which 261 was withheld for TRA", split.perWinner.get("alpha")?.tax, 261);
+  ok("§6 the three models on one market: 3,740 (loser-share), 3,480 (capped), 3,219 (stake-share)",
+    settledPayoutFor({ yesPool: YES_POOL, noPool: NO_POOL, side: "YES", stake: ALPHA_STAKE }, SNAP).payout === 3_740 && alpha.payout === 3_219);
+  const hostile = settledPayoutFor({ yesPool: 100_000, noPool: 1, side: "YES", stake: 100_000 }, SS);
+  eq("§6 stake-share · the hostile end pays 87,001", hostile.payout, 87_001);
+  ok("§6 stake-share · …below the stake (ruling 1) but never below the net stake of 87,000",
+    hostile.payout < 100_000 && hostile.payout >= 100_000 - 13_000, `payout ${hostile.payout}`);
+  eq("§6 stake-share · one side only is refunded at no fee (ruling 2)", poolFee(100_000, 0, SS, "YES").fee, 0);
 }
 
 console.log(`\nE-48 · settlement expectation — ${pass} passed, ${fails.length} failed\n`);

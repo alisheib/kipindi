@@ -45,7 +45,12 @@ const sites = (src: string) => decomment(src.replace(/\r\n/g, "\n")).match(BRANC
 const REGISTRY: Record<string, [number, string]> = {
   "src/lib/payout.ts": [16, "the arithmetic: readRates names stake-share first; poolFee / describeFeeModel / chargedFee / settledPayoutFor / worstCaseWinnerRatio each name it before the capped fallback; the figure functions return null for every other model"],
   "src/lib/server/market-config.ts": [12, "the stamp (stake-share stamped complete or refused), hasOwnSnapshot, snapshotOrLegacy's pass-through (no coercion to capped), validate's gate"],
-  "src/lib/server/market-service.ts": [4, "the settlement audit record names stake-share's payout model and rates (R2b replaces the split)"],
+  // R2b (2026-10-24): 4 → 15. Every branch is an EXHAUSTIVE switch ending in `assertNeverFeeModel` (closeTimePayouts,
+  // settleMarket's arithmetic, settlementFeeRecord — 4 `case`s each) or a stake-share-only arm that leaves the older
+  // models byte for byte (settlementFee's VOID refund shape, the thin-poll wording, and the legacy allocator's own refusal
+  // of a stake-share market). No model can fall into another model's arm here.
+  "src/lib/server/market-service.ts": [15, "stake-share settles by its split, discloses by its split at close, records its split's figures (refund on VOID), refunds a VOID at fee 0, words the thin-poll alert by its floor; the legacy allocator refuses it; jackpot-payout refused; every switch exhaustive"],
+  "src/lib/server/updown-service.ts": [1, "settlementNote names the stake-share floor (the net stake) — the older models' sentence byte for byte otherwise"],
   "src/lib/server/updown-config.ts": [9, "the v4 reconcile (exact retired default only), the split caption names every model, stampedFeeTermsOf lays the platform's tax beside a stake-share profile only (never a default), the settings save refuses a default move to or from stake-share (a legacy move passes), the apply act names its three models and gates a stake-share target only (R2 review)"],
   "src/lib/server/maswali-console.ts": [1, "jackpot-payout only — a Millionea week's own model, never a pool model"],
   "src/lib/server/maswali-player.ts": [1, "jackpot-payout only — a week whose snapshot froze any other model shows the player no terms (null), never a pool model's"],

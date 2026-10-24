@@ -15,6 +15,9 @@
  * refund, the same ledger dual-write, the same resume-safety. Deliberately NOT with
  * `force`, so the standing-objection freeze still applies (settlement is immediate for
  * Up & Down, but an objection filed against a round still stops its money).
+ * ⭐ "The same winner floor" is the ROUND'S OWN frozen model's (FEE-TAX-2026-10): the stake under `capped-commission` and
+ * `loser-share`, the NET stake under `stake-share` (ruling 1) — `settleMarket` chooses it from the round's snapshot, and
+ * nothing here assumes either. The one sentence this module writes about it, `settlementNote`, is told the model.
  */
 import { randomId } from "./crypto";
 import { audit } from "./audit";
@@ -24,7 +27,8 @@ import { withLock, afterCommit } from "./locks";
 import { publishOracleBar } from "./updown-terminal-vendor";
 import { marketStore } from "./market-dal";
 import { createMarket, settleMarket } from "./market-service";
-import { isRatesRefused } from "./market-config";
+import { isRatesRefused, snapshotOrLegacy } from "./market-config";
+import type { FeeModel } from "@/lib/payout";
 import {
   getUpDownConfig, rateProfileForStamping, stakeBoundsFor, boundaryAfter, marginBpsForChain, computeTargets,
   retryDelaySeconds, abandonAfterSeconds, refusalCostsAnAttempt, lateCloseDecision,
@@ -755,7 +759,8 @@ export async function openRound(
   const targets = openPrice != null ? computeTargets(openPrice, marginBps, asset) : null;
 
   // The money row. `rateOverrides` is how the chain's frozen fee profile
-  // (capped-commission @ 13%) reaches the poll snapshot through the SAME
+  // (whichever model it froze — loser-share today, capped-commission on the oldest rounds, stake-share once R5 opens
+  // it, its winnings tax then taken from `market.config`) reaches the poll snapshot through the SAME
   // snapshotFromConfig path every long-form poll uses — one freezing mechanism.
   // ⛔ `createMarket` REFUSES — it does not crash — when the rates cannot be read fresh or a stake-share stamp is
   // incomplete (`RatesRefused`, FEE-TAX-2026-10). Here that refusal must stay soft, for the reason §7.4 records above: a
@@ -940,6 +945,9 @@ export async function closeRound(
     if (m.status === "RESOLVED" || m.status === "VOIDED") return { done: false as const, reason: "already resolved" };
     const currentRound = await roundStore.get(roundId);
     if (!currentRound) return { done: false as const, reason: "round gone" };
+    // The round's FROZEN fee model, for the one sentence its compliance row writes about the winner floor
+    // (`settlementNote`, FEE-TAX-2026-10). `snapshotOrLegacy` never throws: a note is never why a verdict fails to land.
+    const roundFeeModel = snapshotOrLegacy(m.feeSnapshot).feeModel;
     const memoryMarketBefore = lockTx ? null : structuredClone(m);
     const memoryRoundBefore = lockTx ? null : structuredClone(currentRound);
     try {
@@ -998,7 +1006,7 @@ export async function closeRound(
         openObservationId: round.openObservationId, closeObservationId,
         outcome, side, voidReason: finalVoidReason,
         yesPool: m.yesPool, noPool: m.noPool, players: m.predictorCount,
-        note: settlementNote(outcome, finalVoidReason, round.openObservationId, closeObservationId),
+        note: settlementNote(outcome, finalVoidReason, round.openObservationId, closeObservationId, roundFeeModel),
       },
     }); });
     return { done: true as const, yesPool: m.yesPool, noPool: m.noPool, predictorCount: m.predictorCount };
@@ -1062,15 +1070,24 @@ export async function closeRound(
  * The note must be derivable from the row's own fields, so it can never again drift from
  * them — every branch below is decided by `outcome`/`voidReason`/the observation ids that
  * sit in the same payload.
+ *
+ * ⭐ AND BY THE ROUND'S FROZEN FEE MODEL (FEE-TAX-2026-10). "The winner floor … unchanged" names the older models' floor —
+ * a winner is never paid below their stake — and under `stake-share` that is false: the fee comes out of every stake, so
+ * a winner on the big side of a lopsided round is paid back less than they staked (ruling 1) and the floor is the NET
+ * stake. Written into an append-only, HMAC-chained row, the older sentence would be a false statement kept for seven
+ * years. So the model is passed in, and a stake-share round says what is true of it. ⛔ Absent (every older caller and
+ * every round frozen under the older models), the sentence is byte for byte what it always was.
  */
 export function settlementNote(
   outcome: RoundOutcome,
   voidReason: string | null,
   openObservationId: string | null,
   closeObservationId: string | null,
+  feeModel?: FeeModel,
 ): string {
-  const TERMS =
-    " Settlement follows the standing-objection gate; the winner floor and exact conservation are unchanged.";
+  const TERMS = feeModel === "stake-share"
+    ? " Settlement follows the standing-objection gate and the round's frozen stake-share terms: a winner is paid back at least their net stake (the stake less its fee), and the pool closes exactly into payouts, our fee and the winnings tax."
+    : " Settlement follows the standing-objection gate; the winner floor and exact conservation are unchanged.";
 
   if (outcome !== "VOID") {
     // The only branch entitled to the original sentence — and it now states the condition

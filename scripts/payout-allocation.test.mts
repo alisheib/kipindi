@@ -153,5 +153,58 @@ const sum = (m: Map<string, number>) => [...m.values()].reduce((s, v) => s + v, 
   ok("E-200: resume reproduces the identical amount for the paid row", first.get("a") === resumed.get("a"));
 }
 
+// 9. 🔴 E-200 UNDER STAKE-SHARE (FEE-TAX-2026-10) — the TWO sets the split is fed. A stake-share split needs the losers
+//    too (each loser's own fee, the prize fund), so `settleMarket` builds both through ONE rule, `stakeShareParties`:
+//    winners WIN + OPEN (`winnersForAllocation`), losers LOSS + OPEN. ⛔ A CASHED_OUT stake left the pool at its exit and a
+//    VOID one was refunded — counting either is the 2026-08-24 defect on the other side of the book. The real decision is
+//    driven here (imported from the service, on the memory store), not a copy of it.
+{
+  process.env.USE_PRISMA_DAL = "false";
+  process.env.DATABASE_URL = "";
+  const { stakeShareParties, STAKE_SHARE_LOSER_STATUSES } = await import("../src/lib/server/market-service.ts");
+  const { stakeShareSplit } = await import("../src/lib/payout.ts");
+  const SS = { feeModel: "stake-share" as const, platformFeeRate: 0.03, operatorFeeRate: 0.10, winningsTaxRate: 0.15 };
+  const book = (w1: string, l1: string) => [
+    { id: "w0", side: "YES" as const, status: "OPEN", stake: 2_000 },
+    { id: "w1", side: "YES" as const, status: w1, stake: 3_000 },
+    { id: "wc", side: "YES" as const, status: "CASHED_OUT", stake: 5_000 },
+    { id: "wv", side: "YES" as const, status: "VOID", stake: 1_000 },
+    { id: "l0", side: "NO" as const, status: "OPEN", stake: 4_000 },
+    { id: "l1", side: "NO" as const, status: l1, stake: 1_000 },
+    { id: "lc", side: "NO" as const, status: "CASHED_OUT", stake: 2_500 },
+    { id: "lv", side: "NO" as const, status: "VOID", stake: 700 },
+  ];
+  // The pools hold only the stakes still in them: 2,000 + 3,000 on YES, 4,000 + 1,000 on NO.
+  const YES = 5_000, NO = 5_000;
+  const parties = stakeShareParties(book("OPEN", "OPEN"), "YES");
+  ok("E-200 stake-share: the loser allowlist is LOSS + OPEN, nothing else", JSON.stringify([...STAKE_SHARE_LOSER_STATUSES].sort()) === JSON.stringify(["LOSS", "OPEN"]));
+  ok("E-200 stake-share: winners exclude the CASHED_OUT and VOID stakes", JSON.stringify(parties.winners.map((p) => p.id)) === JSON.stringify(["w0", "w1"]));
+  ok("E-200 stake-share: losers exclude the CASHED_OUT and VOID stakes", JSON.stringify(parties.losers.map((p) => p.id)) === JSON.stringify(["l0", "l1"]));
+  const splitOf = (ps: ReturnType<typeof book>) => {
+    const { winners, losers } = stakeShareParties(ps, "YES");
+    return stakeShareSplit({ yesPool: YES, noPool: NO, outcome: "YES", winners: winners.map((p) => ({ id: p.id, stake: p.stake })), losers: losers.map((p) => ({ id: p.id, stake: p.stake })) }, SS);
+  };
+  const first = splitOf(book("OPEN", "OPEN"));
+  ok("E-200 stake-share: the two sets make the pools, so the split pays out exactly: Σ payouts + F + T = the pool",
+    [...first.perWinner.values()].reduce((s, v) => s + v.payout, 0) + first.fee + first.winningsTax === YES + NO);
+  // A RESUMED pass: w1 was paid (WIN) and l1 marked LOSS on the earlier pass — the split must reproduce every share.
+  const resumed = splitOf(book("WIN", "LOSS"));
+  ok("E-200 stake-share: a resumed settlement (one WIN, one LOSS already marked) reproduces every winner's share",
+    JSON.stringify([...resumed.perWinner]) === JSON.stringify([...first.perWinner]));
+  ok("E-200 stake-share: …and every loser's fee", JSON.stringify([...resumed.perLoser]) === JSON.stringify([...first.perLoser]));
+  // ⛔ AND THE PROOF IT CAN FAIL: the side-only sets the defect built count the exited and refunded stakes, which no
+  //    longer make the pools — and the split REFUSES, loudly, rather than pay out of money that left.
+  const sideOnly = book("OPEN", "OPEN");
+  let refused = false;
+  try {
+    stakeShareSplit({
+      yesPool: YES, noPool: NO, outcome: "YES",
+      winners: sideOnly.filter((p) => p.side === "YES").map((p) => ({ id: p.id, stake: p.stake })),
+      losers: sideOnly.filter((p) => p.side === "NO").map((p) => ({ id: p.id, stake: p.stake })),
+    }, SS);
+  } catch { refused = true; }
+  ok("E-200 stake-share control: side-only sets do not make the pools, and the split refuses them", refused);
+}
+
 console.log(`\npayout-allocation: ${pass} passed, ${fail} failed`);
 if (fail > 0) process.exit(1);

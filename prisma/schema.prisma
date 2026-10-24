@@ -1931,6 +1931,15 @@ model Position {
   origin          String?
   /// Present only on a Maswali Millionea ticket: its fifteen picks, salt, commitment and serial (MASWALI-BUILD S1).
   maswaliTicket   MaswaliTicket?
+  /// ⭐ STAKE-SHARE ONLY (FEE-TAX-2026-10, `docs/FEE-TAX-PLAN.md` §3), both written by `settleMarket` in the position's own
+  /// settlement write and NULL on every other row — every older model, every refund, every row settled before the
+  /// columns existed (migration 20261024120100_position_fee_tax, no backfill):
+  ///   feeTzs         — this stake's own fee: its largest-remainder share of ITS SIDE's fee (winner and loser alike);
+  ///   winningsTaxTzs — the winnings tax withheld from this position's prize for TRA (0 on a loser: nothing was won).
+  /// ⛔ `finalPayout` stays the NET credited (what the wallet received); the gross winnings are finalPayout − (stake −
+  /// feeTzs) + winningsTaxTzs. A receipt or a TRA schedule reads these rather than re-deriving them from a rate.
+  feeTzs          Int?
+  winningsTaxTzs  Int?
 
   @@index([userId, marketId])
   @@index([marketId, status])
@@ -3271,6 +3280,12 @@ enum LedgerEntryType {
   MASWALI_GUARANTEE_RETURN // HOUSE:MASWALI_GUARANTEE → owner capital
   MASWALI_FORFEIT_RETURN // A frozen, forfeited share → HOUSE:MASWALI_JACKPOT (OD-07: never to the house)
   MASWALI_SUNSET // HOUSE:MASWALI_JACKPOT → the final week's pool (OD-03)
+
+  // ── The winnings tax (FEE-TAX-2026-10; decided, gated off until release R5) — own migration, for the same reason
+  //    (`20261024120000_winnings_tax_ledger_type`). ⛔ NOT the dead SETTLEMENT_TAX / WITHDRAWAL_TAX below, and never
+  //    reused for them: those were taxes on the pool and on every withdrawal, deleted 2026-07; this is the tax withheld
+  //    from a stake-share winner's prize.
+  SETTLEMENT_WINNINGS_TAX // Market pool → HOUSE:WINNINGS_TAX (a stake-share winner's winnings tax, withheld for TRA)
 
   // ── Retired 2026-07 with the tax/reserve/aggregator rates ────────────────
   // Never written again. Kept because historical LedgerEntry rows reference

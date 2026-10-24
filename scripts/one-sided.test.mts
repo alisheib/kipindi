@@ -303,6 +303,24 @@ log("\n── 6 · the refund the note promises is the one settlement pays");
     /if only one side holds any stake at closing, every stake is refunded in full/.test(rules));
   // ⭐ CONTROL — the branch slice is real code, not an empty or whole-file slice.
   check("6.1-control the branch slice is bounded (it is not the whole file)", branch.length > 200 && branch.length < 20_000, String(branch.length));
+  // ⭐ UNCHANGED UNDER STAKE-SHARE (FEE-TAX-2026-10, ruling 2). The new law takes a fee from EVERY stake — so a one-sided
+  // pool must be refunded BEFORE any of its arithmetic runs, or the funded side would be charged 13% for a market nobody
+  // could lose. The branch above is model-blind (the pool's shape only), and settlement prices its fee and its split only
+  // AFTER it has returned: both calls sit past the branch's own `return`.
+  const isOneSidedAt = svc.indexOf("const isOneSided = opts.outcome !== \"VOID\"", settleAt);
+  const feeAt = svc.indexOf("settlementFee(m, settleCfg", settleAt);
+  const splitAt = svc.indexOf("stakeShareSettlementSplit(m, ", settleAt);
+  check("6.5 under stake-share the one-sided refund runs BEFORE the fee and the split are priced",
+    isOneSidedAt > 0 && feeAt > isOneSidedAt && splitAt > feeAt && svc.indexOf("winnersPaid: 0", settleAt) < feeAt,
+    JSON.stringify({ isOneSidedAt, feeAt, splitAt }));
+  const SS = { feeModel: "stake-share" as const, platformFeeRate: 0.03, operatorFeeRate: 0.10, winningsTaxRate: 0.15 };
+  const ssAgainst = chargedFee({ yesPool: 35_000, noPool: 0, resolvedOutcome: "NO" }, SS);
+  const ssFor = chargedFee({ yesPool: 35_000, noPool: 0, resolvedOutcome: "YES" }, SS);
+  check("6.6 a one-sided stake-share pool is charged nothing whichever side won — no fee, no tax, every stake back",
+    ssAgainst.refunded && ssAgainst.fee === 0 && ssAgainst.netPool === 35_000 && ssFor.refunded && ssFor.fee === 0 && ssFor.netPool === 35_000,
+    JSON.stringify({ ssAgainst, ssFor }));
+  check("6.7 …and even the raw pricing helper prices a one-sided stake-share pool at no fee (no phantom 13%)",
+    poolFee(35_000, 0, SS, "NO").fee === 0 && poolFee(35_000, 0, SS, "YES").fee === 0 && poolFee(35_000, 0, SS).fee === 0);
 }
 
 // ── 7 · the board, the hero rows and the detail page print the SAME price as the card ───────────

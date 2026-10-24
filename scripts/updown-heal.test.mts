@@ -49,7 +49,7 @@ delete process.env.ANTHROPIC_API_KEY; // the oracle must refuse locally, never d
 
 import { assetStore, chainStore, roundStore, observationStore, __resetUpDownMemoryStores } from "../src/lib/server/updown-dal.ts";
 import {
-  createAsset, setAssetEnabled, createChain, setChainState, setUpDownConfig, getUpDownConfig,
+  createAsset, setAssetEnabled, createChain, updateChain, setChainState, setUpDownConfig, getUpDownConfig,
   __resetUpDownConfig,
   retryDelaySeconds, ladderSpanSeconds, abandonAfterSeconds, ABANDON_GRACE_SECONDS,
   DEFAULT_UPDOWN_CONFIG,
@@ -69,7 +69,11 @@ import {
 import { computeTargets } from "../src/lib/server/updown-config.ts";
 import { findSymbol } from "../src/lib/server/updown-symbols.ts";
 import { marketStore } from "../src/lib/server/market-dal.ts";
-import { buyPosition, listPositionsForMarket } from "../src/lib/server/market-service.ts";
+import { buyPosition, listPositionsForMarket, ratesFor } from "../src/lib/server/market-service.ts";
+// FEE-TAX-2026-10 · §2c's bound per model, and §2c-ss's stake-share round (the gate opened in this process only).
+import { resolveFeeModel, stakeShareTotals } from "../src/lib/payout.ts";
+import { __setFeeLawLiveForTest } from "../src/lib/fee-law-gate.ts";
+import { setGlobalConfig } from "../src/lib/server/market-config.ts";
 import { addSource, seedDefaultSources } from "../src/lib/server/source-registry.ts";
 import { getAuditPage } from "../src/lib/server/audit.ts";
 import { db } from "../src/lib/server/store.ts";
@@ -317,6 +321,29 @@ let strandedMarketId = "";
   ok("2.25 · it never claims a price was observed", p.closePrice === null, JSON.stringify(p.closePrice));
 }
 
+/**
+ * ⭐ THE HOUSE-TAKE LAW IS THE ROUND'S OWN, FROZEN IN ITS SNAPSHOT (FEE-TAX-2026-10). Every decisive fixture below is
+ * 1,000 against 1,000, UP wins. Under the two older models a winner is paid at least the stake and the house keeps at most
+ * ⅓ of the smaller side. Under `stake-share` the fee comes out of EVERY stake and the winnings tax leaves the pool too: the
+ * floor is the NET stake (ruling 1) and the house's side of the book is EXACTLY F + T — here 260 + 131 = 391, above the
+ * older bound of 334. One bound cannot serve both laws, so each round is held to the one it froze.
+ */
+function takeLaw(m: Parameters<typeof ratesFor>[0], payout: number, houseTake: number) {
+  const rates = ratesFor(m);
+  const model = resolveFeeModel(rates);
+  if (model === "stake-share") {
+    const t = stakeShareTotals(1_000, 1_000, "YES", rates);
+    return {
+      model, floorWords: `the NET stake, 1,000 less its fee ${t.feeYes}`, floorHolds: payout >= 1_000 - t.feeYes,
+      takeWords: `EXACTLY our fee F + the winnings tax T (${t.fee} + ${t.winningsTax})`, takeHolds: houseTake === t.fee + t.winningsTax,
+    };
+  }
+  return {
+    model, floorWords: "the stake", floorHolds: payout >= 1_000,
+    takeWords: "≤ ⅓ of the smaller side", takeHolds: houseTake >= 0 && houseTake <= Math.ceil(1_000 / 3),
+  };
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // 2c · ⭐ E-63 · THE OPEN-SIDE BACKFILL — the round gets the open it already paid for
 // ═══════════════════════════════════════════════════════════════════════════
@@ -395,17 +422,17 @@ let strandedMarketId = "";
   ok("2c.10 · the round is terminal and its money moved", !!healed.resolvedAt && !!healed.settledAt);
 
   // ── THE LEDGER PROOF. UP won: the winner is paid the pool minus the fee, never below
-  // stake (the winner floor); the loser's stake is gone; the two deltas net to exactly
-  // what the house kept, and the house can never keep more than a third of the smaller
-  // side (the fee rule, frozen per poll).
+  // their floor; the loser's stake is gone; the two deltas net to exactly what the house
+  // kept, bounded by the round's OWN frozen law (`takeLaw` — per model since FEE-TAX-2026-10).
   const aAfter = await balanceOf(charlie), bAfter = await balanceOf(delta);
   const payout = aAfter - (aBefore - 1_000);
   const houseTake = 2_000 - payout;
-  ok("2c.11 · the winner is paid at least their stake back", payout >= 1_000, `payout ${payout}`);
+  const law = takeLaw((await marketStore.get(r0.marketId))!, payout, houseTake);
+  ok(`2c.11 · the winner is paid at least their floor under the round's frozen ${law.model} law (${law.floorWords})`, law.floorHolds, `payout ${payout}`);
   ok("2c.12 · the loser's stake is gone — this was a verdict, not a refund",
      bAfter === bBefore - 1_000, `${bBefore} → ${bAfter}`);
-  ok("2c.13 · conservation: winner credit + loser debit net to the house take, ≤ ⅓ of the smaller side",
-     houseTake >= 0 && houseTake <= Math.ceil(1_000 / 3), `house ${houseTake}`);
+  ok(`2c.13 · conservation: winner credit + loser debit net to the house take, ${law.takeWords}`,
+     law.takeHolds, `house ${houseTake}`);
 
   // ── The compliance record answers "who put a price on a live round" ────────
   const rows = getAuditPage({ limit: 1000 }).filter((e) => e.action === "updown.round.open_backfilled");
@@ -418,6 +445,71 @@ let strandedMarketId = "";
   ok("2c.16 · it records the price and both targets it stamped",
      bp.openPrice === OPEN_PRICE && bp.upTarget === expected.upTarget && bp.downTarget === expected.downTarget,
      JSON.stringify({ p: bp.openPrice, u: bp.upTarget, d: bp.downTarget }));
+}
+
+// ── 2c-ss · the same seal on a STAKE-SHARE round (FEE-TAX-2026-10) — the round's own law decides the bound ──
+//
+// The healer settles through the untouched settlement path, so a stake-share round it heals must pay by the split: the
+// winner its net stake plus the prize after tax, the house EXACTLY F + T, and the round's compliance note the model's own
+// words. ⛔ The new law is not in force (`fee-law-gate.ts`): the gate is opened IN THIS PROCESS only for the three acts that
+// need it — the platform's 15% tax (inert under the older models every other round here freezes), this chain's profile,
+// and the round's stamp — and shut again before anything is healed or paid; the chain's own profile is put back at once.
+{
+  const SS_PROFILE = { feeModel: "stake-share" as const, platformFeeRate: 0.03, operatorFeeRate: 0.10, feeCeilingRate: 1 / 3, estimatedWinningsRate: 0.4, showEstimatedWinnings: true };
+  const ownProfile = (await chainStore.get(chain.id))!.rateProfile;
+  let ss: Awaited<ReturnType<typeof roundStore.get>> = null;
+  __setFeeLawLiveForTest(true);
+  try {
+    const tax = await setGlobalConfig({ winningsTaxRate: 0.15 }, OFFICER);
+    if (!tax.ok) throw new Error(`fixture: the 15% tax was refused — ${JSON.stringify(tax)}`);
+    const moved = await updateChain(chain.id, { rateProfile: SS_PROFILE }, OFFICER, { allowFeeModelOverride: true });
+    if (!moved.ok) throw new Error(`fixture: the stake-share profile was refused — ${moved.error}`);
+    const opened = await openRound(moved.data, B(90), null, null); // E-63's shape again, on the new law
+    if (!opened.ok) throw new Error(opened.error);
+    ss = await roundStore.get(opened.data.id);
+  } finally {
+    const back = await updateChain(chain.id, { rateProfile: ownProfile as never }, OFFICER, { allowFeeModelOverride: true });
+    __setFeeLawLiveForTest(null);
+    if (!back.ok) throw new Error(`fixture: the chain's own profile could not be put back — ${back.error}`);
+  }
+  const round = ss!;
+  const snap = (await marketStore.get(round.marketId))!.feeSnapshot;
+  ok("2c-ss.1 · the round froze stake-share with the platform's 15% tax (v3), opened priceless — E-63's shape",
+     snap?.feeModel === "stake-share" && snap?.winningsTaxRate === 0.15 && snap?.v === 3 && round.openPrice === null, JSON.stringify(snap));
+  const echo = await fundedUser("heal_echo", START_BALANCE);
+  const foxtrot = await fundedUser("heal_foxtrot", START_BALANCE);
+  const eBefore = await balanceOf(echo), fBefore = await balanceOf(foxtrot);
+  const up = await buyPosition(echo, { marketId: round.marketId, side: "YES", stake: 1_000 });
+  const dn = await buyPosition(foxtrot, { marketId: round.marketId, side: "NO", stake: 1_000 });
+  ok("2c-ss.2 · both sides carry real stakes", up.ok && dn.ok, `${up.ok ? "" : up.error} ${dn.ok ? "" : dn.error}`);
+  const OPEN_PRICE = 63_268.0;
+  const openObs = await observationStore.ensure(asset.id, round.opensAt);
+  await observationStore.confirm(openObs.id, {
+    price: OPEN_PRICE, sourceUrl: asset.priceSourceUrl, sourceQuotedAt: round.opensAt,
+    evidence: null, confidence: 100, model: null, rawHash: null,
+  });
+  const targets = computeTargets(OPEN_PRICE, round.marginBps!, asset);
+  const closeObs = await observationStore.ensure(asset.id, round.boundaryAt);
+  await observationStore.confirm(closeObs.id, {
+    price: Number((targets.upTarget + 5).toFixed(2)), sourceUrl: asset.priceSourceUrl, sourceQuotedAt: round.boundaryAt,
+    evidence: null, confidence: 100, model: null, rawHash: null,
+  });
+  const report = await healStuckRounds({ now: Date.parse(round.boundaryAt) + 60 * SEC });
+  const done = (await roundStore.get(round.id))!;
+  ok("2c-ss.3 · the healer resolved it UP and its money moved", report.resolved >= 1 && done.outcome === "UP" && !!done.settledAt,
+     JSON.stringify({ report, outcome: done.outcome, settledAt: done.settledAt }));
+  const payout = (await balanceOf(echo)) - (eBefore - 1_000);
+  const houseTake = 2_000 - payout;
+  const law = takeLaw((await marketStore.get(round.marketId))!, payout, houseTake);
+  ok("2c-ss.4 · ★ the winner is paid 1,609 — its net stake 870 back plus the prize after tax 739 — at or above the NET-stake floor",
+     law.model === "stake-share" && payout === 1_609 && law.floorHolds, `payout ${payout} · ${law.model}`);
+  ok("2c-ss.5 · ★ the house take is EXACTLY F + T (260 + 131 = 391) — above the older models' ⅓ bound (334), so the bound is per model",
+     houseTake === 391 && law.takeHolds && houseTake > Math.ceil(1_000 / 3), `house ${houseTake}`);
+  ok("2c-ss.6 · the loser's stake is gone — a verdict, not a refund", (await balanceOf(foxtrot)) === fBefore - 1_000);
+  const resolvedRow = getAuditPage({ limit: 2_000 }).find((e) => e.action === "updown.round.resolved" && e.targetId === round.id);
+  const note = String((resolvedRow?.payload as { note?: unknown } | undefined)?.note ?? "");
+  ok("2c-ss.7 · the round's compliance note states the stake-share terms — never the older \"winner floor … unchanged\"",
+     /frozen stake-share terms/.test(note) && !/winner floor and exact conservation are unchanged/.test(note), note);
 }
 
 // ── 2c-b · the seal's arithmetic holds for ALL FOUR live Twelve Data assets ──

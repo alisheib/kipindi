@@ -77,10 +77,13 @@ export const MUTATIONS = [
     // read before the column existed would un-mark house money.
     name: "market-dal.ts — the positions.set update arm writes houseBotId",
     file: "src/lib/server/market-dal.ts",
-    from: `        idempotencyKey: p.idempotencyKey ?? null,
+    // ⚠️ RE-ANCHORED 2026-10-24 (FEE-TAX-2026-10 R2b): the update arm now ends with the two stake-share figures it must
+    // write (`feeTzs`, `winningsTaxTzs` — the settlement write is an update). The mutation is unchanged: it still adds the
+    // house marker as the arm's last key, and still must trip §9's immutability check.
+    from: `        winningsTaxTzs: p.winningsTaxTzs ?? null,
       },
     });`,
-    to: `        idempotencyKey: p.idempotencyKey ?? null,
+    to: `        winningsTaxTzs: p.winningsTaxTzs ?? null,
         houseBotId: p.houseBotId ?? null,
       },
     });`,

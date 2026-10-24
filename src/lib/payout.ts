@@ -1442,8 +1442,10 @@ function isWholeTzs(n: unknown): n is number {
  * are left as they are: they settle every market frozen under the older models, byte for byte.
  * Requires whole positive weights and a whole non-negative total; asserts the parts sum to the total; returns the Map
  * in id order.
+ * Exported (R2b, additive) for ONE more caller that must split a whole-shilling figure exactly: the stake-share
+ * agent-commission base (`market-service.ts → stakeShareCommissionBases`), operatorNet(F) shared by each position's fee.
  */
-function largestRemainder(rows: ReadonlyArray<{ id: string; weight: number }>, total: number, what: string): Map<string, number> {
+export function largestRemainder(rows: ReadonlyArray<{ id: string; weight: number }>, total: number, what: string): Map<string, number> {
   if (!isWholeTzs(total)) throw new Error(`payout: ${what} must be a whole, non-negative number of shillings (got ${total})`);
   const out = new Map<string, number>();
   if (rows.length === 0) {
