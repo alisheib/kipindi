@@ -21,6 +21,8 @@ import { getMarket } from "./market-service";
 // journey is ACTIVE for everyone (S15), and by the full English question until then and on any failure.
 import { shortTitlesInMessagesNow } from "./message-titles";
 import { messageTitle } from "@/lib/markets/short-title";
+// FEE-TAX-2026-10 · R3b — the one below-stake predicate (`stake-share-receipt.ts`).
+import { isBelowStakeWin } from "@/lib/stake-share-receipt";
 
 const PURPOSE = "win-share";
 const TTL_MS = 90 * 24 * 3600_000; // a shared link stays viewable for 90 days
@@ -31,6 +33,11 @@ type Payload = { p?: string; pos?: string };
  * Mint a share token for a WIN the caller actually owns. Returns null when the
  * position isn't theirs, isn't a WIN, or has no settled payout — so a loss or an
  * open bet can never be dressed up as a win.
+ *
+ * ⛔ AND NOT A WIN PAID BELOW ITS STAKE (FEE-TAX-2026-10, R3b; ruling 1). Under `stake-share` a winner on a lopsided market
+ * gets back less than they staked; its side won, but the money did not. The card is a public "Won on 50pick" image with
+ * the payout struck in gilt — a gain it would advertise did not happen — so such a win has no card, exactly as a loss has
+ * none. Unreachable under the older models (their winner floor holds payout ≥ stake), whose wins mint as before.
  */
 export async function mintWinShareToken(userId: string, positionId: string): Promise<string | null> {
   const pos = await positionStore.get(positionId);
@@ -38,6 +45,7 @@ export async function mintWinShareToken(userId: string, positionId: string): Pro
   if (pos.userId !== userId) return null;            // owner-scoped
   if (pos.status !== "WIN") return null;             // only a real win
   if (pos.finalPayout == null || pos.finalPayout <= 0) return null; // settled truth only
+  if (isBelowStakeWin(pos.finalPayout, pos.stake)) return null;     // a win paid below its stake is not a gain to show
   return signSession({ p: PURPOSE, pos: positionId, exp: Date.now() + TTL_MS });
 }
 
@@ -48,6 +56,8 @@ export type WinShare = {
   stake: number;
   /** Settled payout — read from the ledger, never from the URL. */
   payout: number;
+  /** payout − stake — never negative: a win paid below its stake resolves to no card at all (FEE-TAX-2026-10, R3b), so the
+   *  card's "net +" is always true. */
   net: number;
 };
 
@@ -63,6 +73,9 @@ export async function resolveWinShareToken(token: string | null | undefined): Pr
   const pos = await positionStore.get(payload.pos);
   if (!pos) return null;
   if (pos.status !== "WIN" || pos.finalPayout == null || pos.finalPayout <= 0) return null;
+  // ⛔ The mint's own refusal, re-asked at render (FEE-TAX-2026-10, R3b): a below-stake win never draws the win card, so the
+  // card's "net +" is only ever drawn over a figure at or above the stake.
+  if (isBelowStakeWin(pos.finalPayout, pos.stake)) return null;
   const m = await getMarket(pos.marketId);
   if (!m) return null;
   const shortTitles = await shortTitlesInMessagesNow();

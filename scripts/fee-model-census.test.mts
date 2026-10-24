@@ -66,6 +66,8 @@ const REGISTRY: Record<string, [number, string]> = {
   "src/app/admin/markets/new/wizard.tsx": [2, "its own sentence for stake-share, never the capped one (R2c)"],
   "src/app/admin/markets/[id]/page.tsx": [2, "stake-share gets its own fee stats and callout inside the loser-share grid's refund swap (R2c)"],
   "src/app/help/page.tsx": [2, "faq1 is left out under stake-share rather than answered in another law's words (R5 writes it)"],
+  // R3b (2026-10-24): the /agent waterfall's base. Every model but stake-share keeps the winnings base it always stated.
+  "src/app/agent/page.tsx": [1, "the worked example is stated on `stakes` under stake-share and on the `winnings` pool under every other model; the arithmetic and the figures are the same either way, and the winnings tax is in no row (R3b)"],
   "src/app/legal/rules/_shared.tsx": [2, "stake-share quotes the rate of every stake, never 0% or the dormant commission (R5 rewrites the prose)"],
   "src/components/journey/bet-sheet/sheet-parts.tsx": [1, "the legacy-fee note for capped-commission only; a stake-share seed is never read (sheet-seed.ts)"],
   "src/components/markets/bet-confirm-modal.tsx": [1, "the estimate for loser-share only; every other model gets the model-neutral pool-share sentence"],

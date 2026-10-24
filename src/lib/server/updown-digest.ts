@@ -78,6 +78,7 @@ import { channelAllowed } from "./comms-registry";
 import { sendEmailToUser, updownDigestHtml } from "./email";
 import { audit } from "./audit";
 import { dict } from "@/lib/i18n-dict";
+import { fill } from "@/lib/utils";
 // ⛔ SHARED with `/updown/history`, which must filter by exactly the day this
 // digest tells the player about. Do not reimplement the offset here — see the
 // header of `eat-day.ts` for what that nearly cost.
@@ -156,10 +157,22 @@ export function digestCopy(line: DigestLine) {
   const partsEn: string[] = [];
   const partsSw: string[] = [];
   const partsZh: string[] = [];
-  if (t.wins > 0) {
-    partsEn.push(`won ${t.wins} (${tzs(t.wonPayout)} paid)`);
-    partsSw.push(`umeshinda ${t.wins} (${tzs(t.wonPayout)} imelipwa)`);
-    partsZh.push(`赢 ${t.wins} 轮（赔付 ${tzs(t.wonPayout)}）`);
+  // ⭐ FEE-TAX-2026-10 · R3b — a stake-share round won but paid back LESS than its stake (ruling 1) is worded as RETURNED,
+  // in a clause of its own with what came back and what was staked; "won" counts only the gains. Both 0 on a day with no
+  // stake-share round, so every older day reads exactly as before.
+  const below = t.belowStakeWins ?? 0;
+  const gainWins = t.wins - below;
+  const gainPayout = t.wonPayout - (t.belowStakePayout ?? 0);
+  if (gainWins > 0) {
+    partsEn.push(`won ${gainWins} (${tzs(gainPayout)} paid)`);
+    partsSw.push(`umeshinda ${gainWins} (${tzs(gainPayout)} imelipwa)`);
+    partsZh.push(`赢 ${gainWins} 轮（赔付 ${tzs(gainPayout)}）`);
+  }
+  if (below > 0) {
+    const v = { n: below, paid: tzs(t.belowStakePayout ?? 0), stake: tzs(t.belowStakeStake ?? 0) };
+    partsEn.push(fill(dict.en.payoutTax.digestBelow, v));
+    partsSw.push(fill(dict.sw.payoutTax.digestBelow, v));
+    partsZh.push(fill(dict.zh.payoutTax.digestBelow, v));
   }
   if (t.losses > 0) {
     partsEn.push(`lost ${t.losses} (${tzs(t.lostStake)})`);
@@ -172,11 +185,14 @@ export function digestCopy(line: DigestLine) {
     partsZh.push(`退款 ${t.refunds} 轮（${tzs(t.refundedStake)}）`);
   }
 
+  // ⭐ FEE-TAX-2026-10 · R3b: the winnings tax withheld from the day's wins, its own sentence after the totals ("" when none).
+  const tax = t.winningsTax ?? 0;
+  const taxIn = (l: "en" | "sw" | "zh") => (tax > 0 ? `${l === "zh" ? "" : " "}${fill(dict[l].payoutTax.digestTax, { amount: tzs(tax) })}` : "");
   return {
     titleEn, titleSw, titleZh,
-    bodyEn: `${dayEn}: ${t.rounds} rounds — ${partsEn.join(", ")}. Staked ${tzs(t.staked)}, returned ${tzs(t.returned)}.`,
-    bodySw: `${daySw}: raundi ${t.rounds} — ${partsSw.join(", ")}. Umeweka ${tzs(t.staked)}, umerudishiwa ${tzs(t.returned)}.`,
-    bodyZh: `${dayZh}：共 ${t.rounds} 轮 — ${partsZh.join("、")}。投注 ${tzs(t.staked)}，收回 ${tzs(t.returned)}。`,
+    bodyEn: `${dayEn}: ${t.rounds} rounds — ${partsEn.join(", ")}. Staked ${tzs(t.staked)}, returned ${tzs(t.returned)}.${taxIn("en")}`,
+    bodySw: `${daySw}: raundi ${t.rounds} — ${partsSw.join(", ")}. Umeweka ${tzs(t.staked)}, umerudishiwa ${tzs(t.returned)}.${taxIn("sw")}`,
+    bodyZh: `${dayZh}：共 ${t.rounds} 轮 — ${partsZh.join("、")}。投注 ${tzs(t.staked)}，收回 ${tzs(t.returned)}。${taxIn("zh")}`,
     href: digestHref(dayKey),
     dayEn,
   };
@@ -290,6 +306,8 @@ export async function runUpDownDailyDigest(opts: {
           wins: t.wins, losses: t.losses, refunds: t.refunds,
           wonPayout: t.wonPayout, lostStake: t.lostStake, refundedStake: t.refundedStake,
           staked: t.staked, returned: t.returned, net: line.net,
+          // FEE-TAX-2026-10 · R3b: 0 on a day with no stake-share round, and the letter is then unchanged.
+          belowStakeWins: t.belowStakeWins ?? 0, belowStakePayout: t.belowStakePayout ?? 0, winningsTax: t.winningsTax ?? 0,
         }),
         tag: "updown-digest",
       }), { confirmedOnly: true }).catch(() => {});

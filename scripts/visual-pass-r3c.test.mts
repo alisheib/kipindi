@@ -340,8 +340,10 @@ section("8 · notifications: never \"..\", and no raw position id in a sentence 
   // ⭐ RE-PINNED IN THE OPEN 2026-10-15 (the Vodacom plan's S12 WP12): the label goes through `messageTitles` — the title
   // switch, the market's officer-approved short title from the S15 flip, its full title until then. Still the market's name
   // alone, and still the position's permalink.
+  // ⭐ RE-PINNED IN THE OPEN 2026-10-24 (FEE-TAX-2026-10, R3b): the call passes a stake-share win's parts LAST (`winNotice`,
+  // null under every older model) — after the label and the link this check is about, which are unchanged.
   ok("8.9 · a win's label is the market's name alone (its link is the position's permalink)",
-    /notifyWin\(p\.userId, payout, messageTitles\(shortTitles, localizedText\(m\.titleEn, m\.titleSw, m\.titleZh\), m\), positionPermalinkHref\(p\.id\)\)/.test(ms) && !/· \$\{p\.id\}/.test(ms));
+    /notifyWin\(p\.userId, payout, messageTitles\(shortTitles, localizedText\(m\.titleEn, m\.titleSw, m\.titleZh\), m\), positionPermalinkHref\(p\.id\)(?:, \w+)?\)/.test(ms) && !/· \$\{p\.id\}/.test(ms));
   const panel = read("src/components/layout/notifications-panel.tsx");
   const page = read("src/app/notifications/page.tsx");
   ok("8.10 · the bell and /notifications read every body through readableNotificationBody",

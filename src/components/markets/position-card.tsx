@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { cn, formatTzs } from "@/lib/utils";
+import { cn, fill, formatTzs } from "@/lib/utils";
 import { formatEatDateTime } from "@/lib/eat-day";
 import { Cash } from "@/components/ui/cash";
 import { Chip } from "@/components/ui/chip";
@@ -11,6 +11,8 @@ import { Stat } from "@/components/ui/stat";
 import { I } from "@/components/ui/glyphs";
 import { useT } from "@/lib/i18n";
 import { keepFigures } from "@/components/ui/keep-words";
+// FEE-TAX-2026-10 · R3b — a settled stake-share win's parts and the one below-stake predicate.
+import { isBelowStakeWin, stakeShareWinReceipt } from "@/lib/stake-share-receipt";
 import { sideWord, positionStatusGlyph, positionStatusWord, type LabelProductLine } from "@/lib/side-label";
 // ⭐ THE STATUS-COLOUR DICTIONARY (stage 5.3). The word comes from `side-label`, the COLOUR from
 // here — two definition sites for two different facts, neither typed at this call site. Since S6 WP9 the
@@ -58,11 +60,26 @@ type Props = {
   positionId?: string;
   /** The viewer's affiliate code, so a share carries their referral link. */
   refCode?: string;
+  /**
+   * ⭐ STAKE-SHARE ONLY (FEE-TAX-2026-10, R3b) — the settled position's own fee and withheld winnings tax
+   * (`Position.feeTzs` / `winningsTaxTzs`), NULL on every older model's row. A settled stake-share win then names the tax
+   * withheld under its payout; one paid back below its stake is never gilt, never struck and never shared as a win.
+   */
+  fee?: number | null;
+  winningsTax?: number | null;
   className?: string;
 };
 
-export function PositionCard({ marketId, marketTitle, side, productLine, stake, current, payout, status, bettingClosed, placedAt, serverNow, positionId, refCode, className }: Props) {
+export function PositionCard({ marketId, marketTitle, side, productLine, stake, current, payout, status, bettingClosed, placedAt, serverNow, positionId, refCode, fee = null, winningsTax = null, className }: Props) {
   const { t, locale } = useT();
+  // ⭐ FEE-TAX-2026-10 · R3b — a WIN paid back LESS than its stake (ruling 1) is not earned money: no gold, no strike, no
+  // "Share win" (the public card refuses it too, `share-token.ts`). Unreachable under the older models' winner floor, so
+  // every card they draw is unchanged. A stake-share win that gained names the winnings tax withheld under its payout.
+  const won = status === "WIN" && !isBelowStakeWin(payout, stake);
+  const parts = status === "WIN" ? stakeShareWinReceipt({ stake, fee, tax: winningsTax, paid: payout }) : null;
+  const payoutHint = !parts ? undefined
+    : parts.belowStake ? t.payoutTax.belowShort
+    : parts.tax > 0 ? fill(t.payoutTax.afterTax, { amount: formatTzs(parts.tax) }) : undefined;
   // §L2 — this local map was the second definition site for the position-status family;
   // `notify-poller` had no map at all and printed the enum. One lexicon now serves both.
   const statusLabel = positionStatusWord(t, status, productLine);
@@ -174,7 +191,7 @@ export function PositionCard({ marketId, marketTitle, side, productLine, stake, 
               ⛔ The `payoutIfWin` figure below is deliberately NOT struck: at betting-close the
               arithmetic is frozen and exact, but it has not been won — striking it would promise
               in ink what the round has not yet decided. */}
-          <Stat label={t.dialog.payoutLabel} value={formatTzs(payout)} tone={status === "WIN" ? "gold" : "default"} struck={status === "WIN"} money />
+          <Stat label={t.dialog.payoutLabel} value={formatTzs(payout)} tone={won ? "gold" : "default"} struck={won} money hint={payoutHint} />
         </div>
       ) : bettingClosed ? (
         // Betting is CLOSED: the pools are frozen, so this figure is exact — it was
@@ -206,14 +223,14 @@ export function PositionCard({ marketId, marketTitle, side, productLine, stake, 
 
       {/* F5 — share. A WIN shares the REAL settled payout (server-minted signed
           token); an OPEN position shares the pick. Losses/voids get no share. */}
-      {(status === "WIN" || status === "OPEN") && (
+      {(won || status === "OPEN") && (
         <div className="mt-3 flex justify-end border-t border-border/60 pt-3">
           <PositionShare
             marketId={marketId}
             marketTitle={marketTitle}
             side={side}
             positionId={positionId}
-            won={status === "WIN"}
+            won={won}
             payout={payout}
             refCode={refCode}
           />

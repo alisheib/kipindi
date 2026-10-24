@@ -224,6 +224,9 @@ export const DUAL_CHROME_TEMPLATES: readonly string[] = [
   "proposalApprovedHtml",
   // MASWALI-BUILD S6 · gold on its paid branch, royal when every winning share is held for Compliance (MB-43, MB-68).
   "millioneaWinHtml",
+  // FEE-TAX-2026-10 · R3b · gold on every win that GAINED; royal on a stake-share win paid back LESS than its stake
+  // (ruling 1) — its side won and the money did not, and gold is earned money only. Every older model's win stays gold.
+  "winNotificationHtml",
 ];
 
 /**
@@ -296,6 +299,9 @@ export type EmitterSpec = { fn: string; kind: NotificationKind; audience: EmailA
 export const NOTIFICATION_EMITTERS: readonly EmitterSpec[] = [
   { fn: "notifyBetPlaced",             kind: "BET_PLACED",        audience: "player" },
   { fn: "notifyWin",                   kind: "WIN",               audience: "player" },
+  // FEE-TAX-2026-10 · R3b · a stake-share win paid back LESS than its stake (ruling 1) is a result recorded, on the quiet
+  // plate — never the gold WIN seal (`notification-appearance.ts`). Its Up & Down twin is filed the same way below.
+  { fn: "notifyWin",                   kind: "ROUND_RESULT",      audience: "player" },
   { fn: "notifyLoss",                  kind: "LOSS",              audience: "player" },
   { fn: "notifySelectionClosed",       kind: "SELECTION_CLOSED",  audience: "player" },
   { fn: "notifyCashout",               kind: "REFUND",            audience: "player" },
@@ -314,6 +320,7 @@ export const NOTIFICATION_EMITTERS: readonly EmitterSpec[] = [
   // Refunds now have a distinct kind. Historic WIN/DEPOSIT rows keep their stored
   // value and receive the refund appearance through appearanceKind.
   { fn: "notifyUpDownWin",             kind: "WIN",               audience: "player" },
+  { fn: "notifyUpDownWin",             kind: "ROUND_RESULT",      audience: "player" },
   { fn: "notifyUpDownLoss",            kind: "LOSS",              audience: "player" },
   { fn: "notifyUpDownRefund",          kind: "REFUND",            audience: "player" },
   { fn: "notifyUpDownOneSidedRefund",  kind: "REFUND",            audience: "player" },

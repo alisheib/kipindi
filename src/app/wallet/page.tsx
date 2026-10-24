@@ -38,6 +38,8 @@ import { KYC_NOTICE_COOKIE } from "@/lib/kyc-notice";
 import { KycNoticeDismissScope } from "@/components/wallet/kyc-first-deposit-notice";
 import { isLockedOut } from "@/lib/server/responsible-gambling";
 import { depositResultKind, hasReceipt, isRgHeldDeposit, presentedStatus } from "@/lib/wallet/receipts";
+// FEE-TAX-2026-10 · R3b — a stake-share payout row's parts come from its position's own record (`win-breakdowns.ts`).
+import { winBreakdownsFor } from "@/lib/server/win-breakdowns";
 // R5-B (2026-10-09, F11): the journey's own words on this page's money doors, from the one per-request resolver.
 import { resolveSimpleJourney } from "@/lib/server/journey-preview";
 
@@ -220,7 +222,13 @@ export default async function WalletPage({ searchParams }: { searchParams: Promi
   const safePage = Math.min(pageNum, totalPages);
   const pagedIds = new Set(matched.slice((safePage - 1) * PLAYER_PER_PAGE, safePage * PLAYER_PER_PAGE).map((r) => r.id));
   const byId = new Map(windowRows.map((x) => [x.id, x]));
-  const pagedTxns: Transaction[] = [...pagedIds].map((id) => adaptTxn(byId.get(id)!));
+  // FEE-TAX-2026-10 · R3b: a stake-share payout row carries its parts (`winBreakdownsFor`); every other row is unchanged.
+  const breakdowns = await winBreakdownsFor([...pagedIds].map((id) => byId.get(id)!), session.userId);
+  const pagedTxns: Transaction[] = [...pagedIds].map((id) => {
+    const row = adaptTxn(byId.get(id)!);
+    const parts = breakdowns.get(id);
+    return parts ? { ...row, winBreakdown: parts } : row;
+  });
 
   // B-5: the result modal renders ONLY for a txn this user actually owns, with
   // the STORED status/amount — never the raw query params. A fabricated

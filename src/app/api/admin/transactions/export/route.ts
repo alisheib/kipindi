@@ -28,7 +28,7 @@ import { db, TXN_TYPES } from "@/lib/server/store";
 import { checkAdminTotp } from "@/lib/server/admin-guard";
 // The export gate both CSV routes share (cross-site and HEAD refused before anything is read) — the contacts export's.
 import { exportRequestAllowed } from "@/lib/server/contacts/export";
-import { attentionOf, type TxnSearchFilters } from "@/lib/server/txn-filters";
+import { attentionOf, taxWithheldOf, type TxnSearchFilters } from "@/lib/server/txn-filters";
 import { resolveRange } from "@/lib/server/date-range";
 import type { StoredTxn } from "@/lib/server/store";
 
@@ -56,19 +56,23 @@ function cell(v: string | number | null | undefined): string {
  * otherwise read `+255••••01` as a corrupt number and open an incident. The header is the only
  * place a spreadsheet can say which of the two artefacts this is.
  */
+/* ⭐ FEE-TAX-2026-10 · R3b — the tax a row withheld and which tax it is (`taxWithheldOf`: a stake-share winner's winnings
+   tax, or an agent's commission withholding), APPENDED after every existing column so a reconciler's sheet keyed on the
+   old positions still reads them where they were. */
 const headers = (full: boolean) => [
   "txn_id", "created_at", "completed_at", "player_id", "type", "status",
   "provider", "gateway_ref", full ? "msisdn" : "msisdn_masked", "amount_tzs", "fee_tzs", "currency",
-  "balance_after_tzs", "flag", "description",
+  "balance_after_tzs", "flag", "description", "tax_withheld_tzs", "tax_withheld_kind",
 ];
 
 function toRow(t: StoredTxn, full: boolean): string {
   const flag = attentionOf(t);
+  const tax = taxWithheldOf(t);
   return [
     cell(t.id), cell(t.createdAt), cell(t.completedAt), cell(t.userId), cell(t.type), cell(t.status),
     cell(t.provider), cell(t.providerRef), cell(t.msisdn == null ? null : full ? t.msisdn : maskPhone(t.msisdn)),
     cell(t.amount), cell(t.fee), cell(t.currency),
-    cell(t.balanceAfter), cell(flag?.code ?? "ok"), cell(t.description),
+    cell(t.balanceAfter), cell(flag?.code ?? "ok"), cell(t.description), cell(tax?.amount ?? 0), cell(tax?.kind ?? ""),
   ].join(",");
 }
 

@@ -22,7 +22,9 @@ import { LinkTrackingOptions } from "postmark/dist/client/models/message/Support
 import { resolvePhoneEmail } from "./email-map";
 import { isSuppressed } from "./email-suppression";
 import { appUrl } from "@/lib/app-url";
-import { formatTzs } from "@/lib/utils";
+import { fill, formatTzs, formatTzsSigned } from "@/lib/utils";
+// FEE-TAX-2026-10 · R3b — a stake-share result's parts, from the settlement's own records (the letters below word them).
+import type { StakeShareWinReceipt } from "@/lib/stake-share-receipt";
 import { emergencyRefundDestination } from "@/lib/emergency-refund-destination";
 // R5-B (2026-10-09, F9): a day a letter states, in each of its lines' own words (`agentRevokedHtml`) — the notice's rule.
 // R6-A (2026-10-09, A1): and the end of a break or an exclusion, with its time (`rgEndIn`) — the bell's rule.
@@ -1217,11 +1219,17 @@ export function withdrawalUnderReviewHtml({ amount, reference }: {
  * takes the instant and says it with this file's own row formatter (`fmtDateTime`, East Africa Time, the zone stated),
  * as `selectionClosedHtml` says its "Results expected". A value that does not parse draws no row, never "Invalid Date".
  */
-export function betPlacedHtml({ reference, side, stake, marketTitle, placedAt, resolvesAt, cashOutFeeRate, freeExitGraceMinutes, paidExitWindowMinutes = 0 }: {
+export function betPlacedHtml({ reference, side, stake, marketTitle, placedAt, resolvesAt, cashOutFeeRate, freeExitGraceMinutes, paidExitWindowMinutes = 0, stakeShare = null }: {
   reference: string; side: "YES" | "NO"; stake: number; marketTitle: string; placedAt?: string;
   /** The market's resolution instant (`resolutionAt`, ISO). */
   resolvesAt: string;
   cashOutFeeRate: number; freeExitGraceMinutes: number; paidExitWindowMinutes?: number;
+  /**
+   * ⭐ STAKE-SHARE ONLY (FEE-TAX-2026-10, R3b): our fee on this stake at the market's frozen rate, the rest of it in the
+   * pool (`stakeShareEntryFee`), and the frozen winnings tax. Two more rows and one sentence; absent on every older model,
+   * whose letter is unchanged. The free-exit line is the same either way: a free exit refunds in full (ruling 2).
+   */
+  stakeShare?: { feePct: number; fee: number; net: number; taxPct: number | null } | null;
 }): string {
   const mins = freeExitGraceMinutes;
   const pct = +(cashOutFeeRate * 100).toFixed(1);
@@ -1230,6 +1238,10 @@ export function betPlacedHtml({ reference, side, stake, marketTitle, placedAt, r
   const exitLine = paidExitWindowMinutes > 0
     ? `${mins}-min free exit · You can sell this position within ${mins} minutes for a full refund at no cost. After that, a ${pct}% fee applies on early exit.`
     : `${mins}-min free exit · You can sell this position within ${mins} minutes for a full refund at no cost. After that, selling closes and the bet rides to settlement.`;
+  const ss = stakeShare;
+  // The note names the frozen tax, so it is said only beside one (a stake-share stamp always freezes it): less, never a guess.
+  const note = ss && ss.taxPct != null ? ss.taxPct : null;
+  const feeNote = (l: "en" | "sw") => note === null || !ss ? "" : fill(dict[l].payoutTax.betFeeNote, { pct: ss.feePct, taxPct: note });
   return wrap(`
     ${eyebrow("Bet placed", "Dau limewekwa")}
     ${heading("Position open")}
@@ -1238,9 +1250,15 @@ export function betPlacedHtml({ reference, side, stake, marketTitle, placedAt, r
       { label: "Reference", value: reference },
       { label: "Your pick", value: side, tone: side === "YES" ? "good" : "bad" },
       { label: "Stake", value: formatTzs(stake) },
+      ...(ss ? [
+        { label: fill(dict.en.payoutTax.ourFeePct, { pct: ss.feePct }), value: formatTzs(ss.fee) },
+        { label: dict.en.payoutTax.inPool, value: formatTzs(ss.net) },
+      ] : []),
       ...(placedAt ? [{ label: "Placed", value: fmtDateTime(placedAt) }] : []),
       ...(Number.isFinite(Date.parse(resolvesAt)) ? [{ label: "Resolves", value: fmtDateTime(resolvesAt) }] : []),
-    ])}
+    ])}${note !== null ? `
+    ${subtitle(feeNote("en"))}
+    ${subtitleSw(feeNote("sw"))}` : ""}
     ${subtitle("Your payout depends on how the pool ends up split. We'll email you the exact amount the moment betting closes and the pools are final.")}
     ${subtitle(exitLine)}
     ${refNote()}
@@ -1248,9 +1266,15 @@ export function betPlacedHtml({ reference, side, stake, marketTitle, placedAt, r
   `);
 }
 
-export function winNotificationHtml({ reference, payout, stake, marketTitle, settledAt }: {
+export function winNotificationHtml({ reference, payout, stake, marketTitle, settledAt, stakeShare = null }: {
   reference: string; payout: number; stake: number; marketTitle: string; settledAt?: string;
+  /**
+   * ⭐ STAKE-SHARE ONLY (FEE-TAX-2026-10, R3b): the win's parts from the settlement's own records (`stakeShareWinReceipt`)
+   * and the market's frozen rates as copy prints them. Absent on every older model, whose letter below is unchanged.
+   */
+  stakeShare?: { receipt: StakeShareWinReceipt; feePct: number | null; taxPct: number | null } | null;
 }): string {
+  if (stakeShare) return stakeShareWinLetter({ reference, marketTitle, settledAt, ...stakeShare });
   const net = payout - stake;
   return wrapGold(`
     ${eyebrow("Position won", "Umeshinda", true)}
@@ -1269,6 +1293,70 @@ export function winNotificationHtml({ reference, payout, stake, marketTitle, set
 }
 
 /**
+ * ⭐ A STAKE-SHARE WIN'S LETTER (FEE-TAX-2026-10, R3b) — `winNotificationHtml`'s branch for a market frozen under
+ * `stake-share`. The parts in the order they add up — stake, our fee, the winnings before tax, the winnings tax withheld —
+ * then what was paid and the result against the stake, signed (stake − fee + winnings − tax = paid; paid − stake = net).
+ *   · a GAIN is earned money: gold chrome, "You won {paid}" in gilt, the net "+" in the good tone — as every win's letter;
+ *   · ⛔ a win paid BELOW its stake (ruling 1) is NOT a gain: ROYAL chrome, the heading "Returned {paid} of your {stake}
+ *     stake" in the text's ink, the reason in both languages, no "good" tone on the payout and a NEUTRAL "−" net. It is the
+ *     one template besides two others that branches between the two chromes (`DUAL_CHROME_TEMPLATES`).
+ * The rates printed are the market's frozen ones; a label falls back to its rate-less word when none was given.
+ */
+function stakeShareWinLetter({ reference, marketTitle, settledAt, receipt: r, feePct, taxPct }: {
+  reference: string; marketTitle: string; settledAt?: string;
+  receipt: StakeShareWinReceipt; feePct: number | null; taxPct: number | null;
+}): string {
+  const en = dict.en.payoutTax;
+  const sw = dict.sw.payoutTax;
+  const vars = { paid: formatTzs(r.paid), stake: formatTzs(r.stake) };
+  const rows = detailRows([
+    { label: "Reference", value: reference },
+    { label: en.stake, value: formatTzs(r.stake) },
+    { label: feePct != null ? fill(en.ourFeePct, { pct: feePct }) : en.ourFee, value: `−${formatTzs(r.fee)}` },
+    { label: en.winnings, value: `+${formatTzs(r.grossWinnings)}` },
+    { label: taxPct != null ? fill(en.winningsTaxPct, { pct: taxPct }) : en.winningsTax, value: `−${formatTzs(r.tax)}` },
+    { label: en.paid, value: formatTzs(r.paid), ...(r.belowStake ? {} : { tone: "good" as const }) },
+    { label: en.againstStake, value: r.net === 0 ? formatTzs(0) : formatTzsSigned(r.net), ...(r.net > 0 ? { tone: "good" as const } : {}) },
+    ...(settledAt ? [{ label: "Settled", value: fmtDateTime(settledAt) }] : []),
+  ]);
+  const tra = `${subtitle(en.taxToTra)}
+    ${subtitleSw(sw.taxToTra)}`;
+  if (r.belowStake) {
+    return wrap(`
+    ${eyebrow(dict.en.market.result, dict.sw.market.result)}
+    ${heading(fill(en.belowTitle, vars))}
+    ${subtitle(marketTitle)}
+    ${subtitle(en.belowReason)}
+    ${subtitleSw(sw.belowReason)}
+    ${rows}
+    ${tra}
+    ${refNote()}
+    ${ctaButton(positionPermalinkHref(reference), "View this ticket · Tazama tikiti hii")}
+  `);
+  }
+  return wrapGold(`
+    ${eyebrow("Position won", "Umeshinda", true)}
+    ${heading(`You won ${formatTzs(r.paid)}`, GILT)}
+    ${subtitle(marketTitle)}
+    ${rows}
+    ${tra}
+    ${refNote()}
+    ${ctaButton(positionPermalinkHref(reference), "View this ticket · Tazama tikiti hii")}
+  `);
+}
+
+/**
+ * The win letter's subject (FEE-TAX-2026-10, R3b): "You won · {paid}", as it has always been — except a stake-share win paid
+ * BELOW its stake, whose subject is the letter's own neutral heading. A player scanning an inbox must never read a gain
+ * that did not happen.
+ */
+export function winLetterSubject(payout: number, receipt?: StakeShareWinReceipt | null): string {
+  return receipt?.belowStake
+    ? fill(dict.en.payoutTax.belowTitle, { paid: formatTzs(receipt.paid), stake: formatTzs(receipt.stake) })
+    : `You won · ${formatTzs(payout)}`;
+}
+
+/**
  * THE UP & DOWN DAILY DIGEST (E-37) — one email for a whole day of rounds.
  *
  * ⚠️ ROYAL CHROME, NOT GOLD, even on a winning day. The gold-discipline law
@@ -1281,11 +1369,19 @@ export function winNotificationHtml({ reference, payout, stake, marketTitle, set
  * figure, and is toned `bad`. It is never folded into the net line — a player must
  * not have to subtract two numbers to find out that they lost.
  */
-export function updownDigestHtml({ dayLabel, rounds, wins, losses, refunds, wonPayout, lostStake, refundedStake, staked, returned, net }: {
+export function updownDigestHtml({ dayLabel, rounds, wins, losses, refunds, wonPayout, lostStake, refundedStake, staked, returned, net, belowStakeWins = 0, belowStakePayout = 0, winningsTax = 0 }: {
   dayLabel: string; rounds: number; wins: number; losses: number; refunds: number;
   wonPayout: number; lostStake: number; refundedStake: number;
   staked: number; returned: number; net: number;
+  /**
+   * ⭐ STAKE-SHARE (FEE-TAX-2026-10, R3b) — 0 on every day without a stake-share round, and the letter is then unchanged.
+   * `belowStakeWins` / `belowStakePayout`: the day's wins paid back LESS than their stake (ruling 1) — a row of their own,
+   * never counted in "Won", never in the good tone; `winningsTax`: the winnings tax withheld from the day's wins, for TRA.
+   */
+  belowStakeWins?: number; belowStakePayout?: number; winningsTax?: number;
 }): string {
+  // A win paid below its stake is a "paid back less than staked" row; "Won" counts only the gains.
+  const gainWins = wins - belowStakeWins;
   const headline =
     net > 0 ? `You are up ${formatTzs(net)}`
     : net < 0 ? `You lost ${formatTzs(net < 0 ? -net : net)}`
@@ -1295,9 +1391,11 @@ export function updownDigestHtml({ dayLabel, rounds, wins, losses, refunds, wonP
     ${heading(headline)}
     ${subtitle(`${dayLabel} · ${rounds} ${rounds === 1 ? "round" : "rounds"}`)}
     ${detailRows([
-      ...(wins > 0 ? [{ label: `Won (${wins})`, value: formatTzs(wonPayout), tone: "good" as const }] : []),
+      ...(gainWins > 0 ? [{ label: `Won (${gainWins})`, value: formatTzs(wonPayout - belowStakePayout), tone: "good" as const }] : []),
+      ...(belowStakeWins > 0 ? [{ label: fill(dict.en.payoutTax.digestBelowRow, { n: belowStakeWins }), value: formatTzs(belowStakePayout) }] : []),
       ...(losses > 0 ? [{ label: `Lost (${losses})`, value: formatTzs(lostStake), tone: "bad" as const }] : []),
       ...(refunds > 0 ? [{ label: `Refunded (${refunds})`, value: formatTzs(refundedStake) }] : []),
+      ...(winningsTax > 0 ? [{ label: dict.en.payoutTax.winningsTax, value: formatTzs(winningsTax) }] : []),
       { label: "Total staked", value: formatTzs(staked) },
       { label: "Total returned", value: formatTzs(returned) },
       { label: "Net", value: net === 0 ? formatTzs(0) : `${net > 0 ? "+" : "−"}${formatTzs(Math.abs(net))}`, tone: net > 0 ? "good" : net < 0 ? "bad" : undefined },
@@ -1337,10 +1435,23 @@ export function lossNotificationHtml({ reference, stake, marketTitle, settledAt 
  * pay him — against the poll's own frozen rates. What this email says and what
  * lands in his wallet are the same arithmetic. To the shilling.
  */
-export function selectionClosedHtml({ marketTitle, closedAt, resolvesAt, marketId, payoutIfYes, payoutIfNo }: {
+export function selectionClosedHtml({ marketTitle, closedAt, resolvesAt, marketId, payoutIfYes, payoutIfNo, stakeShare = null }: {
   marketTitle: string; closedAt?: string; resolvesAt?: string | null; marketId: string;
   payoutIfYes?: number | null; payoutIfNo?: number | null;
+  /**
+   * ⭐ STAKE-SHARE ONLY (FEE-TAX-2026-10, R3b): the market's frozen fee and winnings tax as copy prints them, and — when the
+   * one side the player holds would be paid back LESS than they staked (ruling 1) — that stake. Absent on every older
+   * model, whose letter is unchanged.
+   */
+  stakeShare?: { feePct: number; taxPct: number; belowStake: number | null } | null;
 }): string {
+  const ss = stakeShare;
+  // Joined onto the line before it, so a letter with no stake-share part is byte for byte the letter it always was.
+  const ssLines = !ss ? "" : `
+    ${subtitle(fill(dict.en.payoutTax.closedAfter, { feePct: ss.feePct, taxPct: ss.taxPct }))}
+    ${subtitleSw(fill(dict.sw.payoutTax.closedAfter, { feePct: ss.feePct, taxPct: ss.taxPct }))}
+    ${ss.belowStake == null ? "" : `${subtitle(fill(dict.en.payoutTax.closedBelow, { stake: formatTzs(ss.belowStake) }))}
+    ${subtitleSw(fill(dict.sw.payoutTax.closedBelow, { stake: formatTzs(ss.belowStake) }))}`}`;
   const both = payoutIfYes != null && payoutIfNo != null;
   const single = payoutIfYes ?? payoutIfNo;
   const singleSide = payoutIfYes != null ? "YES" : "NO";
@@ -1356,7 +1467,7 @@ export function selectionClosedHtml({ marketTitle, closedAt, resolvesAt, marketI
       ...(resolvesAt ? [{ label: "Results expected", value: fmtDateTime(resolvesAt) }] : []),
     ])}
     ${subtitle("The pools are frozen, so this is the exact amount — not an estimate. It is what we will pay you, to the shilling, if your side wins.")}
-    ${subtitleSw("Bwawa limefungwa, kwa hiyo hiki ndicho kiasi kamili — si makadirio. Ndicho tutakacholipa ukiwa sahihi.")}
+    ${subtitleSw("Bwawa limefungwa, kwa hiyo hiki ndicho kiasi kamili — si makadirio. Ndicho tutakacholipa ukiwa sahihi.")}${ssLines}
     ${ctaButton(`/markets/${marketId}`, "View market · Tazama soko")}
   `);
 }

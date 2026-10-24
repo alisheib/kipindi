@@ -67,12 +67,14 @@ const WATERFALL = commissionWaterfall(1_000_000, {
   agentPct: 10,
   withholdingPct: 5,
 });
+// The ghost's shape is the table's at the module defaults (a loser-share base); a `stake-share` page draws the same eight
+// rows with its own base words (FEE-TAX-2026-10, R3b), so the ghost's lines hold their size either way.
 const WF_LABEL: Record<WaterfallStepId, keyof Dict["agent"]> = {
-  winnings: "wfWinnings", grossFee: "wfGrossFee", tra: "wfTra", gbt: "wfGbt",
+  winnings: "wfWinnings", stakes: "wfStakes", grossFee: "wfGrossFee", tra: "wfTra", gbt: "wfGbt",
   netFee: "wfNetFee", agentShare: "wfAgentShare", withholding: "wfWithholding", netPayout: "wfNetPayout",
 };
 const WF_NOTE: Record<WaterfallStepId, keyof Dict["agent"]> = {
-  winnings: "wfWinningsNote", grossFee: "wfGrossFeeNote", tra: "wfTraNote", gbt: "wfGbtNote",
+  winnings: "wfWinningsNote", stakes: "wfStakesNote", grossFee: "wfGrossFeeNote", tra: "wfTraNote", gbt: "wfGbtNote",
   netFee: "wfNetFeeNote", agentShare: "wfAgentShareNote", withholding: "wfWithholdingNote", netPayout: "wfNetPayoutNote",
 };
 const pct = (p: number) => String(Math.round(p * 100) / 100);
@@ -189,7 +191,7 @@ export default function AgentLoading() {
             </div>
           ))}
         </dl>
-        <p className="mt-3 text-body-sm leading-relaxed"><GhostText>{fill(t.agent.wfEffective, { pct: pct(WATERFALL.effectivePctOfWinnings) })}</GhostText></p>
+        <p className="mt-3 text-body-sm leading-relaxed"><GhostText>{fill(t.agent.wfEffective, { pct: pct(WATERFALL.effectivePct) })}</GhostText></p>
         <p className="mt-1.5 text-body-sm leading-relaxed"><GhostText>{t.agent.wfDisclaimer}</GhostText></p>
       </section>
 

@@ -26,7 +26,8 @@ import { I } from "@/components/ui/glyphs";
 import { keepConnectivesItem } from "@/components/ui/keep-run";
 import { Chip } from "@/components/ui/chip";
 import { STATUS_TONE, TONE_CHIP } from "@/lib/status-tone";
-import { cn, formatTzs } from "@/lib/utils";
+import { cn, fill, formatTzs } from "@/lib/utils";
+import type { StakeShareMarketFigures } from "@/lib/stake-share-receipt";
 // Every date here is in the reader's month words on the East Africa clock (§L4; `formatDateTime` printed English months),
 // with the year rule read off `serverNow` — the page's instant, so the browser's first render is the server's.
 import { formatEatDateTime } from "@/lib/eat-day";
@@ -90,6 +91,14 @@ type Props = {
   };
   /** The rates this poll was frozen at, for the disclosure line. */
   rates: { commissionRate: number; feeCeilingRate: number };
+  /**
+   * ⭐ STAKE-SHARE ONLY (FEE-TAX-2026-10, R3b) — the market's figures under its FROZEN model (`stakeShareMarketFigures`, the
+   * reader that mirrors settlement): our fee on every stake (F), the winnings tax withheld for TRA (T), and what the
+   * winners were paid (pool − F − T), with the frozen rates. Terms §4 promises the exact commission on this panel; under
+   * this model the tax stands beside it, so a player can recompute the settlement from the panel alone. Null on every
+   * older model and on a refund, whose rows are exactly as they were.
+   */
+  stakeShare?: StakeShareMarketFigures | null;
   /** The officer's recorded evidence excerpt (exact quote from the official
    *  source) captured at the resolution ceremony. Null/empty → nothing recorded,
    *  so the evidence block is omitted (empty-state; never fabricated). */
@@ -117,7 +126,7 @@ const fmtPct = (r: number) => {
 
 export function ResolutionPanel({
   marketId, outcome, resolvedAt, twoOfficer, singleOfficer, correctedOnObjection = false, sourceUrl, objectionsClosedAt, serverNow,
-  yesPool, noPool, fee, rates, evidence, settledAt, objection,
+  yesPool, noPool, fee, rates, evidence, settledAt, objection, stakeShare = null,
 }: Props) {
   const { t, locale } = useT();
   const isVoid = outcome === "VOID";
@@ -286,16 +295,35 @@ export function ResolutionPanel({
           {/* THE FEE, IN SHILLINGS — and, when the ceiling bound, the arithmetic
               that produced it. A player checking that we paid him correctly can
               recompute the whole thing from the four numbers on this panel.
-              A single "9%" here would have been a lie on any capped poll. */}
-          <Row label={t.market.resPlatformFee} value={formatTzs(Math.round(fee.fee))} muted />
-          {fee.capped && (
-            <Row
-              label={t.market.resFeeCapped}
-              value={`${fmtPct(rates.feeCeilingRate)} × ${formatTzs(Math.round(fee.smaller))}`}
-              muted
-            />
+              A single "9%" here would have been a lie on any capped poll.
+              ⭐ FEE-TAX-2026-10 · R3b — under STAKE-SHARE the panel states the settlement whole: our fee on every stake, the
+              winnings tax withheld for TRA, and what the winners were paid; pool − fee − tax = paid, by eye. The rates are
+              this market's frozen ones. Every older model keeps exactly its two rows. */}
+          {stakeShare ? (
+            <>
+              <Row label={fill(t.payoutTax.panelFee, { pct: stakeShare.feePct })} value={formatTzs(stakeShare.fee)} muted />
+              <Row label={fill(t.payoutTax.panelTax, { pct: stakeShare.taxPct })} value={formatTzs(stakeShare.winningsTax)} muted />
+              <Row label={t.payoutTax.panelPaid} value={formatTzs(stakeShare.paidToWinners)} />
+            </>
+          ) : (
+            <>
+              <Row label={t.market.resPlatformFee} value={formatTzs(Math.round(fee.fee))} muted />
+              {fee.capped && (
+                <Row
+                  label={t.market.resFeeCapped}
+                  value={`${fmtPct(rates.feeCeilingRate)} × ${formatTzs(Math.round(fee.smaller))}`}
+                  muted
+                />
+              )}
+            </>
           )}
         </div>
+      )}
+      {/* The stake-share arithmetic in words, under its figures — never on a refund, never on an older model. */}
+      {!refundedAll && stakeShare && (
+        <p className="text-body-sm leading-relaxed text-text-subtle">
+          {fill(t.payoutTax.panelNote, { feePct: stakeShare.feePct, taxPct: stakeShare.taxPct })}
+        </p>
       )}
 
       {/* Why the fee was capped — the promise, stated where it was kept. */}

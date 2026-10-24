@@ -11,6 +11,12 @@
  *     refund's stake, a sale's value — and 0 where nothing was recorded.
  *
  * ⛔ Pure — no import, no directive — so `test:journey-tickets` §2 drives it in process, beside defective twins.
+ *
+ * ⭐ `won` IS EARNED MONEY, so a WIN paid back LESS than its stake is not `won` (FEE-TAX-2026-10, R3b; ruling 1): under
+ * `stake-share` its side won and less than the stake came back, and the card draws it in the text's ink, unstruck — never
+ * the gilt a gain earns. The comparison is `isBelowStakeWin`'s (`src/lib/stake-share-receipt.ts`), written out because
+ * this file imports nothing. Without a stake (an older caller) the rule is exactly what it was; under the older models a
+ * win's payout is never below its stake, so every ticket they draw is unchanged.
  */
 
 /** A ticket's payout, as the card draws it. */
@@ -19,7 +25,9 @@ export type TicketPayout = { kind: "atResult" } | { kind: "final"; amount: numbe
 export function ticketPayout(p: {
   status: "OPEN" | "WIN" | "LOSS" | "VOID" | "CASHED_OUT";
   finalPayout: number | null;
+  stake?: number;
 }): TicketPayout {
   if (p.status === "OPEN") return { kind: "atResult" };
-  return { kind: "final", amount: p.finalPayout ?? 0, won: p.status === "WIN" };
+  const belowStake = typeof p.stake === "number" && p.stake > 0 && typeof p.finalPayout === "number" && p.finalPayout >= 0 && p.finalPayout < p.stake;
+  return { kind: "final", amount: p.finalPayout ?? 0, won: p.status === "WIN" && !belowStake };
 }

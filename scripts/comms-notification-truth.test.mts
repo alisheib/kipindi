@@ -69,7 +69,27 @@ const U = "c3_player";
  * `notifyAdmins*` fan out to every officer rather than returning a row, so they
  * are driven separately in §5.
  */
+/**
+ * ⭐ FEE-TAX-2026-10 · R3b — the STAKE-SHARE shapes of four emitters: a bet's receipt naming our fee, a close whose figure
+ * is under the holder's stake, a win that gained (its parts named) and a win paid back BELOW its stake (a result row, never
+ * a WIN), on a poll and on a round. ⚠️ Listed BEFORE their legacy rows in `EMITTED`, so `byFn` (the LAST row of each
+ * emitter) still reads the legacy shape every assertion below was written for; §8 reads these by their own handles.
+ */
+const SS_TITLE = { en: "Will it rain in Dodoma today?", sw: "Je mvua itanyesha Dodoma leo?", zh: "今天多多马会下雨吗？" };
+const SS_ROUND = { en: "Bitcoin Up or Down", sw: "Bitcoin Juu au Chini", zh: "比特币涨跌" };
+const SS = {
+  bet: await N.notifyBetPlaced(U, { side: "YES", stake: 10_000, payoutIfWin: 0, marketTitle: SS_TITLE, marketId: "mkt_c3_ss", positionId: "pos_c3_ss_bet", cashOutFeeRate: 0.1, freeExitGraceMinutes: 5, paidExitWindowMinutes: 0, stakeShare: { feePct: 13, fee: 1_300, net: 8_700 } }),
+  closed: await N.notifySelectionClosed(U, { marketTitle: SS_TITLE, marketId: "mkt_c3_ss_close", payoutIfYes: 94_395, payoutIfNo: 0, hasYes: true, hasNo: false, stakeShare: { feePct: 13, taxPct: 15, stakeIfYes: 100_000, stakeIfNo: 0 } }),
+  gain: await N.notifyWin(U, 16_095, SS_TITLE, "/positions/pos_c3_ss_gain", { receipt: { stake: 10_000, fee: 1_300, netStake: 8_700, grossWinnings: 8_700, tax: 1_305, paid: 16_095, net: 6_095, belowStake: false }, taxPct: 15 }),
+  below: await N.notifyWin(U, 94_395, SS_TITLE, "/positions/pos_c3_ss_below", { receipt: { stake: 100_000, fee: 13_000, netStake: 87_000, grossWinnings: 8_700, tax: 1_305, paid: 94_395, net: -5_605, belowStake: true }, taxPct: 15 }),
+  roundBelow: await N.notifyUpDownWin(U, { payout: 94_395, stake: 100_000, marketTitle: SS_ROUND, roundHref: "/updown/udr_c3_ss_below", pushTag: "updown-result-mkt_c3_ss_below", positionId: "pos_c3_ss_round", stakeShare: { receipt: { stake: 100_000, fee: 13_000, netStake: 87_000, grossWinnings: 8_700, tax: 1_305, paid: 94_395, net: -5_605, belowStake: true }, taxPct: 15 } }),
+};
 const EMITTED: { fn: string; row: StoredNotification | null }[] = [
+  { fn: "notifyBetPlaced",           row: SS.bet },
+  { fn: "notifySelectionClosed",     row: SS.closed },
+  { fn: "notifyWin",                 row: SS.gain },
+  { fn: "notifyWin",                 row: SS.below },
+  { fn: "notifyUpDownWin",           row: SS.roundBelow },
   { fn: "notifyBetPlaced",           row: await N.notifyBetPlaced(U, { side: "YES", stake: 10_000, payoutIfWin: 18_000, marketTitle: { en: "Will it rain in Dar today?", sw: "Je mvua itanyesha Dar leo?", zh: "今天达累斯萨拉姆会下雨吗？" }, marketId: "mkt_1", positionId: "pos_1", cashOutFeeRate: 0.1, freeExitGraceMinutes: 5, paidExitWindowMinutes: 0 }) },
   { fn: "notifyWin",                 row: await N.notifyWin(U, 18_000, { en: "Will it rain · pos_2", sw: "Je mvua itanyesha · pos_2", zh: "会下雨吗 · pos_2" }, "/positions") },
   { fn: "notifyLoss",                row: await N.notifyLoss(U, { stake: 10_000, marketTitle: { en: "Will it rain in Dar today?", sw: "Je mvua itanyesha Dar leo?", zh: "今天达累斯萨拉姆会下雨吗？" }, marketId: "mkt_1", positionId: "pos_3" }) },
@@ -686,6 +706,31 @@ section("7 · identity, quietly — no receipt sentence, no reminder, no blocked
   ok("7f ⛔ an unchecked automatic approval now WITH AN OFFICER rings no post-check bell (its case's own bells do)",
     (await postCheck("c3_auto_pending")).length === 0 && p5.unchecked >= 1, JSON.stringify(p5));
   ok("7f control: …while the APPROVED one beside it, flagged, did ring", (await postCheck("c3_auto_flag")).length === 1);
+}
+
+// ── 8 · stake-share results (FEE-TAX-2026-10, R3b) ─────────────────────────────
+section("8 · stake-share — the parts named; a win paid back below its stake is never a gain");
+{
+  const all = (r: StoredNotification | null) => (r ? [r.titleEn, r.titleSw, r.titleZh ?? "", r.bodyEn, r.bodySw, r.bodyZh ?? ""].join("\n") : "");
+  const WON = /You won|Umeshinda|您赢得/;
+  ok("8.1 · a gain keeps the WIN kind and its title, the net credited", SS.gain?.kind === "WIN" && SS.gain?.titleEn === "You won TZS 16,095", SS.gain?.titleEn);
+  ok("8.2 · …and its body names the stake, our fee, the winnings before tax and the tax withheld, in every language",
+    !!SS.gain && [SS.gain.bodyEn, SS.gain.bodySw, SS.gain.bodyZh ?? ""].every((s) => ["10,000", "1,300", "8,700", "1,305", "15%"].every((n) => s.includes(n))), SS.gain?.bodyEn);
+  ok("8.3 · ⛔ a win paid back below its stake is a ROUND_RESULT (the quiet plate), never a WIN", SS.below?.kind === "ROUND_RESULT" && SS.roundBelow?.kind === "ROUND_RESULT",
+    `${SS.below?.kind} · ${SS.roundBelow?.kind}`);
+  ok("8.4 · ⛔ …says \"won\" in no language, and says what came back of what was staked",
+    !WON.test(all(SS.below)) && !WON.test(all(SS.roundBelow)) && SS.below?.titleEn === "Returned TZS 94,395 of your TZS 100,000 stake"
+      && /Umerudishiwa TZS 94,395/.test(SS.below?.titleSw ?? "") && /已返还 TZS 94,395/.test(SS.below?.titleZh ?? ""), SS.below?.titleEn);
+  ok("8.5 · the round's below-stake row links its round, like every round result", (SS.roundBelow?.href ?? "").startsWith("/updown/udr_c3_ss_below"), SS.roundBelow?.href ?? "");
+  ok("8.6 · the stake-share bet receipt names our fee and the stake in the pool before the exit terms",
+    /our 13% fee TZS 1,300, TZS 8,700 in the pool · free exit within 5 min/.test(SS.bet?.bodyEn ?? "") && /ada yetu ya 13% ni TZS 1,300/.test(SS.bet?.bodySw ?? ""), SS.bet?.bodyEn);
+  ok("8.7 · the close says its figure is after our fee and the tax, and that it is under the holder's TZS 100,000 stake",
+    /after our 13% fee on every stake and the 15% tax on winnings/.test(SS.closed?.bodyEn ?? "") && /less than your TZS 100,000 stake/.test(SS.closed?.bodyEn ?? "")
+      && /chini ya dau lako la TZS 100,000/.test(SS.closed?.bodySw ?? "") && /低于您的投注额 TZS 100,000/.test(SS.closed?.bodyZh ?? ""), SS.closed?.bodyEn);
+  ok("8.8 · CONTROL · the legacy win row is the old row: \"You won TZS 18,000\", \"… paid out. Tap to view.\"",
+    byFn.notifyWin?.kind === "WIN" && byFn.notifyWin?.titleEn === "You won TZS 18,000" && byFn.notifyWin?.bodyEn === "Will it rain · pos_2 paid out. Tap to view.", byFn.notifyWin?.bodyEn);
+  ok("8.9 · CONTROL · the legacy bet receipt and close carry no stake-share sentence",
+    !/our \d+% fee|in the pool/.test(byFn.notifyBetPlaced?.bodyEn ?? "") && !/after our/.test(byFn.notifySelectionClosed?.bodyEn ?? ""), byFn.notifyBetPlaced?.bodyEn);
 }
 
 console.log(`\ncert-c3 (notification truth): ${pass} passed, ${fail} failed`);

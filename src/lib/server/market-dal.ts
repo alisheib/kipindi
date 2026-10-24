@@ -703,6 +703,16 @@ export type DailySettledTotals = {
   lostStake: number;
   /** Stake returned on VOID rounds only. */
   refundedStake: number;
+  /**
+   * ⭐ STAKE-SHARE (FEE-TAX-2026-10, R3b) — read in the same single aggregate, both twins, and 0 on a day with no
+   * stake-share round. WIN rows paid back LESS than their stake (ruling 1): how many, what they were paid, what they staked
+   * — so the digest words them as returned, never as won. Optional: a fixture or a row read before them says 0.
+   */
+  belowStakeWins?: number;
+  belowStakePayout?: number;
+  belowStakeStake?: number;
+  /** ⭐ STAKE-SHARE — Σ `winningsTaxTzs` over the day's WIN rows: the winnings tax withheld for TRA. Optional, as above. */
+  winningsTax?: number;
 };
 
 // ---------------------------------------------------------------------------
@@ -997,6 +1007,7 @@ const memoryPositions: PositionStore = {
       const e = acc.get(p.userId) ?? {
         userId: p.userId, rounds: 0, ownRounds: 0, wins: 0, losses: 0, refunds: 0,
         staked: 0, returned: 0, wonPayout: 0, lostStake: 0, refundedStake: 0,
+        belowStakeWins: 0, belowStakePayout: 0, belowStakeStake: 0, winningsTax: 0,
       };
       e.rounds += 1;
       if (p.houseBotId == null) e.ownRounds += 1;
@@ -1005,6 +1016,16 @@ const memoryPositions: PositionStore = {
       if (p.status === "WIN") { e.wins += 1; e.wonPayout += p.finalPayout ?? 0; }
       else if (p.status === "LOSS") { e.losses += 1; e.lostStake += p.stake; }
       else { e.refunds += 1; e.refundedStake += p.finalPayout ?? 0; }
+      // ⭐ FEE-TAX-2026-10 · R3b: the stake-share parts, the same predicates as the SQL twin's filters below — AFTER the
+      // outcome chain above, never inside it (a branch placed between its `if` and its `else` re-files every win as a refund).
+      if (p.status === "WIN") {
+        e.winningsTax = (e.winningsTax ?? 0) + (p.winningsTaxTzs ?? 0);
+        if ((p.finalPayout ?? 0) < p.stake) {
+          e.belowStakeWins = (e.belowStakeWins ?? 0) + 1;
+          e.belowStakePayout = (e.belowStakePayout ?? 0) + (p.finalPayout ?? 0);
+          e.belowStakeStake = (e.belowStakeStake ?? 0) + p.stake;
+        }
+      }
       acc.set(p.userId, e);
     }
     return Array.from(acc.values()).sort((a, b) => b.rounds - a.rounds);
@@ -1698,9 +1719,12 @@ const prismaPositions: PositionStore = {
     // ⚠️ Sums are cast `::text` and parsed in JS: `stake`/`finalPayout` are
     // `Decimal(18,2)`, and letting the driver hand back a Decimal object turns
     // `a + b` into string concatenation somewhere downstream.
+    // ⭐ FEE-TAX-2026-10 · R3b: the four stake-share columns ride the same aggregate (`winningsTaxTzs` is a nullable
+    // INTEGER, NULL off stake-share — `sum` skips it, `coalesce` makes the day without one 0).
     const rows = await pc().$queryRawUnsafe<Array<{
       userId: string; rounds: number; ownRounds: number; wins: number; losses: number; refunds: number;
       staked: string; returned: string; wonPayout: string; lostStake: string; refundedStake: string;
+      belowStakeWins: number; belowStakePayout: string; belowStakeStake: string; winningsTax: string;
     }>>(
       `select p."userId",
               count(*)::int                                                                    as "rounds",
@@ -1712,7 +1736,11 @@ const prismaPositions: PositionStore = {
               coalesce(sum(p."finalPayout"), 0)::text                                          as "returned",
               coalesce(sum(p."finalPayout") filter (where p."status" = 'WIN'), 0)::text        as "wonPayout",
               coalesce(sum(p."stake") filter (where p."status" = 'LOSS'), 0)::text             as "lostStake",
-              coalesce(sum(p."finalPayout") filter (where p."status" = 'VOID'), 0)::text       as "refundedStake"
+              coalesce(sum(p."finalPayout") filter (where p."status" = 'VOID'), 0)::text       as "refundedStake",
+              (count(*) filter (where p."status" = 'WIN' and p."finalPayout" < p."stake"))::int as "belowStakeWins",
+              coalesce(sum(p."finalPayout") filter (where p."status" = 'WIN' and p."finalPayout" < p."stake"), 0)::text as "belowStakePayout",
+              coalesce(sum(p."stake") filter (where p."status" = 'WIN' and p."finalPayout" < p."stake"), 0)::text as "belowStakeStake",
+              coalesce(sum(p."winningsTaxTzs") filter (where p."status" = 'WIN'), 0)::text      as "winningsTax"
          from "public"."Position" p
          join "public"."PredictionMarket" m on m."id" = p."marketId"
         where m."productLine"::text = $3
@@ -1728,6 +1756,8 @@ const prismaPositions: PositionStore = {
       rounds: Number(r.rounds), ownRounds: Number(r.ownRounds), wins: Number(r.wins), losses: Number(r.losses), refunds: Number(r.refunds),
       staked: Number(r.staked), returned: Number(r.returned),
       wonPayout: Number(r.wonPayout), lostStake: Number(r.lostStake), refundedStake: Number(r.refundedStake),
+      belowStakeWins: Number(r.belowStakeWins), belowStakePayout: Number(r.belowStakePayout),
+      belowStakeStake: Number(r.belowStakeStake), winningsTax: Number(r.winningsTax),
     }));
   },
   async voidMaswaliPositions(marketId, positionIds, settledAt, tx) {

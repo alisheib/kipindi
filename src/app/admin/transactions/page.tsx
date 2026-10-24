@@ -34,7 +34,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { currentSession } from "@/lib/server/auth-service";
 import { canView } from "@/lib/server/rbac";
 import { db, TXN_TYPES } from "@/lib/server/store";
-import { attentionOf, GATEWAY_TYPES, type TxnSearchFilters } from "@/lib/server/txn-filters";
+import { attentionOf, GATEWAY_TYPES, taxWithheldOf, type TaxWithheldKind, type TxnSearchFilters } from "@/lib/server/txn-filters";
 import { resolveRange } from "@/lib/server/date-range";
 import { DateTimeRangeFilter } from "@/components/ui/datetime-range-filter";
 import { formatTzs, formatBalancePill, formatDateTimeSafe } from "@/lib/utils";
@@ -63,6 +63,12 @@ const TXN_STATUS_VARIANT: Record<(typeof STATUSES)[number], "success" | "info" |
   CANCELLED: "neutral",
 };
 const PROVIDERS = ["MPESA", "TIGO_PESA", "AIRTEL_MONEY", "HALO_PESA", "MIXX", "TTCL_PESA", "CARD", "BANK_TRANSFER", "INTERNAL"] as const;
+// FEE-TAX-2026-10 · R3b — which tax a row's `taxWithheld` is (`taxWithheldOf`): the console's words, one per kind.
+const TAX_KIND_LABEL: Record<TaxWithheldKind, string> = {
+  winnings: "winnings tax",
+  agent: "agent withholding",
+  other: "withheld",
+};
 
 type SP = Record<string, string | undefined>;
 
@@ -248,11 +254,15 @@ async function AdminTransactionsContent({ searchParams }: { searchParams: Promis
                   <th className="text-left">Gateway ref</th>
                   <th className="text-left">Phone</th>
                   <th className="text-right">Fee</th>
+                  {/* FEE-TAX-2026-10 · R3b — the tax a row withheld, named by kind: a stake-share winner's winnings tax for
+                      TRA, or an agent's commission withholding. Never summed together (`taxWithheldOf`). */}
+                  <th className="text-right">Tax withheld</th>
                 </tr>
               </thead>
               <tbody>
                 {rows.map((t) => {
                   const flag = attentionOf(t);
+                  const tax = taxWithheldOf(t);
                   const out = t.amount < 0;
                   return (
                     <tr key={t.id}>
@@ -304,6 +314,16 @@ async function AdminTransactionsContent({ searchParams }: { searchParams: Promis
                       </td>
                       <td className="whitespace-nowrap font-mono text-xs text-text-tertiary">{t.msisdn ? <Sensitive field="msisdn" subjectId={t.id} value={t.msisdn} /> : "—"}</td>
                       <td className="whitespace-nowrap text-right font-mono tabular text-text-tertiary">{t.fee ? formatTzs(t.fee) : "—"}</td>
+                      <td className="whitespace-nowrap text-right font-mono tabular text-text-tertiary">
+                        {/* The kind in the table's own size and plain case: a word beside a figure, never a new microlabel
+                            (no `uppercase`, no hand-typed tracking — `test:type-scale` §6, `test:eyebrow-roles`). */}
+                        {tax ? (
+                          <>
+                            {formatTzs(tax.amount)}
+                            <span className="ml-1.5 font-sans">{TAX_KIND_LABEL[tax.kind]}</span>
+                          </>
+                        ) : "—"}
+                      </td>
                     </tr>
                   );
                 })}

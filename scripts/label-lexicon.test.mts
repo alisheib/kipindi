@@ -780,8 +780,10 @@ check("§5j private-map matcher ACCEPTS a tone ternary (a colour is not a word)"
   check("§7b the emitters take the three-language shape",
     (notif.match(/marketTitle: LocalizedText/g) ?? []).length >= 5,
     "");
+  // ⚠️ Its fourth parameter is the last one the label rule is about; a stake-share win's parts ride an optional fifth
+  // (FEE-TAX-2026-10, R3b: `stakeShare?: StakeShareWinNotice | null`), so the pattern allows trailing optional ones.
   check("§7c `notifyWin`'s label is localized too — it was the one that took a pre-built string",
-    /export function notifyWin\(userId: string, amount: number, label: LocalizedText, href: string\)/.test(notif),
+    /export function notifyWin\(userId: string, amount: number, label: LocalizedText, href: string(?:, \w+\?: [^)]+)?\)/.test(notif),
     "");
   // ⛔ AND THE CALLERS ACTUALLY PASS ALL THREE. A signature widened while every caller still
   // hands it `localizedText(m.titleEn)` would type-check perfectly and change nothing.

@@ -333,8 +333,10 @@ export const MUTATIONS = [
     // was a raw id in the sentence — so the anchor is the new call's tail; the defect put back is the same one.
     // RE-ANCHORED 2026-10-14 (the Vodacom plan's S12 WP12): the label now goes through `messageTitles` (the switch that
     // carries the approved short title from the S15 flip), so the tail gained `, m)`. Same defect put back.
-    from: "localizedText(m.titleEn, m.titleSw, m.titleZh), m), positionPermalinkHref(p.id));",
-    to: "localizedText(m.titleEn, m.titleSw, m.titleZh), m), positionPermalinkHref(p.id) + (p.houseBotId != null ? \"#50pick-liquidity-stake\" : \"\"));",
+    // RE-ANCHORED 2026-10-24 (FEE-TAX-2026-10, R3b): the call passes the stake-share win's parts last (`winNotice`, null on
+    // every older model), so the tail gained `, winNotice`. Same defect put back, on the href before it.
+    from: "localizedText(m.titleEn, m.titleSw, m.titleZh), m), positionPermalinkHref(p.id), winNotice);",
+    to: "localizedText(m.titleEn, m.titleSw, m.titleZh), m), positionPermalinkHref(p.id) + (p.houseBotId != null ? \"#50pick-liquidity-stake\" : \"\"), winNotice);",
     expect: "8.2 · …and its English body is the plain template",
     suite: "money-mem",
   },

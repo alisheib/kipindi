@@ -118,6 +118,10 @@ export default async function AgentProgrammePage({ searchParams }: { searchParam
    */
   const rateCfg = await getGlobalConfig();
   const waterfallRates = {
+    // ⭐ FEE-TAX-2026-10 · R3b — the table's base follows the polls' LIVE fee model: under `stake-share` the fee is a share
+    // of every stake, so the worked example is stated on stakes (never on winnings, and never the winnings tax); under
+    // `loser-share` it is the winnings pool, exactly as before. The figures are the same arithmetic either way.
+    base: rateCfg.feeModel === "stake-share" ? ("stakes" as const) : ("winnings" as const),
     platformFeeRate: rateCfg.platformFeeRate,
     operatorFeeRate: rateCfg.operatorFeeRate,
     traTaxOnCommissionRate: rateCfg.traTaxOnCommissionRate,

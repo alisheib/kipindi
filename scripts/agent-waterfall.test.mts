@@ -23,6 +23,7 @@
  *   §3 the ceiling and the refusals hold
  *   §4 ⚠️ POSITIVE CONTROL — the comparison CATCHES a scale error and a rate error
  *   §5 ⛔ the waterfall a player reads is the split the wallet receives
+ *   §6 the stakes base (FEE-TAX-2026-10, R3b): the same figures and credit on what recruits stake, never the winnings tax
  *
  * In-memory: no DATABASE_URL, so config is the shipped default.
  */
@@ -183,8 +184,38 @@ console.log("\n§5 · ⛔ the waterfall a partner reads is the credit they recei
 
   // ⭐ The headline a partner actually judges the offer by.
   const w = commissionWaterfall(1_000_000, rates);
-  ok(`⭐ effective take is ${w.effectivePctOfWinnings.toFixed(3)}% of winnings, well under the headline 10%`,
-    w.effectivePctOfWinnings > 0 && w.effectivePctOfWinnings < cfg.defaultCommissionPct);
+  ok(`⭐ effective take is ${w.effectivePct.toFixed(3)}% of winnings, well under the headline 10%`,
+    w.effectivePct > 0 && w.effectivePct < cfg.defaultCommissionPct);
+  ok("…and a table given no base is stated on the winnings pool, as every page drew it before the stakes base existed",
+    w.base === "winnings" && w.steps[0].id === "winnings");
+}
+
+// ── §6 · the stakes base (FEE-TAX-2026-10, R3b) ──────────────────────────────
+// Under `stake-share` the fee is a share of EVERY stake, so `/agent` states its worked example on what recruits STAKE
+// (`base: "stakes"`, chosen on the platform's live fee model in `src/app/agent/page.tsx`). The arithmetic is the same, so
+// the figures on management's round million are the same — and ⛔ the winnings tax is never a row: it is TRA's money
+// withheld from players' winnings, never a fee 50pick kept, so neither base can carry it.
+console.log("\n§6 · the stakes base: the same figures, the same wallet credit, never the winnings tax");
+{
+  const rates = {
+    platformFeeRate: 0.03, operatorFeeRate: 0.10,
+    traTaxOnCommissionRate: 0.10, gbtLevyOnCommissionRate: 0.05,
+    agentPct: cfg.defaultCommissionPct, withholdingPct: cfg.agentWithholdingTaxPct,
+  };
+  const onStakes = commissionWaterfall(1_000_000, { ...rates, base: "stakes" });
+  const onWinnings = commissionWaterfall(1_000_000, rates);
+  const amounts = (x: typeof onStakes) => x.steps.map((s) => s.amountTzs);
+  ok("the stakes table's first row is `stakes`, and its base says so", onStakes.base === "stakes" && onStakes.steps[0].id === "stakes");
+  ok("⭐ its eight figures are the winnings table's, row for row (1,000,000 / 130,000 / 13,000 / 6,500 / 110,500 / 11,050 / 553 / 10,497)",
+    JSON.stringify(amounts(onStakes)) === JSON.stringify(amounts(onWinnings))
+      && JSON.stringify(amounts(onStakes)) === JSON.stringify([1_000_000, 130_000, 13_000, 6_500, 110_500, 11_050, 553, 10_497]),
+    JSON.stringify(amounts(onStakes)));
+  ok("⛔ …and no row of it is the winnings tax: the same eight ids after the base, none of them a tax on winnings",
+    JSON.stringify(onStakes.steps.map((s) => s.id)) === JSON.stringify(["stakes", "grossFee", "tra", "gbt", "netFee", "agentShare", "withholding", "netPayout"]));
+  const step = (id: string) => onStakes.steps.find((s) => s.id === id)!.amountTzs;
+  const engine = enginePath(step("netFee"), cfg.defaultCommissionPct / 100, cfg.agentWithholdingTaxPct);
+  ok("the engine, given the stakes table's net fee, credits exactly its last row", onStakes.netPayoutTzs === engine.netTzs, `${onStakes.netPayoutTzs} vs ${engine.netTzs}`);
+  ok("its effective line is per shilling STAKED: 10,497 of 1,000,000 = 1.0497%", Math.abs(onStakes.effectivePct - 1.0497) < 1e-9, String(onStakes.effectivePct));
 }
 
 console.log(`\n${"═".repeat(70)}\n  AGENT WATERFALL: ${pass} passed, ${fail} failed\n${"═".repeat(70)}`);

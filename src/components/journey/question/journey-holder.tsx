@@ -7,6 +7,8 @@ import { sideWord } from "@/lib/side-label";
 import { playerStatusInk } from "@/lib/status-tone";
 import { formatClock, formatTzs } from "@/lib/utils";
 import type { Dict, Locale } from "@/lib/i18n-dict";
+// FEE-TAX-2026-10 · R3b — a win paid back below its stake is not earned money: its figure is never gilt.
+import { isBelowStakeWin } from "@/lib/stake-share-receipt";
 
 export function JourneyHolder({ m, positions, values, sellable, pricedFree, selectionClosed, nowMs, t, locale }: {
   m: StoredMarket; positions: readonly StoredPosition[]; values: ReadonlyMap<string, number | null>;
@@ -32,7 +34,7 @@ export function JourneyHolder({ m, positions, values, sellable, pricedFree, sele
           </div><span className="font-bold tabular-nums text-text">{formatTzs(p.stake)}</span>
         </div>
         {p.status !== "OPEN" && <div className="flex items-center justify-between font-mono text-body-sm">
-          <span className="text-text-muted">{t.market.paidLabel}</span><span className={`font-bold tabular-nums ${p.status === "WIN" ? "text-gold-300" : "text-text"}`}>{formatTzs(p.finalPayout ?? 0)}</span>
+          <span className="text-text-muted">{t.market.paidLabel}</span><span className={`font-bold tabular-nums ${p.status === "WIN" && !isBelowStakeWin(p.finalPayout, p.stake) ? "text-gold-300" : "text-text"}`}>{formatTzs(p.finalPayout ?? 0)}</span>
         </div>}
         <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5">
           <p className="flex min-w-0 items-center gap-1 break-all font-mono text-body-sm text-text-muted tabular-nums"><I.ticket s={14} className="shrink-0 opacity-60" />{p.id}</p>

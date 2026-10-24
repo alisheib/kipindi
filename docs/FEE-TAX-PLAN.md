@@ -45,6 +45,7 @@ the config's gated doors and compare-and-swap writers with the form baseline, th
 that moves every chain, the fee-model census — reviewed twice, every finding fixed) and lane b (settlement by the split,
 the `HOUSE:WINNINGS_TAX` ledger line, the additive schema, the close-time disclosure under the market lock) are merged;
 lane c (projections, the bet screens' below-stake warning, the admin Fees & taxes card) follows. All of it gated off.
+R3 lane b — what players, agents and officers read about a `stake-share` result — is written on branch `feetax-r3b`, gated off and not yet run: the win's bell and letter name the stake, our fee, the winnings before tax, the tax withheld and what was paid, and a win paid back below its stake reads "Returned … of your … stake" (a result row, royal letter, no share card, no gold), never a gain; the bet receipt, the betting-closed notice, the Up & Down digest, the public resolution panel, the wallet row, /positions, the officers' transactions column and settled-market card, and the /agent waterfall on stakes follow each market's frozen model; new `test:stake-share-receipts` (predeploy).
 
 **Next:** R2 — the `stake-share` engine (lane a, reviewed twice, its fixes in hand), settlement and ledger (lane b) and
 the projections, screens and admin card (lane c): merge them, run the gate, push gated-off, read back. Then R3.
