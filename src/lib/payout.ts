@@ -519,8 +519,11 @@ function isRateIn(v: unknown, hi: number): v is number {
  * Anything else THROWS, exactly as `readJackpotFeeRate` refuses a week without its rate: pricing a stake-share market at a
  * default would charge a law nobody froze. The sum is compared in basis points — the unit the arithmetic charges in — so
  * 0.10 + 0.20 (which a float stores as 0.30000000000000004) is the 30% it means.
+ * ⛔ EACH RATE MUST BE A WHOLE NUMBER OF BASIS POINTS (`isWholeBasisPoints`, FEE-TAX-2026-10 R2 review) — on every read,
+ * terms included. The arithmetic charges `rateBp(rate)`, so a hand-edited 0.03125 or 0.12345 would be frozen as one rate
+ * and charged as another (312.5 → 313 bp, 1,234.5 → 1,235 bp); it is refused here, as at the save and the stamp.
  * A TERMS read (`need: "terms"`) lets a missing tax through as `null` — and only a missing one: a tax that is present and
- * out of range is refused on every read.
+ * out of range, or between two basis points, is refused on every read.
  */
 function readStakeShareRates(
   rates: Partial<FeeRates> | undefined,
@@ -535,6 +538,12 @@ function readStakeShareRates(
       `(got ${JSON.stringify(p)} + ${JSON.stringify(o)}) — refused, never defaulted`,
     );
   }
+  if (!isWholeBasisPoints(p) || !isWholeBasisPoints(o)) {
+    throw new Error(
+      `payout: a stake-share fee rate must be a whole number of basis points (got ${JSON.stringify(p)} + ${JSON.stringify(o)}) ` +
+      "— refused: it would be frozen as one rate and charged as another",
+    );
+  }
   if (t === undefined || t === null) {
     if (need === "pricing") {
       throw new Error("payout: a stake-share snapshot must freeze its winnings tax rate — refused, never defaulted");
@@ -543,6 +552,9 @@ function readStakeShareRates(
   }
   if (!isRateIn(t, MAX_WINNINGS_TAX_RATE)) {
     throw new Error(`payout: a stake-share winnings tax must be frozen within [0, ${MAX_WINNINGS_TAX_RATE}] (got ${JSON.stringify(t)})`);
+  }
+  if (!isWholeBasisPoints(t)) {
+    throw new Error(`payout: a stake-share winnings tax must be a whole number of basis points (got ${JSON.stringify(t)}) — refused: it would be frozen as one rate and charged as another`);
   }
   return { platformFeeRate: p, operatorFeeRate: o, winningsTaxRate: t };
 }
@@ -650,6 +662,18 @@ export function loserSharePct(rates: Partial<FeeRates> | undefined): number | nu
 /** A rate as whole basis points: round(rate × 10,000) — 0.13 → 1,300. The unit every stake-share figure is charged in. */
 export function rateBp(rate: number): number {
   return Math.round(rate * 10_000);
+}
+
+/**
+ * Is this rate a WHOLE number of basis points — |rate × 10,000 − round(rate × 10,000)| < 1e-9? (0.13 · 0.1275 · 0.0001 yes;
+ * 0.03125 · 0.12345 no.) The tolerance absorbs only the float error of the multiplication (≈ 1e-13 at these magnitudes).
+ * ⛔ WHY IT IS A RULE (FEE-TAX-2026-10 R2 review): the arithmetic charges `rateBp(rate)`, so a rate between two basis
+ * points would be FROZEN as one figure and CHARGED as another — 0.03125 frozen, 3.13% charged (312.5 rounds to 313).
+ * Every stake-share door holds it: the save (`market-config.ts → validate`), the stamp (`stakeShareStampProblem`) and the
+ * read that prices (`readStakeShareRates`), so a hand-edited row cannot slip such a rate past the first two.
+ */
+export function isWholeBasisPoints(rate: number): boolean {
+  return Number.isFinite(rate) && Math.abs(rate * 10_000 - Math.round(rate * 10_000)) < 1e-9;
 }
 
 /**
@@ -782,7 +806,9 @@ export const FEE_CAPTION_MAX_CHARS = 17;
  * players is `fee + (winningsTax ?? 0)`; the tax goes to TRA and is not revenue. So "paid
  * back = pool − fee" holds under the older models only, and `netPool` is the one figure
  * that is right under all of them. ⛔ A one-sided pool and a VOID are refunds, never priced
- * here: `chargedFee` and settlement's refund branch own them under every model.
+ * here: `chargedFee` and settlement's refund branch own them under every model. (Asked anyway,
+ * the stake-share arm answers a one-sided pool with that refund BEFORE it reads a rate — a
+ * refund needs none, so a snapshot missing its tax cannot turn it into a throw.)
  *
  * ⛔ THIS PARAGRAPH USED TO SAY THE FEE WAS PREVIEWED AGAINST THE **SMALLER** POOL, AND
  * IT NEVER WAS. Twenty lines down, `losingPool` is `0` when the side is absent, and the
@@ -802,15 +828,17 @@ export const FEE_CAPTION_MAX_CHARS = 17;
  * validation. Two locks on the one thing invariant 1 depends on.
  */
 export function poolFee(yesPool: number, noPool: number, rates: Partial<FeeRates>, winningSide?: Side): FeeBreakdown {
-  // A preview with no side is a TERMS read: a stake-share fee is known without the tax (`readRates`).
+  // stake-share (FEE-TAX-2026-10): the one stake-share arithmetic, never a variant of the two arms below — chosen on the
+  // MODEL alone, before any rate is read, so its one-sided refund (which needs no rate) is decided before a pricing read
+  // could refuse a snapshot that lacks its tax (`stakeSharePoolFee`; FEE-TAX R2 review). An unknown model still throws here.
+  if (readFeeModel(rates?.feeModel) === "stake-share") return stakeSharePoolFee(yesPool, noPool, rates, winningSide);
+  // A preview with no side is a TERMS read — for the two pool models below the two reads are identical.
   const r = readRates(rates, winningSide === undefined ? "terms" : "pricing");
   // ⛔ A Millionea week is not a pari-mutuel pool: its fee is a share of the JACKPOT, at payout only, computed by
   // `maswali-money.ts` from the week's frozen snapshot. Pricing it here would be a wrong figure, so it is refused.
   if (r.feeModel === "jackpot-payout") {
     throw new Error("poolFee: a jackpot-payout week is priced by maswali-money (RULES §2.12), never the pool fee");
   }
-  // stake-share (FEE-TAX-2026-10): the one stake-share arithmetic, never a variant of the two arms below.
-  if (r.feeModel === "stake-share") return stakeSharePoolFee(yesPool, noPool, r, rates, winningSide);
   const yes = Math.max(0, yesPool);
   const no = Math.max(0, noPool);
   const pool = yes + no;
@@ -861,16 +889,22 @@ export function poolFee(yesPool: number, noPool: number, rates: Partial<FeeRates
  *     tax, `netPool` the whole pool. Under the two older pool models this falls out of their maths; under this one it
  *     does not (a fee on every stake would charge the funded side), so it is a branch — and a preview can never print a
  *     fee no settlement will take, the "phantom fee" `chargedFee` was built to stop readers counting.
+ *     ⛔ DECIDED BEFORE ANY RATE IS READ (FEE-TAX R2 review). A refund needs no rate, so a one-sided market whose
+ *     snapshot lacks its tax — or any other rate — is still the refund it will be settled as; the read below used to run
+ *     first, and refused it. `chargedFee` takes the same order (its refund branch reads no rate at all).
  *   · both sides funded, no winning side → F alone: the fee is known before the outcome, the tax is not (it is a share
  *     of the LOSING side's net stakes) — `netPool` = pool − F, `winningsTax`/`prizeFund` absent;
  *   · both sides funded, with a side → `stakeShareTotals`, the very figures settlement pays by.
+ * The rates are read only for the two priced cases — a TERMS read with no side (a profile without its tax previews F), a
+ * PRICING read with one (the tax required) — so an incomplete rate set still refuses wherever a figure is priced.
  * There is no ceiling and no cap in this model: `commission` and `ceiling` carry the fee itself, `capped` is false, and
  * `shareOfLosers` is the flat rate (our take of the losers' stakes is that rate, as it is of every stake).
  */
-function stakeSharePoolFee(yesPool: number, noPool: number, r: ResolvedRates, rates: Partial<FeeRates>, winningSide: Side | undefined): FeeBreakdown {
+function stakeSharePoolFee(yesPool: number, noPool: number, rates: Partial<FeeRates>, winningSide: Side | undefined): FeeBreakdown {
   const yes = Math.max(0, yesPool);
   const no = Math.max(0, noPool);
   if (yes === 0 || no === 0) return stakeShareBreakdown(yes, no, 0, 0, yes + no);
+  const r = readRates(rates, winningSide === undefined ? "terms" : "pricing");
   const bp = stakeFeeBpOf(r);
   if (winningSide === undefined) {
     const fee = roundHalfUpBp(yes, bp) + roundHalfUpBp(no, bp);
@@ -1501,7 +1535,7 @@ export function stakeShareSplit(
   if (sumWinners !== winningPool || sumLosers !== losingPool) {
     throw new Error(
       `payout: stake-share split — the positions do not make the pools (winners ${sumWinners} vs winning pool ${winningPool}, ` +
-      `losers ${sumLosers} vs losing pool ${losingPool}). Refusing to settle on a wrong set (E-200).`,
+      `losers ${sumLosers} vs losing pool ${losingPool}). Refusing to settle on a wrong set.`,
     );
   }
   const feeWinning = outcome === "YES" ? totals.feeYes : totals.feeNo;

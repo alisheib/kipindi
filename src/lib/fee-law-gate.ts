@@ -11,7 +11,9 @@
  *   · `/admin/config`'s save (`market-config.ts` → `validate`): the polls' fee model and `winningsTaxRate`;
  *   · a per-market override (`setMarketOverride`): never a fee model or a tax, gate or no gate;
  *   · an Up & Down rate profile — the product default, a chain's own, created or edited (`updown-config.ts`);
- *   · the one act that moves the default and every chain at once (`applyFeeProfileToEveryChain`);
+ *   · the one act that moves the default and every chain at once (`applyFeeProfileToEveryChain`) — when its target is
+ *     `stake-share` or its profile carries a tax. A LEGACY move (every chain to capped-commission or loser-share) is not
+ *     the new law and is not gated, and the act's dry run writes nothing and so runs shut (FEE-TAX R2 review);
  *   · and the last door every product passes through, stamping a market (`market-config.ts` → `snapshotFromConfig`), so
  *     a hand-edited settings row cannot put the law into force either.
  * A market that already exists keeps the law it froze in its `feeSnapshot`, whatever this says: the switch decides only
