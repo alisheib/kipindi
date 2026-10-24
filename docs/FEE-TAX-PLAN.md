@@ -22,6 +22,8 @@ row, the NEXT-PLAN row and MASWALI-PLAN's S8 hold (gate lines 8 and 9 re-opened)
 R2 lane a is written on branch `feetax-r2`, gated off (`fee-law-gate.ts`): the `stake-share` engine in `payout.ts`, the
 config's gated doors and compare-and-swap writers, the fresh read at stamping, the one act that moves every chain, the
 fee-model census. Not yet run on the runner; R2b (settlement, ledger, schema) and R2c (projections, screens, admin) follow.
+R2 lane c is written on branch `feetax-r2c`, gated off: every pre-bet projection and the below-stake warning on each
+bet screen, `/admin/config`'s Fees & taxes card and simulator — not yet run on the runner.
 
 **Next:** R1 — any admin can do any step: the Owner setting "Second-officer checks" over the twelve checks of §4 R1, and
 the code lock that refuses to open a public Millionea week that would freeze the old fee model. Then R2.
