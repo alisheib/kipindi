@@ -274,12 +274,16 @@ async function AdminUpDownContent({ searchParams }: UpDownProps) {
   // freezes with, and derives the caption from the same profile the number came out of.
   // Executed by `npm run test:fee-model-caption` §3.
   // FEE-TAX-2026-10 · the platform's saved winnings tax, laid beside a stake-share profile so the priced preview can run
-  // (a profile never carries one); `undefined` until an admin saves it, and nothing is defaulted. R2c rebuilds this tile.
+  // (a profile never carries one); `undefined` until an admin saves it, and nothing is defaulted.
   const boardFee = boardFeeSummary(chains, cfg, { winningsTaxRate: (await getGlobalConfig()).winningsTaxRate });
   // Balanced pools, so the winning side is immaterial to the figure — but loser-share is
   // outcome-DEPENDENT and `poolFee` charges NOTHING when it is not told a winner, so one
   // must be passed here or the preview would read TZS 0 on the current model.
-  const feePreview = poolFee(FEE_PREVIEW_POOL / 2, FEE_PREVIEW_POOL / 2, boardFee.profile, "YES");
+  // ⛔ AND IT NEVER THROWS (FEE-TAX-2026-10, R2c): a stake-share board with no platform winnings tax saved yet cannot be
+  // priced (the engine refuses, never defaults), and the tile then says "—" rather than taking the whole console down.
+  const feePreview = (() => {
+    try { return poolFee(FEE_PREVIEW_POOL / 2, FEE_PREVIEW_POOL / 2, boardFee.profile, "YES"); } catch { return null; }
+  })();
   // FEE-TAX-2026-10 · the fee the asset playbook's directional sentence measures against: the board's own priced profile
   // (the platform's tax laid beside a stake-share one, exactly as the stamp lays it), reduced to its break-even.
   const playbookFee = playbookFeeFor(boardFee.profile);
@@ -339,7 +343,7 @@ async function AdminUpDownContent({ searchParams }: UpDownProps) {
           <AdminKpi
             label="Fee · balanced 10,000"
             sw="Ada"
-            value={formatBalancePill(Math.round(feePreview.fee))}
+            value={feePreview ? formatBalancePill(Math.round(feePreview.fee)) : "—"}
             delta={boardFee.caption}
             deltaDir="flat"
             tone={boardFee.split ? "danger" : undefined}
