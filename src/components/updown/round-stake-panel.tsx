@@ -16,7 +16,8 @@
 import Link from "next/link";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
-import { cn, formatNumber, formatTzs } from "@/lib/utils";
+import { cn, fill, formatNumber, formatTzs } from "@/lib/utils";
+import { HouseLeanWarning } from "@/components/markets/house-lean-warning";
 import { useT } from "@/lib/i18n";
 import { formatBreakEnd } from "@/lib/break-end";
 import { useUpDownQuickBet, usePlacePulse } from "./use-quick-bet";
@@ -28,7 +29,7 @@ import { noticeBody } from "@/components/ui/empty-state-text";
 import { Chip } from "@/components/ui/chip";
 // ⛔ ONE RULE for "what would I be paid" (D2). This panel's projection must agree with the bet receipt and with what
 // settlement pays, to the shilling, so it calls the same function rather than multiplying by a rate of its own.
-import { projectedReturn, refundWarningFor, type UpDownPricing } from "@/lib/updown-pricing";
+import { projectedReturn, refundWarningFor, upDownNotice, type UpDownPricing } from "@/lib/updown-pricing";
 import type { UpDownReceiptInfo } from "@/lib/updown-receipt";
 // S12 WP9 · the journey arm's loader alone: the arm is a chunk of its own, fetched only for a journey request.
 import { LazyJudConfirm, LazyJudTwoWay } from "@/components/journey/updown/jud-lazy";
@@ -155,6 +156,9 @@ export function RoundStakePanel(props: {
   // card's multiple again, and the ruling takes every multiple off Up & Down. The projected return stays because
   // this panel IS the commit — the money is stated before it is committed (CLAUDE.md, "UX commitments").
   const projected = bet.stakeReady ? projectedReturn(pricing, lockedSide, bet.stake) : null;
+  // ⭐ FEE-TAX-2026-10 · a stake-share round's notice (`upDownNotice`, the one view model every bet screen draws): the
+  // below-stake warning above the commit, the fee note and the standing line under it. Null on every older round.
+  const notice = upDownNotice(pricing, lockedSide, bet.stakeReady ? bet.stake : null);
   // ⭐ SIDE-AWARE, and this is the distinction the copy rests on. On a round holding UP 36,000 /
   // DOWN 0, a player locked to UP must be told DOWN has to fill or their stake comes back — but
   // a player locked to DOWN is the one FILLING it, so the same sentence would be false the
@@ -298,6 +302,10 @@ export function RoundStakePanel(props: {
           legitimately queue up to 15s in admission — 15s of a dead-looking button
           was the defect. The pending affordance stays while the colour follows U43. */}
       {bandBeforeBet && <p className="mt-2 text-body-sm text-text-faint">{noticeBody(t.market.udBandBeforeBet)}</p>}
+      {/* ⭐ FEE-TAX-2026-10 · THE BELOW-STAKE WARNING, BEFORE THE COMMIT (Ali's ruling 1): on a stake-share round whose win
+          would pay back less than this stake, the amber words with the projection's own figures — said above the one
+          button that commits, so it is read before the tap, never after it. */}
+      {notice?.below && <HouseLeanWarning level="below" stakeShare below={{ side: pickWord, ...notice.below }} className="mt-2" />}
       <button
         type="button" onClick={() => bet.place(lockedSide)}
         disabled={!bet.stakeReady || bet.pending || bet.insufficient || bet.locallyLocked}
@@ -354,6 +362,20 @@ export function RoundStakePanel(props: {
         <p className="mt-2 flex items-start gap-1 text-body-sm leading-[1.45] text-text-faint">
           <I.info s={11} className="mt-[2px] shrink-0" />
           <span>{noticeBody(t.market.udEstimateNote)}</span>
+        </p>
+      )}
+      {/* FEE-TAX-2026-10 · a stake-share round says what the projection is net of (the fee on every stake and the winnings
+          tax, both the round's frozen figures), and always the standing line — in the same ⓘ register as its siblings. */}
+      {projected != null && notice?.quote && notice.feePct !== null && notice.taxPct !== null && !notice.noTaker && (
+        <p className="mt-2 flex items-start gap-1 text-body-sm leading-[1.45] text-text-faint">
+          <I.info s={11} className="mt-[2px] shrink-0" />
+          <span>{noticeBody(fill(t.market.ssFeeNote, { fee: notice.feePct, tax: notice.taxPct }))}</span>
+        </p>
+      )}
+      {notice && (
+        <p className="mt-2 flex items-start gap-1 text-body-sm leading-[1.45] text-text-faint" data-ss-standing="">
+          <I.info s={11} className="mt-[2px] shrink-0" />
+          <span>{noticeBody(t.market.ssStanding)}</span>
         </p>
       )}
 

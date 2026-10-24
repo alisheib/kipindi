@@ -25,6 +25,7 @@
 import { useEffect, useRef, useState } from "react";
 import { CloseX, Modal } from "@/components/ui/modal";
 import { Callout } from "@/components/ui/callout";
+import { ReceiptBox, ReceiptRow } from "@/components/ui/receipt-row";
 import { noticeBody } from "@/components/ui/empty-state-text";
 import { I } from "@/components/ui/glyphs";
 import { haptics } from "@/lib/haptics";
@@ -32,7 +33,8 @@ import { HouseLeanWarning } from "./house-lean-warning";
 import { useT } from "@/lib/i18n";
 import { sideWord } from "@/lib/side-label";
 import { DEFAULT_CASHOUT_FEE_RATE, DEFAULT_FREE_EXIT_GRACE_MINUTES, DEFAULT_PAID_EXIT_WINDOW_MINUTES, type LeanLevel, type PollRates } from "@/lib/payout";
-import { formatTzs, formatNumber } from "@/lib/utils";
+import type { StakeShareNotice } from "@/lib/stake-share-notice";
+import { fill, formatTzs, formatNumber } from "@/lib/utils";
 import { keepText } from "@/components/ui/keep-run";
 import { figureRuns } from "@/components/ui/keep-words";
 import { stemOf } from "@/lib/display-stem";
@@ -58,6 +60,12 @@ type Props = {
   /** THIS POLL'S frozen rates — the free-exit terms quoted here must be the ones
    *  we will actually honour, not a hardcoded "5 minutes / 9%". */
   rates?: PollRates;
+  /**
+   * FEE-TAX-2026-10 · a stake-share poll's figures for THIS quote (`stakeShareNotice`, computed by the dial for the side
+   * and stake shown here): the fee, the net stake, the payout and the tax if the side wins, the below-stake warning.
+   * Null or absent on every older model — the dialog then draws exactly what it always drew.
+   */
+  notice?: StakeShareNotice | null;
   pending: boolean;
   marketTitle?: string;
   onConfirm: () => void;
@@ -69,8 +77,11 @@ type Props = {
 // (license review 2026-05) hides the payout figure until betting closes, so the
 // modal shows copy, not numbers. Threading a payout in here just to throw it away
 // invited someone to "helpfully" render it one day and break the policy.
+// ⭐ ONE DELIBERATE EXCEPTION, BY RULING (FEE-TAX-2026-10, Ali's ruling 1 of 2026-10-24): a `stake-share` poll's quote
+// (`notice`) states the payout and the tax withheld, because under that law a win can pay back less than the stake and
+// the player must be told how much before the bet. It arrives whole from `stakeShareNotice` — never derived here.
 export function BetConfirmModal({
-  open, side, stake, multiplier, lean, isOneSided, rates, pending, marketTitle, hasExitRunway = true, onConfirm, onCancel,
+  open, side, stake, multiplier, lean, isOneSided, rates, notice = null, pending, marketTitle, hasExitRunway = true, onConfirm, onCancel,
 }: Props) {
   const { t } = useT();
 
@@ -341,8 +352,37 @@ export function BetConfirmModal({
               only the qualitative pool-share copy.
             - loser-share (owner decision 2026-07-23): show the fixed estimate
               = stake × (1 + estimatedWinningsRate) with a mandatory disclaimer that
-              it is an estimate. See docs/COMPLIANCE-DECISIONS.md. */}
-        {rates?.feeModel === "loser-share" && rates?.showEstimatedWinnings !== false ? (
+              it is an estimate. See docs/COMPLIANCE-DECISIONS.md.
+            - ⭐ stake-share (FEE-TAX-2026-10, Ali's ruling 1): the quote as a receipt — the stake, OUR FEE on it (a deduction,
+              the withdraw confirm's amber fee row), what enters the pool, and if this side wins the payout and the tax
+              withheld from it, every figure the dial's `stakeShareNotice` for this quote. The fixed estimate is retired here:
+              on a lopsided book it would promise a gain the pool cannot pay. With nobody on the other side yet, the refund
+              line replaces the payout (ruling 2). The standing line is drawn under it whatever the figures. */}
+        {notice ? (
+          <div className="mt-3" data-stake-share-quote="">
+            {notice.quote ? (
+              <ReceiptBox>
+                <ReceiptRow emphasis="amount" label={t.dialog.stakeLabel} value={formatTzs(notice.quote.stake)} />
+                {notice.feePct !== null && (
+                  <ReceiptRow emphasis="fee" tone="warning" label={fill(t.market.ssOurFee, { pct: notice.feePct })} value={`−${formatTzs(notice.quote.fee)}`} />
+                )}
+                <ReceiptRow emphasis="total" divider label={t.market.ssNetStake} value={formatTzs(notice.quote.net)} />
+                {!notice.noTaker && (
+                  <>
+                    <ReceiptRow divider label={fill(t.market.ssIfWins, { side: sideWord(t, side, "MARKET") })} value={`≈ ${formatTzs(notice.quote.payout)}`} />
+                    {notice.taxPct !== null && (
+                      <ReceiptRow label={fill(t.market.ssTaxWithheld, { pct: notice.taxPct })} value={formatTzs(notice.quote.tax)} />
+                    )}
+                  </>
+                )}
+              </ReceiptBox>
+            ) : (
+              <p className="rounded-lg border border-border bg-bg-overlay p-3 text-body-sm leading-relaxed text-text-muted">{keepText(t.dialog.payoutCalcBody)}</p>
+            )}
+            {notice.noTaker && <p className="mt-1.5 text-body-sm leading-relaxed text-text-muted">{keepText(t.market.ssNoTaker)}</p>}
+            <p className="mt-1.5 text-body-sm leading-relaxed text-text-muted">{keepText(t.market.ssStanding)}</p>
+          </div>
+        ) : rates?.feeModel === "loser-share" && rates?.showEstimatedWinnings !== false ? (
           <div className="mt-3 rounded-lg border border-border bg-bg-overlay p-3">
             <p className="font-mono text-micro uppercase eyebrow text-text-subtle mb-1">
               {t.dialog.estimatedWinningsLabel}
@@ -391,8 +431,15 @@ export function BetConfirmModal({
         </div>
 
         {/* D3: Lean warning (qualitative, no payout figure).
-            Suppressed when one-sided — settlement issues a full refund. */}
-        {lean !== "fair" && !isOneSided && <HouseLeanWarning level={lean} />}
+            Suppressed when one-sided — settlement issues a full refund.
+            ⭐ A stake-share quote draws its own: `below` with the quote's figures when a win would pay back less than the
+            stake, else `thin` WITHOUT the never-paid-less note (the review of R2a, finding 1) — never on a book with no
+            taker, which refunds. Every older model draws exactly what it drew. */}
+        {notice
+          ? (notice.below
+            ? <HouseLeanWarning level="below" stakeShare below={{ side: sideWord(t, side, "MARKET"), ...notice.below }} />
+            : lean === "thin" && !isOneSided && !notice.noTaker ? <HouseLeanWarning level="thin" stakeShare /> : null)
+          : lean !== "fair" && !isOneSided && <HouseLeanWarning level={lean} />}
       </div>
 
       {/* The footer — what the player answers with, always on the screen (see `panelClassName` above). */}

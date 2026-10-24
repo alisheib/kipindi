@@ -50,6 +50,7 @@
  * imports nothing from `server/`.
  */
 import { payoutFor, type PollRates } from "@/lib/payout";
+import { stakeShareNotice, stakeShareNoticeEitherSide, type StakeShareNotice } from "@/lib/stake-share-notice";
 
 /**
  * EXACTLY the frozen rates `poolFee` reads — nothing more crosses to the browser.
@@ -58,11 +59,14 @@ import { payoutFor, type PollRates } from "@/lib/payout";
  * `FeeSnapshot` to the dial; a board renders three cards, and the tax/levy/exit fields are
  * none of a player's business and none of this calculation's either. Typed as a `Pick` so it
  * cannot drift from the real rate names.
+ * ⭐ `winningsTaxRate` (FEE-TAX-2026-10) — the one more field, and only on a round that froze `stake-share`: its projection
+ * REFUSES without its frozen tax, so a round on that law would otherwise show no figure and no below-stake warning.
+ * Optional, so every older round's rates are exactly the five they were.
  */
 export type UpDownRates = Pick<
   PollRates,
   "feeModel" | "commissionRate" | "feeCeilingRate" | "platformFeeRate" | "operatorFeeRate"
->;
+> & Partial<Pick<PollRates, "winningsTaxRate">>;
 
 /**
  * A round's live money, as the player surfaces receive it.
@@ -104,11 +108,13 @@ function sideOf(side: "UP" | "DOWN"): "YES" | "NO" {
  * ⚠️ THE `catch` IS A BACKSTOP, AND THIS SAYS SO RATHER THAN OVERSELLING IT. `payoutFor` runs
  * `assertWinnerFloor`, which THROWS rather than let a winner be quoted below stake — right in
  * the money path, wrong in a render, where an unhandled throw inside a client component blanks
- * the whole card. It is currently **unreachable**: `readRates` clamps both `feeCeilingRate` and
- * the loser-share rate to `1.0`, and the winner floor holds for any rate at or below that. The
- * catch exists so that a future rate, model or clamp cannot turn a display bug into a dark
- * board. `test:updown-pricing` §1 proves the function is total over hostile input instead of
- * pretending to construct a throw it cannot construct.
+ * the whole card. Under the two older models it is **unreachable**: `readRates` clamps both
+ * `feeCeilingRate` and the loser-share rate to `1.0`, and the winner floor holds for any rate at
+ * or below that. ⚠️ UNDER `stake-share` (FEE-TAX-2026-10) IT IS REACHABLE: that engine refuses a
+ * fractional pool or stake and a rate set without its frozen tax, so the catch is what keeps such
+ * a round's card lit. And a figure UNDER the stake is legitimate there (ruling 1: the fee comes
+ * out of every stake), so this returns a multiple below 1 rather than refusing it — the screens
+ * warn (`upDownNotice`). `test:updown-pricing` §1 proves the function is total over hostile input.
  */
 export function impliedMultiplier(
   pricing: UpDownPricing | null | undefined,
@@ -191,4 +197,35 @@ export function projectedReturn(
 ): number | null {
   const m = impliedMultiplier(pricing, side, stake);
   return m == null ? null : Math.round(stake * m);
+}
+
+/**
+ * ⭐ FEE-TAX-2026-10 · THE STAKE-SHARE NOTICE FOR A ROUND (`stake-share-notice.ts`, the one view model every bet screen
+ * draws): the standing line, this stake's fee and projected return, and the below-stake warning — UP as YES and DOWN as NO
+ * on the round's own pools and FROZEN rates. Null unless the round froze `stake-share`, so every older round's screens are
+ * exactly what they were. ⛔ NOT gated by `show`: the display switch hides an ESTIMATE, and a warning is not one (the
+ * empty-side rule above, for the same reason). Never throws.
+ */
+export function upDownNotice(
+  pricing: UpDownPricing | null | undefined,
+  side: "UP" | "DOWN",
+  stake: number | null,
+): StakeShareNotice | null {
+  if (!pricing) return null;
+  return stakeShareNotice({ yesPool: pricing.upPool, noPool: pricing.downPool, side: sideOf(side), stake, rates: pricing.rates });
+}
+
+/**
+ * The notice for a control that offers BOTH sides at one stake (the board card, the round page with no side chosen): the
+ * warning names the side whose win would pay back less than the stake, if either would. Null unless the round froze
+ * `stake-share`. Never throws.
+ */
+export function upDownNoticeEitherSide(
+  pricing: UpDownPricing | null | undefined,
+  stake: number | null,
+): (StakeShareNotice & { belowSide: "UP" | "DOWN" | null }) | null {
+  if (!pricing) return null;
+  const n = stakeShareNoticeEitherSide({ yesPool: pricing.upPool, noPool: pricing.downPool, stake, rates: pricing.rates });
+  if (!n) return null;
+  return { ...n, belowSide: n.belowSide === "YES" ? "UP" : n.belowSide === "NO" ? "DOWN" : null };
 }

@@ -422,16 +422,25 @@ function marketOutcomeForRound(m: StoredMarket | null): BoardRound["outcome"] {
  * the pool it then reconstructs is exactly the real one, and the share is exactly theirs.
  * A separate fee calculation here would be a second answer to "what does this round pay",
  * which is the drift this file already refuses everywhere else.
+ *
+ * ⛔ AND IT NEVER THROWS — it answers `null`, "no figure" (FEE-TAX-2026-10, R2c). It runs inside `toBoardRound`, which
+ * the board and the round page build under `Promise.all`, so one round the engine refuses to price — a corrupt
+ * snapshot, a stake-share one without its tax, a fractional pool — used to reject the WHOLE board for that viewer. A
+ * locked card states no figure rather than a guessed one, and every other round still renders.
  */
 async function heldPayout(
   m: Parameters<typeof projectedPayout>[0] & { yesPool: number; noPool: number },
   side: "YES" | "NO",
   myStake: number,
-): Promise<number> {
+): Promise<number | null> {
   const pools = side === "YES"
     ? { ...m, yesPool: Math.max(0, m.yesPool - myStake) }
     : { ...m, noPool: Math.max(0, m.noPool - myStake) };
-  return projectedPayout(pools, side, myStake);
+  try {
+    return await projectedPayout(pools, side, myStake);
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -517,15 +526,16 @@ async function toBoardRound(
       downPool: m.noPool,
       // Exactly the five fields `poolFee` reads — nothing else about the poll's fees crosses
       // to the browser. Frozen per round, so a retune cannot reprice a bet already placed.
-      // FEE-TAX-2026-10 · a stake-share round's projection also needs its frozen `winningsTaxRate`, which is not sent:
-      // `payoutFor` then REFUSES and `updown-pricing` shows no figure — never a figure priced without the tax, nor one
-      // below the stake with no warning. R2c: widen `UpDownRates` and add the below-stake warning together.
+      // ⭐ FEE-TAX-2026-10 · …and a stake-share round's frozen `winningsTaxRate` beside them — its projection refuses
+      // without it — so the commit surfaces price it net of the tax and warn when a win would pay back less than the
+      // stake (`upDownNotice`). Only a stake-share snapshot carries it, so every older round sends the five it always did.
       rates: {
         feeModel: rates.feeModel,
         commissionRate: rates.commissionRate,
         feeCeilingRate: rates.feeCeilingRate,
         platformFeeRate: rates.platformFeeRate,
         operatorFeeRate: rates.operatorFeeRate,
+        ...(rates.winningsTaxRate !== undefined ? { winningsTaxRate: rates.winningsTaxRate } : {}),
       },
       // The operator's display switch: a round that never froze the display fields shows no
       // projected return at all, exactly as before. ⚠️ It gates the ESTIMATE only — the

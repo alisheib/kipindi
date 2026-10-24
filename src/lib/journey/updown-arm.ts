@@ -21,7 +21,7 @@
  */
 import { sheetFrame, type SheetFacts, type SheetFrame, type SheetSeed, type SheetSide, type SheetViewerRead } from "./sheet-state";
 import { formatBetParam, type PendingBet } from "./pending-bet";
-import { projectedReturn, refundWarningFor, emptySideOf, type UpDownPricing } from "@/lib/updown-pricing";
+import { projectedReturn, refundWarningFor, emptySideOf, upDownNotice, upDownNoticeEitherSide, type UpDownPricing } from "@/lib/updown-pricing";
 
 /**
  * ⛔ THE TAB MARKER THAT CARRIES A CHOSEN STAKE (through the deposit page, and on to the next round) IS WRITTEN ONLY ONCE
@@ -166,6 +166,21 @@ export function judProjection(pricing: UpDownPricing, side: JudSide, stake: numb
 /** The empty-side sentence's side, as the classic controls say it: round-wide on the two-way control, side-aware once locked. */
 export function judEmptySide(pricing: UpDownPricing, locked: JudSide | null): "UP" | "DOWN" | "BOTH" | null {
   return locked ? refundWarningFor(pricing, locked) : emptySideOf(pricing);
+}
+
+/**
+ * ⭐ FEE-TAX-2026-10 · THE STAKE-SHARE NOTICE, as the classic controls read it (`upDownNotice`): at the confirm panel (a side
+ * chosen) the below-stake warning with the projection's figures, the fee note and the standing line; on the two-way
+ * control (`judNoticeEitherSide`) the side whose win would pay back less than the stake, and no figure (that control
+ * quotes nothing, the owner's ruling of 2026-10-14). Null unless the round froze `stake-share`. Never throws.
+ */
+export function judNotice(pricing: UpDownPricing, side: JudSide, stake: number | null) {
+  return upDownNotice(pricing, side, stake);
+}
+
+/** @see judNotice — the two-way control's form: the side a win would pay back below the stake, if either. */
+export function judNoticeEitherSide(pricing: UpDownPricing, stake: number | null) {
+  return upDownNoticeEitherSide(pricing, stake);
 }
 
 /** A round's bet as the link writes it (`udr_….UP.5000`). */

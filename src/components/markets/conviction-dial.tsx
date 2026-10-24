@@ -28,7 +28,9 @@ import { HouseLeanWarning } from "./house-lean-warning";
 import { BetConfirmModal } from "./bet-confirm-modal";
 import { OperationResultModal } from "./operation-result-modal";
 import { payoutFor, leanFor, DEFAULT_COMMISSION_RATE, DEFAULT_FEE_CEILING_RATE, PLATFORM_MIN_STAKE, type LeanLevel, type PollRates } from "@/lib/payout";
-import { maxMultiplierFor, stakeFromPosition } from "@/lib/dial-stake";
+import { maxMultiplierFor, stakeCeilingFor, stakeFromPosition } from "@/lib/dial-stake";
+import { isStakeShareRates, stakeShareNotice } from "@/lib/stake-share-notice";
+import { fillNodes } from "@/lib/fill-nodes";
 import { haptics, motionReduced } from "@/lib/haptics";
 import { formatTzs, formatNumber, fill, fmtRate, pctNum } from "@/lib/utils";
 import { errorCopy } from "@/lib/error-copy";
@@ -292,6 +294,11 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = PLATFORM
   // no maxStake is threaded (keeps old callers working). Guarded so a bad
   // config (max ≤ min) can't produce a ≤0 or non-finite range.
   const maxMultiplier = maxMultiplierFor(baseStake, maxStake);
+  // ⛔ THE HIGHEST STAKE ANY PATH MAY HOLD — whole shillings, floored (`stakeCeilingFor`). `baseStake × maxMultiplier` is
+  // NOT that: the multiplier is `maxStake / baseStake`, so the product carries float error (500 × (1019 / 500) is
+  // 1018.9999999999999), and a typed amount clamped to it became a FRACTIONAL stake — refused by the server, and, under
+  // `stake-share`, a projection the engine throws on in render (the independent review of R2a, finding 2).
+  const stakeCeiling = stakeCeilingFor(baseStake, maxStake);
   const isNeutral = distFromCenter < NEUTRAL_BAND;
   // Per management spec (license review · 2026-05):
   // slide LEFT → YES, slide RIGHT → NO. Inverted from the original
@@ -360,7 +367,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = PLATFORM
   const stake = exactStake !== null
     ? exactStake
     : exactMultiplier !== null
-      ? Math.max(baseStake, Math.min(baseStake * maxMultiplier, Math.round(baseStake * exactMultiplier)))
+      ? Math.max(baseStake, Math.min(stakeCeiling, Math.round(baseStake * exactMultiplier)))
       : stakeFromSlider;
   // Knob multiplier target — when a lock is set, derive truthfully
   // from the typed unit. Otherwise use pos-derived geometry. Tween
@@ -401,7 +408,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = PLATFORM
    *  a coherent { side, 1.00×, the minimum stake, Place button } state. */
   const posFromStake = useCallback((tzs: number): number => {
     const minDial = baseStake;          // multiplier 1 → baseStake
-    const maxDial = baseStake * maxMultiplier; // multiplier 200 → baseStake × 200
+    const maxDial = stakeCeiling;       // multiplier max → the whole-shilling ceiling (never a float product)
     const clamped = Math.max(minDial, Math.min(maxDial, tzs));
     const mult = clamped / baseStake;
     // Inverse of (1 + (maxMult-1)·dist²) → dist = √((mult−1)/(maxMult-1))
@@ -418,14 +425,15 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = PLATFORM
     const minDist = NEUTRAL_BAND + 0.005;
     const effDist = chosen ? Math.max(dist, minDist) : dist;
     return clampToLock(Math.max(0, Math.min(1, 0.5 + (goingRight ? effDist : -effDist) / 2)));
-  }, [baseStake, pos, lock, clampToLock]);
+  }, [baseStake, pos, lock, clampToLock, stakeCeiling]);
 
   // Dial's typeable range. Anything outside this can't be represented
   // on the slider; we still let the user type freely (so they see
   // what they're keying), but the slider clamps + the input flashes
   // an "out of range — will adjust" hint until blur or correction.
+  // ⛔ The top is the WHOLE-SHILLING ceiling: a typed amount above it is clamped to a stake the server accepts.
   const minDial = baseStake;
-  const maxDial = baseStake * maxMultiplier;
+  const maxDial = stakeCeiling;
   const typedNumber = (() => {
     const n = parseInt(stakeText.replace(/[^\d]/g, ""), 10);
     return Number.isFinite(n) ? n : 0;
@@ -542,10 +550,23 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = PLATFORM
   // truth lives in `@/lib/payout` so the dial, the confirm modal, the
   // position card, and the server settlement engine never disagree.
   // Projected at THIS POLL'S OWN rates, via the same `payoutFor` the server uses.
-  const proj = effectiveSide === "NEUTRAL"
-    ? { payout: 0, ratio: 0 }
-    : payoutFor({ yesPool, noPool, side: effectiveSide, stake }, rates ?? {});
+  // ⛔ AND IT NEVER THROWS IN RENDER (the independent review of R2a, finding 2), as `updown-pricing` and `estimate` never
+  // do: a projection the engine refuses — a fractional stake, a corrupt snapshot, a stake-share set without its tax — is
+  // no figure and a fair lean, never a dark market page.
+  const proj = (() => {
+    if (effectiveSide === "NEUTRAL") return { payout: 0, ratio: 0 };
+    try {
+      return payoutFor({ yesPool, noPool, side: effectiveSide, stake }, rates ?? {});
+    } catch {
+      return { payout: 0, ratio: 0 };
+    }
+  })();
   const lean: LeanLevel = effectiveSide === "NEUTRAL" ? "fair" : leanFor(proj.ratio);
+  // ⭐ FEE-TAX-2026-10 · a stake-share poll's notice (`stake-share-notice.ts`): the standing line, the refund line when
+  // nobody has taken the other side, this stake's fee and projected payout, and the below-stake warning. Null on every
+  // market frozen under an older model, so nothing below changes for one of those.
+  const notice = effectiveSide === "NEUTRAL" ? null : stakeShareNotice({ yesPool, noPool, side: effectiveSide, stake, rates });
+  const stakeShare = isStakeShareRates(rates);
   // `payoutRolled` / `payoutDisplay` deleted: the rolling-number spring animated a
   // value that was computed every frame and rendered NOWHERE (D3 hides the figure
   // pre-bet). Dead code that cost a re-render per frame.
@@ -1668,9 +1689,9 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = PLATFORM
             mandatory disclaimer that it is an estimate and the real payout comes from
             the pool. See docs/COMPLIANCE-DECISIONS.md.
           - stake-share polls (FEE-TAX-2026-10): NOT this block — its two arms speak the loser-share estimate and the
-            capped-commission formula, and either would misstate a fee on every stake. R2c: the stake-share disclosure,
-            with the below-stake warning, replaces it. */}
-      {effectiveSide !== "NEUTRAL" && rates?.feeModel !== "stake-share" && (() => {
+            capped-commission formula, and either would misstate a fee on every stake. The stake-share disclosure below
+            replaces it, with the below-stake warning after it. */}
+      {effectiveSide !== "NEUTRAL" && !stakeShare && (() => {
         const showEstimate = rates?.feeModel === "loser-share" && rates?.showEstimatedWinnings !== false;
         const estimate = Math.round(stake * (1 + (rates?.estimatedWinningsRate ?? 0)));
         return (
@@ -1710,12 +1731,58 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = PLATFORM
         );
       })()}
 
+      {/* ⭐ FEE-TAX-2026-10 · THE STAKE-SHARE DISCLOSURE (Ali's ruling 1: a winner can be paid back less than they staked,
+          and the bet screen says so before the bet). Every figure is the notice's — `payoutFor`'s projection, the fee at
+          the poll's frozen rate — and the fixed "possible winnings" estimate is retired here: on a lopsided book it would
+          promise a gain the pool cannot pay. The standing line is drawn whatever the figures; with nobody on the other
+          side yet the refund line stands in for a figure (ruling 2: a one-sided market refunds every stake in full). */}
+      {effectiveSide !== "NEUTRAL" && notice && (
+        <div className="mt-3 rounded-md border border-border bg-bg-overlay px-3 py-2.5" data-stake-share-notice="">
+          <p className="font-mono text-micro uppercase eyebrow text-text-subtle mb-1">
+            <InfoHint panelId={hintId("payout")} open={openHint === "payout"} onToggle={() => toggleHint("payout")} size={10}>
+              {t.dialog.estimatedWinningsLabel}
+            </InfoHint>
+          </p>
+          <InfoHintPanel id={hintId("payout")} open={openHint === "payout"}>
+            {notice.feePct !== null && notice.taxPct !== null
+              ? fill(t.market.ssHowItWorks, { fee: notice.feePct, tax: notice.taxPct })
+              : t.market.ssStanding}
+          </InfoHintPanel>
+          {notice.noTaker ? (
+            <p className="text-body-sm leading-relaxed text-text-muted">{keepText(t.market.ssNoTaker)}</p>
+          ) : notice.quote ? (
+            <>
+              {/* An amount (`.amount`: mono, tabular, never split), as the loser-share estimate's is. */}
+              <p className="amount text-[18px] font-bold tabular-nums text-text leading-none">
+                ≈ TZS {formatNumber(notice.quote.payout)}
+              </p>
+              {notice.feePct !== null && (
+                <p className="mt-1 text-body-sm leading-relaxed text-text-subtle">
+                  {fillNodes(t.market.ssFeeLine, {
+                    pct: notice.feePct,
+                    fee: <span className="amount">{formatTzs(notice.quote.fee)}</span>,
+                    net: <span className="amount">{formatTzs(notice.quote.net)}</span>,
+                  })}
+                </p>
+              )}
+            </>
+          ) : (
+            <p className="text-body-sm leading-relaxed text-text-muted">{t.dialog.payoutCalcBody}</p>
+          )}
+          <p className="mt-1.5 text-body-sm leading-relaxed text-text-subtle">{keepText(t.market.ssStanding)}</p>
+        </div>
+      )}
+
       {/* Qualitative lean warning for capped-commission polls. Loser-share polls
-          present the estimate on its own, so this is not shown for them. */}
+          present the estimate on its own, so this is not shown for them.
+          ⭐ A stake-share poll draws it too, by its own rule: `below` with the notice's figures — what a win would pay back
+          against the stake — and a `thin` level WITHOUT the never-paid-less note (the review of R2a, finding 1). */}
       {effectiveSide !== "NEUTRAL" && lean !== "fair" &&
         rates?.feeModel !== "loser-share" &&
         !((yesPool > 0 && noPool === 0) || (noPool > 0 && yesPool === 0)) && (
-        <HouseLeanWarning level={lean} />
+        stakeShare
+          ? <HouseLeanWarning level={lean} stakeShare below={notice?.below ? { side: sideLabel, ...notice.below } : null} />
+          : <HouseLeanWarning level={lean} />
       )}
 
       {/* Inline balance warning — shown BEFORE the player taps Place so
@@ -1799,6 +1866,9 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = PLATFORM
         multiplier={lockedQuote?.multiplier ?? multiplierTarget}
         lean={lean}
         rates={rates}
+        // FEE-TAX-2026-10 · a stake-share poll's figures for the quote the dialog shows — the LOCKED side and stake, on the
+        // pools as they stand — or null on every older model (the dialog then draws exactly what it always drew).
+        notice={stakeShare ? stakeShareNotice({ yesPool, noPool, side: lockedQuote?.side ?? (effectiveSide === "NEUTRAL" ? "YES" : effectiveSide), stake: lockedQuote?.stake ?? stake, rates }) : null}
         isOneSided={(yesPool > 0 && noPool === 0) || (noPool > 0 && yesPool === 0)}
         // 🔴 DOES THIS BET ACTUALLY GET A FREE EXIT? The confirm dialog promised one
         // unconditionally. The SERVER grants it only when the poll had a full grace

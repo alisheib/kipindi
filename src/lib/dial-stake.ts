@@ -49,9 +49,13 @@ export function maxMultiplierFor(baseStake: number, maxStake?: number): number {
  * ⛔ FLOORED, and that is not cosmetic: the server also demands `Number.isInteger(stake)`, and
  * the admin door does not require `maxStake` to be one. A ceiling of 250,000.5 handed straight
  * through would be refused for being fractional — a different error, the same dead button.
+ * ⚠️ AND FLOORED AFTER A HAIR OF ROUNDING SLACK (FEE-TAX-2026-10, R2c — the independent review of R2a, finding 2). The
+ * multiplier is `maxStake / baseStake`, so the product can land a float's width UNDER a whole maximum: 500 × (1019 / 500)
+ * is 1018.9999999999999, which the bare floor made 1,018 — one shilling under a maximum the server accepts. The slack
+ * (1e-6 of a shilling) only absorbs that error; it cannot lift a genuinely fractional maximum (250,000.5 stays 250,000).
  */
 export function stakeCeilingFor(baseStake: number, maxStake?: number): number {
-  return Math.floor(baseStake * maxMultiplierFor(baseStake, maxStake));
+  return Math.floor(baseStake * maxMultiplierFor(baseStake, maxStake) + 1e-6);
 }
 
 /**
