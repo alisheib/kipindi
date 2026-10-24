@@ -207,5 +207,65 @@ console.log("\n§5 · OVER-CORRECTION guards");
   ok("5.5  TRA + GBT ≤ the fee", r.tra + r.gbt <= r.fee, `${r.tra}+${r.gbt} vs ${r.fee}`);
 }
 
+// ── §6 · stake-share — the levies are on OUR fee F, over the winners' shares of it; never on the winnings tax ──
+//
+// FEE-TAX-2026-10 (decided; gated off until release R5). Under `stake-share` the fee is 13% of EVERY stake — F, the sum of
+// the two sides' roundings — and each winner's group carries its largest-remainder share of the WHOLE F (the losers have
+// no group), exactly as `settleMarket` wires it. The levies are TRA 10% / GBT 5% of F, allocated across those shares; the
+// winnings tax T is the state's money withheld from the prize and is never in their base. Built from `stakeShareSplit`'s
+// own output, as the settlement builds it.
+console.log("\n§6 · stake-share: Σ levies == levySplit(F), and the winnings tax is never in their base");
+{
+  const { stakeShareSplit } = await imp("src/lib/payout.ts");
+  const SS = { feeModel: "stake-share", platformFeeRate: 0.03, operatorFeeRate: 0.10, winningsTaxRate: 0.15 };
+  const ssSettle = (winnerStakes: number[], loserStakes: number[], rates: Record<string, unknown> = SS) => {
+    const winners = winnerStakes.map((s, i) => ({ id: `w${String(i).padStart(3, "0")}`, stake: s }));
+    const losers = loserStakes.map((s, i) => ({ id: `l${String(i).padStart(3, "0")}`, stake: s }));
+    const winningPool = winnerStakes.reduce((a, b) => a + b, 0);
+    const losingPool = loserStakes.reduce((a, b) => a + b, 0);
+    const split = stakeShareSplit({ yesPool: winningPool, noPool: losingPool, outcome: "YES", winners, losers }, rates);
+    const feeByPos = allocateFeeShares(winners, winningPool, split.fee);
+    const levies = levySplit(split.fee, RATES);
+    const feeShareRows = winners.map((w) => ({ id: w.id, stake: feeByPos.get(w.id) ?? 0 }));
+    const traByPos = allocateFeeShares(feeShareRows, split.fee, levies.traLevy);
+    const gbtByPos = allocateFeeShares(feeShareRows, split.fee, levies.gbtLevy);
+    const groups: Line[][] = winners.map((w) => settlementPayoutEntries({
+      groupId: `settle_${w.id}`, userId: w.id, marketId: "mkt_ss", payout: split.perWinner.get(w.id).payout,
+      stake: w.stake, fee: split.fee, winningPool,
+      commissionAmount: feeByPos.get(w.id) ?? 0, traLevyAmount: traByPos.get(w.id) ?? 0, gbtLevyAmount: gbtByPos.get(w.id) ?? 0,
+      winningsTaxAmount: split.perWinner.get(w.id).tax, txnId: `txn_${w.id}`,
+      rates: RATES,
+    }) as Line[]);
+    const all = groups.flat();
+    const at = (acct: string, type?: string) => all.filter((l) => l.account === acct && (!type || l.entryType === type)).reduce((s, l) => s + l.amount, 0);
+    return {
+      split, levies, groups,
+      tra: at("HOUSE:TRA_LEVY", "SETTLEMENT_TRA_LEVY"), gbt: at("HOUSE:GBT_LEVY", "SETTLEMENT_GBT_LEVY"),
+      commissionNet: at("HOUSE:COMMISSION"), taxBooked: at("HOUSE:WINNINGS_TAX", "SETTLEMENT_WINNINGS_TAX"),
+      worst: Math.max(...groups.map((g) => Math.abs(g.reduce((s, l) => s + l.amount, 0)))),
+    };
+  };
+  const shapes: Array<[string, number[], number[]]> = [
+    ["6.1  the document's example (F 5,720, T 4,568)", [1_000, 3_000, 5_000], [10_000, 20_000, 5_000]],
+    ["6.2  fifteen bets at the minimum stake against one losing minimum bet", Array(15).fill(PLATFORM_MIN_STAKE), [PLATFORM_MIN_STAKE]],
+    ["6.3  two hundred winners on a 100,000 losing side", Array(200).fill(1_000), [100_000]],
+    ["6.4  ragged stakes on both sides", [1_000, 3_500, 17_250, 400_000, 999_999, 12_345], [250_000, 1_337, 999]],
+  ];
+  for (const [label, w, l] of shapes) {
+    const r = ssSettle(w, l);
+    ok(`${label} · TRA ${r.tra} == levySplit(F) ${r.levies.traLevy}`, r.tra === r.levies.traLevy, `F=${r.split.fee}`);
+    ok(`${label} · GBT ${r.gbt} == levySplit(F) ${r.levies.gbtLevy}`, r.gbt === r.levies.gbtLevy, `F=${r.split.fee}`);
+    ok(`${label} · HOUSE:COMMISSION nets to operatorNet(F) ${r.levies.operatorNet}`, r.commissionNet === r.levies.operatorNet, `net ${r.commissionNet}`);
+    ok(`${label} · the winnings tax booked is T ${r.split.winningsTax}, on its own account — and every group balances`,
+      r.taxBooked === r.split.winningsTax && r.worst === 0, `booked ${r.taxBooked} · worst |Σ group| ${r.worst}`);
+  }
+  // ⛔ The tax is not in the levies' base: the same stakes at a 30% tax levy EXACTLY what they levy at 15% — while T moves.
+  const at15 = ssSettle([1_000, 3_000, 5_000], [10_000, 20_000, 5_000]);
+  const at30 = ssSettle([1_000, 3_000, 5_000], [10_000, 20_000, 5_000], { ...SS, winningsTaxRate: 0.30 });
+  ok("6.5  a 30% tax levies exactly what a 15% tax levies (TRA 572, GBT 286) — the tax is never in their base",
+    at30.tra === at15.tra && at30.gbt === at15.gbt && at15.tra === 572 && at15.gbt === 286 && at30.split.winningsTax !== at15.split.winningsTax,
+    `TRA ${at15.tra}/${at30.tra} · GBT ${at15.gbt}/${at30.gbt} · T ${at15.split.winningsTax}/${at30.split.winningsTax}`);
+}
+
 console.log(`\n${fail === 0 ? "PASS" : "FAILED"} · ${pass} ok, ${fail} failed`);
 process.exit(fail === 0 ? 0 : 1);

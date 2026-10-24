@@ -16,6 +16,10 @@
  *                         the measured payouts) reconcile to the money that
  *                         entered, within rounding dust. A regression that
  *                         over- or under-pays breaks this beyond tolerance.
+ *                         ⭐ §1b — under `stake-share` (FEE-TAX-2026-10) the law is
+ *                         EXACT: final + Σ fee + Σ winnings tax = in, dust 0,
+ *                         every winner paid its integer-oracle share, never
+ *                         below its NET stake.
  *   4. VOID full-refund — a voided market returns every stake exactly; the
  *                         house takes nothing.
  *   5. IDEMPOTENCY      — a double-submitted bet (same idempotencyKey) debits
@@ -41,6 +45,7 @@ import { setRequireTwoOfficerResolution } from "../src/lib/server/resolution-pol
 await setRequireTwoOfficerResolution(true, "money-invariants-setup");
 import { runDueMarketTransitions } from "../src/lib/server/market-scheduler.ts";
 import { poolFee } from "../src/lib/payout.ts";
+import { __setFeeLawLiveForTest } from "../src/lib/fee-law-gate.ts";
 import { setGlobalConfig } from "../src/lib/server/market-config.ts";
 import { positionStore } from "../src/lib/server/market-dal.ts";
 import { getEffectiveConfig } from "../src/lib/server/market-config.ts";
@@ -223,6 +228,129 @@ ok("GLOBAL conservation (final + house == in)", Math.abs(reconciled - totalIn) <
   `final=${sumFinal} house=${expectedHouseTake} reconciled=${reconciled} in=${totalIn} dust≤${dust}`);
 ok("GLOBAL no-mint (Σ final ≤ Σ in)", sumFinal <= totalIn, `final=${sumFinal} in=${totalIn}`);
 ok("house take is positive (fees collected)", expectedHouseTake > 0, `house=${expectedHouseTake}`);
+
+// ════════════════════════════════════════════════════════════════════════════
+// 1b · STAKE-SHARE CONSERVATION — DUST 0 (FEE-TAX-2026-10, `docs/FEE-TAX-PLAN.md` §3).
+//      Under `stake-share` every figure is a WHOLE shilling: the fee F = rhu(YES × 13%) + rhu(NO × 13%), the winnings
+//      tax T = rhu(P × 15%) on the prize fund P (the losing pool less its fee), and every per-position part a
+//      largest-remainder share. So the law here is EXACT, not "within dust": the players' final balances + Σ F + Σ T
+//      = the money that entered, to the shilling, and every winner is paid exactly its oracle share.
+//      ⭐ THE ORACLE IS RE-IMPLEMENTED HERE, IN INTEGERS — never `payout.ts` — so a settlement that drifts by one
+//      shilling, or pays a share by the wrong rule, breaks it instead of agreeing with itself.
+//      ⭐ AND THE WINNER FLOOR IS THE NET STAKE (ruling 1): a correct call on a lopsided book is paid BELOW its stake
+//      (the fee came out of every stake), never below its stake less its own fee. The lopsided scenario proves the
+//      first half is real, so the floor is not checked on a population that cannot break it.
+//      ⛔ The new law is not in force (`fee-law-gate.ts`): the gate is opened IN THIS PROCESS only to stamp these
+//      markets, through the test seam, and shut again at once.
+// ════════════════════════════════════════════════════════════════════════════
+{
+  const F_BP = 1_300, T_BP = 1_500;
+  /** Round half up at whole basis points, in integers — the law's one rounding. */
+  const rhu = (amount: number, bp: number) => Math.floor((amount * bp + 5_000) / 10_000);
+  /** Largest remainder in exact integers: floor every share, the leftover shillings to the largest remainders, ties by id. */
+  const lr = (rows: Array<{ id: string; w: number }>, total: number): Map<string, number> => {
+    const sw = rows.reduce((s, r) => s + r.w, 0);
+    const out = new Map<string, number>();
+    if (rows.length === 0 || sw <= 0) return out;
+    const parts = rows.map((r) => { const rem = (r.w * total) % sw; return { id: r.id, q: (r.w * total - rem) / sw, rem }; });
+    for (const p of parts) out.set(p.id, p.q);
+    const left = total - parts.reduce((s, p) => s + p.q, 0);
+    const order = [...parts].sort((a, b) => (b.rem !== a.rem ? b.rem - a.rem : a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+    for (let i = 0; i < left; i++) out.set(order[i].id, (out.get(order[i].id) ?? 0) + 1);
+    return out;
+  };
+  const ssScenarios: Array<{ label: string; bets: Bet[]; outcome: "YES" | "NO"; belowStake?: boolean }> = [
+    { label: "even", bets: [{ uid: "", side: "YES", stake: 10_000 }, { uid: "", side: "NO", stake: 10_000 }], outcome: "YES" },
+    { label: "the document's example", outcome: "YES", bets: [
+      { uid: "", side: "YES", stake: 1_000 }, { uid: "", side: "YES", stake: 3_000 }, { uid: "", side: "YES", stake: 5_000 },
+      { uid: "", side: "NO", stake: 10_000 }, { uid: "", side: "NO", stake: 20_000 }, { uid: "", side: "NO", stake: 5_000 }] },
+    { label: "odd amounts", bets: [{ uid: "", side: "NO", stake: 7_333 }, { uid: "", side: "YES", stake: 12_500 }], outcome: "NO" },
+    { label: "odd stakes, ties by id", outcome: "YES", bets: [
+      { uid: "", side: "YES", stake: 1_005 }, { uid: "", side: "YES", stake: 1_337 }, { uid: "", side: "YES", stake: 999 },
+      { uid: "", side: "NO", stake: 500 }, { uid: "", side: "NO", stake: 500 }, { uid: "", side: "NO", stake: 1_337 }] },
+    { label: "lopsided — the winner is paid below its stake", belowStake: true, outcome: "YES",
+      bets: [{ uid: "", side: "YES", stake: 20_000 }, { uid: "", side: "NO", stake: 1_000 }] },
+  ];
+  let ssIn = 0, ssF = 0, ssT = 0, ssBelow = 0;
+  const ssPlayers: string[] = [];
+  for (let s = 0; s < ssScenarios.length; s++) {
+    const sc = ssScenarios[s];
+    __setFeeLawLiveForTest(true);
+    let mid: string;
+    try {
+      const m = await createMarket({
+        titleEn: "Stake-share invariant market", titleSw: "Soko la majaribio", category: "macro",
+        sourceUrl: "https://bot.go.tz", resolutionCriterion: "Resolves at the official date.",
+        resolutionAt: new Date(Date.now() + 7 * 864e5).toISOString(), proposedBy: "test",
+        rateOverrides: { feeModel: "stake-share", platformFeeRate: 0.03, operatorFeeRate: 0.10, winningsTaxRate: 0.15 },
+      } as never);
+      mid = m.id;
+      ok(`1b.${s} stake-share market stamped (v3, 15% tax)`, m.feeSnapshot?.feeModel === "stake-share" && m.feeSnapshot?.v === 3 && m.feeSnapshot?.winningsTaxRate === 0.15, JSON.stringify(m.feeSnapshot));
+    } finally {
+      __setFeeLawLiveForTest(null);
+    }
+    marketIds.push(mid);
+    const placed: Array<{ id: string; uid: string; side: "YES" | "NO"; stake: number }> = [];
+    for (let b = 0; b < sc.bets.length; b++) {
+      const uid = `inv_ss_${s}_${b}`;
+      await fundedUser(uid, 100_000);
+      ssIn += 100_000;
+      ssPlayers.push(uid);
+      const r = await buyPosition(uid, { marketId: mid, side: sc.bets[b].side, stake: sc.bets[b].stake });
+      ok(`1b.${s} bet placed b${b}`, r.ok, r.ok ? "" : (r as { error?: string }).error);
+      if (r.ok) placed.push({ id: r.data!.positionId, uid, side: sc.bets[b].side, stake: sc.bets[b].stake });
+    }
+    // THE ORACLE, from the stakes alone.
+    const yes = placed.filter((p) => p.side === "YES").reduce((t, p) => t + p.stake, 0);
+    const no = placed.filter((p) => p.side === "NO").reduce((t, p) => t + p.stake, 0);
+    const feeYes = rhu(yes, F_BP), feeNo = rhu(no, F_BP);
+    const winners = placed.filter((p) => p.side === sc.outcome), losers = placed.filter((p) => p.side !== sc.outcome);
+    const winFee = sc.outcome === "YES" ? feeYes : feeNo, loseFee = sc.outcome === "YES" ? feeNo : feeYes;
+    const prizeFund = (sc.outcome === "YES" ? no : yes) - loseFee;
+    const tax = rhu(prizeFund, T_BP);
+    const w = winners.map((p) => ({ id: p.id, w: p.stake })), l = losers.map((p) => ({ id: p.id, w: p.stake }));
+    const fees = lr(w, winFee), prizes = lr(w, prizeFund - tax), taxes = lr(w, tax), lfees = lr(l, loseFee);
+    ssF += feeYes + feeNo;
+    ssT += tax;
+
+    const before = new Map<string, number>();
+    for (const p of placed) before.set(p.uid, await bal(p.uid));
+    const res = await resolve(mid, sc.outcome);
+    ok(`1b.${s} resolve complete (${sc.label})`, res.ok && res.data?.stage === "complete", JSON.stringify(res));
+    const rows = new Map((await listPositionsForMarket(mid)).map((p) => [p.id, p]));
+    let paid = 0;
+    const wrong: string[] = [];
+    for (const p of placed) {
+      const delta = (await bal(p.uid)) - before.get(p.uid)!;
+      const row = rows.get(p.id) as { status: string; finalPayout?: number | null; feeTzs?: number | null; winningsTaxTzs?: number | null } | undefined;
+      if (p.side === sc.outcome) {
+        const fee = fees.get(p.id)!, payout = p.stake - fee + prizes.get(p.id)!;
+        paid += delta;
+        if (delta !== payout || row?.finalPayout !== payout || row?.feeTzs !== fee || row?.winningsTaxTzs !== taxes.get(p.id)) {
+          wrong.push(`winner ${p.stake}: delta ${delta} row ${JSON.stringify(row && [row.finalPayout, row.feeTzs, row.winningsTaxTzs])} vs oracle ${payout}/${fee}/${taxes.get(p.id)}`);
+        }
+        // THE NET-STAKE FLOOR (ruling 1), on the real settlement path, for every winner.
+        ok(`1b.${s} WINNER FLOOR ${p.uid}: payout ≥ stake − its own fee`, delta >= p.stake - fee, `stake=${p.stake} fee=${fee} payout=${delta}`);
+        if (delta < p.stake) ssBelow++;
+      } else if (delta !== 0 || row?.feeTzs !== lfees.get(p.id) || row?.winningsTaxTzs !== 0) {
+        wrong.push(`loser ${p.stake}: delta ${delta} row ${JSON.stringify(row && [row.status, row.feeTzs, row.winningsTaxTzs])} vs fee ${lfees.get(p.id)}`);
+      }
+    }
+    ok(`1b.${s} ★ every position settled to the shilling the integer oracle names (${sc.label})`, wrong.length === 0, wrong.join(" | "));
+    ok(`1b.${s} ★ Σ payouts + F + T = the pool EXACTLY — dust 0`, paid + feeYes + feeNo + tax === yes + no,
+      `paid=${paid} F=${feeYes + feeNo} T=${tax} pool=${yes + no}`);
+    if (sc.belowStake) {
+      ok(`1b.${s} …the lopsided winner really is paid BELOW its stake (so the floor above is measured on a case that can break it)`,
+        winners.every((p) => p.stake - fees.get(p.id)! + prizes.get(p.id)! < p.stake));
+    }
+    await assertNoNegatives(`after stake-share resolve m${s}`);
+  }
+  let ssFinal = 0;
+  for (const uid of ssPlayers) ssFinal += await bal(uid);
+  ok("1b ★ GLOBAL stake-share conservation (final + Σ F + Σ T == in) — EXACT, dust 0", ssFinal + ssF + ssT === ssIn,
+    `final=${ssFinal} F=${ssF} T=${ssT} in=${ssIn} drift=${ssFinal + ssF + ssT - ssIn}`);
+  ok("1b the population held a below-stake winner", ssBelow > 0, `below-stake winners=${ssBelow}`);
+}
 
 // ════════════════════════════════════════════════════════════════════════════
 // 2 · VOID full-refund — every stake returns exactly; the house takes nothing.

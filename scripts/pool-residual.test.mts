@@ -30,7 +30,7 @@ process.env.USE_PRISMA_DAL = "false";
 process.env.DATABASE_URL = "";
 
 import { readFileSync } from "node:fs";
-import { allocateFeeShares, allocateWinnerPayouts } from "../src/lib/payout.ts";
+import { allocateFeeShares, allocateWinnerPayouts, stakeShareSplit } from "../src/lib/payout.ts";
 import { settlementPayoutEntries } from "../src/lib/server/ledger.ts";
 
 let fail = 0;
@@ -121,6 +121,53 @@ log("\n── 2 · the settlement LINES balance the pool to zero ─────
   check("single winner", [{ id: "s", stake: 7000 }], 4000);
   // Awkward primes, where the fractions are never clean.
   check("seven odd winners", Array.from({ length: 7 }, (_, i) => ({ id: `p${i}`, stake: 1000 + i * 137 })), 3331);
+}
+
+// ── 2b · stake-share: the lines balance the pool to zero, built from the ENGINE's own split ─────────
+//
+// ⭐ FEE-TAX-2026-10. Under `stake-share` the pool gives up three things, not two: the winners' NET payouts, our fee F
+// (on every stake, winner and loser alike) and the winnings tax T, withheld for TRA. The fixture is NOT hand-arithmetic:
+// payouts, taxes and F come from `stakeShareSplit` — the function settlement pays by — and the commission shares from
+// `allocateFeeShares` over F, exactly as `settleMarket` wires them. A tax left behind in the pool, booked twice, or a
+// commission share that drifts from F all leave a residual here, which no aggregate could see.
+log("\n── 2b · stake-share: payouts + F + T leave the pool, to the shilling ─");
+{
+  const SS = { feeModel: "stake-share", platformFeeRate: 0.03, operatorFeeRate: 0.10, winningsTaxRate: 0.15, traTaxOnCommissionRate: 0.1, gbtLevyOnCommissionRate: 0.05 } as const;
+  const ssCheck = (label: string, winners: Array<{ id: string; stake: number }>, losers: Array<{ id: string; stake: number }>) => {
+    const winningPool = winners.reduce((s, w) => s + w.stake, 0);
+    const losingPool = losers.reduce((s, w) => s + w.stake, 0);
+    const grossPool = winningPool + losingPool;
+    const split = stakeShareSplit({ yesPool: winningPool, noPool: losingPool, outcome: "YES", winners, losers }, SS);
+    const fees = allocateFeeShares(winners, winningPool, split.fee);
+    const lines = winners.flatMap((w) => settlementPayoutEntries({
+      groupId: `g_${w.id}`, userId: `u_${w.id}`, marketId: "mkt_guard_ss",
+      payout: split.perWinner.get(w.id)!.payout, stake: w.stake, fee: split.fee, winningPool,
+      commissionAmount: fees.get(w.id) ?? 0,
+      winningsTaxAmount: split.perWinner.get(w.id)!.tax, txnId: `txn_${w.id}`,
+      rates: { traTaxOnCommissionRate: 0.1, gbtLevyOnCommissionRate: 0.05 },
+    }));
+    const total = lines.reduce((s, l) => s + l.amount, 0);
+    ok(`stake-share ${label} · the entries sum to zero`, total === 0, `sum = ${total}`);
+    const poolOut = -lines.filter((l) => l.account === "POOL:mkt_guard_ss").reduce((s, l) => s + l.amount, 0);
+    ok(`stake-share ${label} · the pool gives up exactly what it holds (payouts + F + T)`, poolOut === grossPool,
+      `pool paid out ${poolOut} against ${grossPool} staked — residual ${grossPool - poolOut}`);
+    const booked = lines.filter((l) => l.account === "HOUSE:COMMISSION" && l.entryType === "SETTLEMENT_COMMISSION")
+      .reduce((s, l) => s + l.amount, 0);
+    ok(`stake-share ${label} · commission booked equals the fee F`, booked === split.fee, `booked ${booked} vs F ${split.fee}`);
+    const taxed = lines.filter((l) => l.account === "HOUSE:WINNINGS_TAX").reduce((s, l) => s + l.amount, 0);
+    ok(`stake-share ${label} · the winnings tax booked equals T, on its own account`, taxed === split.winningsTax && split.winningsTax > 0,
+      `booked ${taxed} vs T ${split.winningsTax}`);
+  };
+  // The document's example (FEE-TAX-PLAN §3) — T is 4,567.5 before rounding.
+  ssCheck("the document's example", [{ id: "a", stake: 1_000 }, { id: "b", stake: 3_000 }, { id: "c", stake: 5_000 }],
+    [{ id: "d", stake: 10_000 }, { id: "e", stake: 20_000 }, { id: "f", stake: 5_000 }]);
+  // The production shape under the new law, and equal stakes (every share ties).
+  ssCheck("production shape", [{ id: "a", stake: 3_000 }, { id: "b", stake: 5_000 }], [{ id: "l", stake: 2_000 }]);
+  ssCheck("four equal winners", Array.from({ length: 4 }, (_, i) => ({ id: `e${i}`, stake: 2_500 })), [{ id: "l", stake: 3_000 }]);
+  // Awkward primes on both sides; and a lopsided book, where the winners are paid below their stakes.
+  ssCheck("seven odd winners", Array.from({ length: 7 }, (_, i) => ({ id: `p${i}`, stake: 1_000 + i * 137 })),
+    Array.from({ length: 3 }, (_, i) => ({ id: `q${i}`, stake: 1_111 + i * 271 })));
+  ssCheck("lopsided", [{ id: "a", stake: 90_000 }, { id: "b", stake: 9_999 }], [{ id: "l", stake: 1_001 }]);
 }
 
 // ── 3 · settlement actually WIRES the allocation through ─────────────────────

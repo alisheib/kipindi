@@ -21,7 +21,7 @@ import {
   acct,
   type LedgerLine,
 } from "../src/lib/server/ledger.ts";
-import { poolFee, settledPayoutFor, DEFAULT_COMMISSION_RATE, DEFAULT_FEE_CEILING_RATE } from "../src/lib/payout.ts";
+import { poolFee, settledPayoutFor, stakeShareSplit, allocateFeeShares, DEFAULT_COMMISSION_RATE, DEFAULT_FEE_CEILING_RATE } from "../src/lib/payout.ts";
 
 /** The poll's fee rates. Two numbers now, not four. */
 const RATES = { commissionRate: DEFAULT_COMMISSION_RATE, feeCeilingRate: DEFAULT_FEE_CEILING_RATE };
@@ -152,6 +152,47 @@ ok("house commission is constant", acct.commission === "HOUSE:COMMISSION");
   // This winner's share of the fee: 2000/6000 of 1,000 = 333.
   const comm = entries.find(e => e.account === "HOUSE:COMMISSION" && e.entryType === "SETTLEMENT_COMMISSION")!;
   ok("commission booked is THIS winner's share of the poll fee (333)", comm.amount === 333, `got=${comm.amount}`);
+}
+
+// ── Settlement payout entries under stake-share: the winnings tax leaves the POOL, for HOUSE:WINNINGS_TAX ──
+//
+// FEE-TAX-2026-10 (decided; gated off until release R5). A stake-share winner's prize carries a winnings tax, withheld for
+// TRA. ⛔ It is booked out of the POOL — never out of the PLAYER account, which must keep matching the wallet line for
+// line — into its OWN liability, never HOUSE:TRA_LEVY (10% of OUR fee) and never HOUSE:TAX (the agents' withholding).
+// The figures are the document's own example (FEE-TAX-PLAN §3): YES 1,000 / 3,000 / 5,000 against NO 10,000 / 20,000 /
+// 5,000, YES wins — F = 5,720, T = 4,568 — and this group is the 3,000 winner's.
+{
+  const SS = { feeModel: "stake-share" as const, platformFeeRate: 0.03, operatorFeeRate: 0.10, winningsTaxRate: 0.15 };
+  const winners = [{ id: "w1", stake: 1_000 }, { id: "w3", stake: 3_000 }, { id: "w5", stake: 5_000 }];
+  const losers = [{ id: "l1", stake: 10_000 }, { id: "l2", stake: 20_000 }, { id: "l5", stake: 5_000 }];
+  const split = stakeShareSplit({ yesPool: 9_000, noPool: 35_000, outcome: "YES", winners, losers }, SS);
+  const part = split.perWinner.get("w3")!;
+  const commShare = allocateFeeShares(winners, 9_000, split.fee).get("w3")!;
+  ok("stake-share: the 3,000 winner is paid 11,237 net with 1,523 withheld; its commission share of F = 5,720 is 1,907",
+    split.fee === 5_720 && split.winningsTax === 4_568 && part.payout === 11_237 && part.tax === 1_523 && commShare === 1_907);
+  const entries = settlementPayoutEntries({
+    groupId: "settle_ss", userId: "usr_ss", marketId: "mkt_ss", payout: part.payout, stake: 3_000, fee: split.fee,
+    winningPool: 9_000, commissionAmount: commShare, winningsTaxAmount: part.tax, txnId: "txn_ss", rates: LEVIES,
+  });
+  isBalanced("stake-share settlement payout", entries);
+  const at = (account: string) => entries.filter((e) => e.account === account).reduce((s, e) => s + e.amount, 0);
+  ok("stake-share: the pool gives up payout + commission share + tax (11,237 + 1,907 + 1,523)", at("POOL:mkt_ss") === -(11_237 + 1_907 + 1_523));
+  ok("stake-share: the PLAYER line is the NET payout — exactly the wallet credit", at("PLAYER:usr_ss") === 11_237);
+  const taxLines = entries.filter((e) => e.entryType === "SETTLEMENT_WINNINGS_TAX");
+  ok("stake-share: ONE winnings-tax line, on HOUSE:WINNINGS_TAX, naming its winner and its payout row",
+    taxLines.length === 1 && taxLines[0].account === "HOUSE:WINNINGS_TAX" && taxLines[0].account === acct.winningsTax
+      && taxLines[0].amount === 1_523 && taxLines[0].userId === "usr_ss" && taxLines[0].txnId === "txn_ss");
+  ok("stake-share: ⛔ the tax is not a levy — HOUSE:TRA_LEVY holds only 10% of OUR commission share (191)", at("HOUSE:TRA_LEVY") === 191);
+  ok("stake-share: ⛔ and HOUSE:TAX is untouched", !entries.some((e) => e.account === "HOUSE:TAX"));
+  ok("stake-share: the commission keeps its share less the levies (1,907 − 191 − 95)", at("HOUSE:COMMISSION") === 1_907 - 191 - 95);
+  // A zero tax books no line; a fractional, negative or non-numeric tax is REFUSED, never rounded.
+  const zero = settlementPayoutEntries({ groupId: "g0", userId: "u0", marketId: "m0", payout: 1_000, stake: 1_000, fee: 0, winningPool: 1_000, commissionAmount: 0, winningsTaxAmount: 0, rates: LEVIES });
+  ok("stake-share: a zero tax books no winnings-tax line", !zero.some((e) => e.account === "HOUSE:WINNINGS_TAX"));
+  const refused = (t: number) => { try { settlementPayoutEntries({ groupId: "g", userId: "u", marketId: "m", payout: 1, stake: 1, fee: 0, winningPool: 1, winningsTaxAmount: t, rates: LEVIES }); return false; } catch { return true; } };
+  ok("stake-share: a fractional, negative or NaN tax is refused", refused(0.5) && refused(-1) && refused(Number.NaN));
+  // The older models' group is exactly what it always was: no tax line, no txnId anywhere.
+  const legacy = settlementPayoutEntries({ groupId: "gl", userId: "ul", marketId: "ml", payout: 3_000, stake: 2_000, fee: 1_000, winningPool: 6_000, rates: LEVIES });
+  ok("older models: no winnings-tax line and no txnId on any line", !legacy.some((e) => e.entryType === "SETTLEMENT_WINNINGS_TAX" || e.txnId !== undefined));
 }
 
 // ── Cash-out: the fee must reach the HOUSE, not stay in the pool ────────────
