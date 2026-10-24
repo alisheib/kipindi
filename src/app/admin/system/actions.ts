@@ -40,7 +40,7 @@ import type { AlreadyOffRemains, AlreadyOpenReadsAs } from "./marketing-sms-word
 import {
   setSecondOfficerChecks, SECOND_OFFICER_REASON_MAX, SECOND_OFFICER_REASON_MIN, type SecondOfficerRefusal,
 } from "@/lib/server/second-officer-policy";
-import { getServerT } from "@/lib/i18n-server";
+import { dict } from "@/lib/i18n-server";
 
 // RBAC: authorization is data-driven — requireStaff checks this role's canAct for the
 // domain (Owner/ADMIN bypasses), audits a blocked attempt, then enforces step-up 2FA.
@@ -546,12 +546,12 @@ export type SecondOfficerActionResult =
  * grant. Then the ONE writer, `setSecondOfficerChecks`, which reads the stored role again, cleans and bounds the reason,
  * reads the setting fresh under its lock, writes, reads back and only then records the COMPLIANCE row with the setting
  * before and after. ⛔ Only the position and the reason are read from the request: who changed it is the session's officer
- * and when is the server's clock. Every refusal and outcome is worded in the Owner's language (`secondOfficer.*`).
+ * and when is the server's clock. Every refusal and outcome is worded in English (`secondOfficer.*`), as the console is.
  */
 export async function setSecondOfficerChecksAction(input: { on: boolean; reason: string }): Promise<SecondOfficerActionResult> {
   const session = await requireOwner("secondOfficerChecks");
-  const { t } = await getServerT();
-  const w = t.secondOfficer;
+  // English, like every console sentence (`i18n-parity`: THE OFFICER CONSOLE IS ENGLISH) — never the viewer's cookie.
+  const w = dict.en.secondOfficer;
   const fill = (s: string) => s.replace("{min}", String(SECOND_OFFICER_REASON_MIN)).replace("{max}", String(SECOND_OFFICER_REASON_MAX));
   const words: Record<SecondOfficerRefusal, string> = {
     not_understood: w.refusedOther, session: w.refusedOther, who_unknown: w.refusedOther, not_owner: w.refusedOwner,

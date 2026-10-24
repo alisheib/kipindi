@@ -17,8 +17,13 @@
 
 ## §0 · RESUME AT
 
-**State (2026-10-24):** R0 — the records — is written (`82c16ec20`, branch `feetax-r0`): the rulings entry, this tracker,
-the RULES.md roll-out row, the NEXT-PLAN row and MASWALI-PLAN's S8 hold (gate lines 8 and 9 re-opened). R1 is built on
+**State (2026-10-24):** ✅ R0 — the records — is LIVE at `82c16ec20` (gate: `test:all` 724/724 and eight red twins on
+GitHub's runner, run 40099194709; read back: `?dpl=` on the three hosts, health, `qa:chunks-prod` on both origins,
+production `qa:live` 360/0, run 40101277556): the rulings entry, this tracker, the RULES.md roll-out row, the NEXT-PLAN
+row and MASWALI-PLAN's S8 hold (gate lines 8 and 9 re-opened). Ali's go-live answers of the same day are recorded in
+COMPLIANCE-DECISIONS (§ "2026-10-24 · The fee & tax change — Ali's go-live answers …"): the release itself turns the new
+law on under his ruling, the second-officer checks go live OFF by his word, his word stands as Finance's TRA
+confirmation, production reads and a six-bet live proof are approved, and he sets the desk himself. R1 is built on
 branch `feetax-r1` and not yet on `main`: the Owner setting "Second-officer checks" (`second-officer-policy.ts`; its card
 on /admin/system, Owner-only to change) over the twelve checks of §4 R1. ⭐ It goes live OFF by Ali's word (his go-live
 answers of 2026-10-24): nothing stored reads OFF — no click after the release; a read that fails reads ON; a stored
@@ -30,9 +35,10 @@ position always wins, so the Owner can turn the checks back ON from the card (au
 and `red:second-officer-switch` — re-pins `test:house-bot-disclosure` §5.1 for the dictionary, merges and pushes R1, and
 reads it back: the card on /admin/system says the checks are OFF by the Owner's ruling. Then R2.
 
-**Blocked on Ali:** nothing for R0–R4. Before the switch (§5): the desk's budgets reviewed; Finance's written TRA basis
-for the 15% (statute, base, the per-winner return, the tax of a forfeited share); the note to the Gaming Board; his yes for
-the named read-only production scripts.
+**Blocked on Ali:** nothing for R0–R5 (he delegated every remaining decision on 2026-10-24: "keep going until all
+perfectly done and pushed live … you take decisions based on what is better for the platform"). Before the switch, on
+his side only: the desk's budgets (he sets them himself), and a `railway login` on the build machine for the approved
+read-only production reads (the CLI's login had expired on 2026-10-24). The note to the Gaming Board is his to send.
 
 **Who pushes `main`:** the session working this programme pushes its own verified releases (Ali, 2026-10-24, approving
 the plan: each release pushed live), rebased on `origin/main` immediately before, with AGENTS.md §4's release checklist.
@@ -44,12 +50,12 @@ tracker is its copy and supersedes it.
 
 | Release | What | Status | Note |
 |---|---|---|---|
-| R0 | The records: rulings, this tracker, the RULES row, the board row, the S8 hold | 🔨 | docs only |
+| R0 | The records: rulings, this tracker, the RULES row, the board row, the S8 hold | ✅ | `82c16ec20`, live and read back 2026-10-24 (docs only) |
 | R1 | Any admin can do any step + the Millionea open lock | 🔨 | built on branch `feetax-r1`, awaiting the runner gates and the push: the Owner setting and its /admin/system card, live OFF by Ali's word (nothing stored = OFF; a failed read = ON; a stored position wins); the twelve checks gated (check 11 frees an officer's own payout hold on a market they hold no money in — a case on their own stake stays refused, ruling 6b); the bulk-resolve staged-row words follow the two-officer switch; the S8 hold in `openWeek`; `test:second-officer-switch`, `test:maswali-open-lock`, `red:second-officer-switch` |
 | R2 | Fee engine, settlement, ledger, safe config — gated off | ⬜ | |
 | R3 | Reports and money around settlement (polls + Up & Down) | ⬜ | |
 | R4 | Millionea `ticket-share` — engine, money, records, reports, figures — gated off | ⬜ | |
-| R5 | Every binding word in one commit, the gate flipped, the admin's three saves | ⬜ | the switch |
+| R5 | Every binding word in one commit, the gate flipped, the release's one-time switch under Ali's ruling | ⬜ | the switch |
 
 **Status values:** ⬜ not started · 🔨 in progress · ✅ live and read back (cites its commit).
 

@@ -8,6 +8,35 @@
 
 ---
 
+## 2026-10-24 · The fee & tax change — Ali's go-live answers: the release turns the new law on under his ruling; second-officer checks OFF by his word in R1; a forfeited Millionea share's tax is returned; his word stands as Finance's TRA confirmation (owner rulings)
+
+**Context.** Asked, the same day, for everything still needed from him before go-live, Ali answered each and then
+handed the programme over: *"keep going until all perfectly done and pushed live … don't ask me anymore, you take
+decisions based on what is better for the platform"*.
+
+1. **The switch is made by the release, under his ruling** ("You do it, under my ruling"). The release R5 turns the new
+   law on once: the polls' fee model and the 15% winnings tax, every Up & Down chain, Millionea, and the site banner. It
+   is recorded and audited in his name, and then read back on production. No admin clicks are needed. This supersedes the
+   entry below where it says "an admin's three audited saves".
+2. **Second-officer checks are OFF by his word, inside R1** ("Yes, off by my word"). The Owner setting "Second-officer
+   checks" (`src/lib/server/second-officer-policy.ts`) reads OFF when no value is stored; that is his ruling. A read that
+   FAILS, or a malformed row, reads ON (stricter on an error, never weaker). A stored value always wins, so the Owner can
+   turn the checks back ON from the card on /admin/system, with a written reason, audited. This supersedes the entry
+   below where it says "while the setting is absent, they behave as today … the Owner turns it OFF … straight after R1".
+3. **A forfeited Millionea share's tax is returned** ("Yes, no winnings no tax"). The whole gross share, tax included,
+   goes back to the jackpot, and the `HOUSE:WINNINGS_TAX` line is reversed.
+4. **His word stands as Finance's confirmation of the 15% winnings-tax basis with TRA** ("make my word as finance
+   confirm"). The rate is an admin setting (/admin/config → Fees & taxes → "Winning tax (%)", validated and audited),
+   so a change by TRA is one save; each market keeps the rate it opened with.
+5. **Production reads and a live proof are authorised.** Read-only production reads are approved before and after the
+   switch (counts and totals only). So is a live test: six small real bets from the QA accounts, with unequal stakes, on
+   one poll and one Up & Down round.
+6. **The house desk** is set by the Owner himself before the switch. The programme does not change its budgets.
+7. Not asked, and decided by the build lead under item 1: the agent commission rule stays (10% of the net fee kept from an
+   agent's recruits). It is now priced on 13% of every stake, never on the winnings tax.
+
+---
+
 ## 2026-10-24 · The fee becomes 13% of every stake, a 15% winnings tax on every win, Millionea's fee moves to the ticket, and any admin may do any step (owner rulings; in force from the switch)
 
 **Context.** Ali shared two documents and asked for a plan: *"Peer-to-Peer Prediction Pool — Business & Revenue Model

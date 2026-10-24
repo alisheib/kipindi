@@ -724,15 +724,20 @@ lead's ruling). A Millionea objection disputes the result of **one question** of
 - **When:** only while the week's own **objection window** is open — **24 hours from the moment its graded set becomes
   final, never closing before 12:00 EAT**, frozen in the week's rules at its open (never the platform's live setting) —
   and only on a question that has a result.
-- **Who rules:** a Compliance officer, the Owner the fallback — never the officer who sealed the question or confirmed its
-  seal, never the officer whose upheld ruling set its present result, never the objector, never an officer holding a
-  live ticket in the week. The ruling is a typed confirmation on the result the officer reviewed (a result changed since
-  is refused), with a note the player reads.
+- **Who rules:** a Compliance officer, the Owner the fallback — never the objector, never an officer holding a live
+  ticket in the week; and, only while the Owner's **"Second-officer checks"** setting is ON, never the officer who sealed
+  the question or confirmed its seal, never the officer whose upheld ruling set its present result. ⭐ The setting is
+  **OFF by the Owner's ruling of 2026-10-24** (`docs/COMPLIANCE-DECISIONS.md` § "2026-10-24 · …any admin may do any
+  step…" and § "2026-10-24 · The fee & tax change — Ali's go-live answers …"; `src/lib/server/second-officer-policy.ts`):
+  any admin may rule. The ruling is a typed confirmation on the result the officer reviewed (a result changed since is
+  refused), with a note the player reads.
 - **Remedies:** **REJECT** (the result stands), or uphold with **REVERSE** (the other result), **VOID** (on a ground from
   the closed list — by default "objection to the criterion upheld") or **REINSTATE** (a voided question back, with its
   result).
-- **Correcting a ruled result:** until the window closes, "the officer who set a result may correct it" (the binding
-  text, §6) — the officer who wrote the question's **present** record: its sealer for a sealed result, the officer who
+- **Correcting a ruled result:** until the window closes, any officer may correct a result while the Owner's
+  "Second-officer checks" setting is OFF (its state since the Owner's ruling of 2026-10-24). While it is ON, "the officer
+  who set a result may correct it" (the binding text, §6, reworded at the fee change's R5) — the officer who wrote the
+  question's **present** record: its sealer for a sealed result, the officer who
   ruled for a result an upheld objection set (and for that officer's own correction of it). The sealer never corrects a
   ruled result back: they object through another officer, as anyone else does. While two officers are required, that
   correction counts only once a second officer confirms it — never the officer who made it, nor the sealer. Who set the

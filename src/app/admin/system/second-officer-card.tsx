@@ -3,7 +3,7 @@ import type { Route } from "next";
 import { AdminCard } from "@/components/admin/admin-shell";
 import { Chip } from "@/components/ui/chip";
 import { I } from "@/components/ui/glyphs";
-import { dict, getServerT } from "@/lib/i18n-server";
+import { dict } from "@/lib/i18n-server";
 import { db } from "@/lib/server/store";
 import { officerLabel } from "@/lib/server/actor-label";
 import {
@@ -34,12 +34,15 @@ const CHECKS = ["check1", "check2", "check3", "check4", "check5", "check6", "che
  * is wrong right now (§K rule 7d) — every card above the rail answers that question, and this one does not.
  */
 export async function SecondOfficerCard({ viewerId }: { viewerId: string | null }) {
-  const [{ t, locale }, policy, resolution] = await Promise.all([
-    getServerT(),
+  // ⛔ ENGLISH, never the viewer's cookie: the officer console's server copy is English (`i18n-parity`, "THE OFFICER
+  // CONSOLE IS ENGLISH (2026-10-02)") — an officer whose player-site choice is Swahili must not get one Swahili card among
+  // English ones. The Swahili title rides beside it as every console card's `sw` subtitle.
+  const [policy, resolution] = await Promise.all([
     readSecondOfficerPolicy(),
     readRequireTwoOfficerResolution().catch(() => null),
   ]);
-  const w = t.secondOfficer;
+  const locale = "en" as const;
+  const w = dict.en.secondOfficer;
   // ⛔ try/await, never `.catch` on the call: the in-memory store answers synchronously (the tax page's lesson).
   let viewerRole: string | null = null;
   try { viewerRole = viewerId ? ((await db.user.findById(viewerId))?.role ?? null) : null; } catch { viewerRole = null; }
