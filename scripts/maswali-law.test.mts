@@ -11,7 +11,9 @@
  *   L3 §2.12 exists with its decided / enforced / configured / stated / guarded table
  *   L4 §2.4 names the cap as its ONE exception; §2.8 says Millionea charges nothing else either
  *   L5 §3 is "THE THREE FEE MODELS" and names `jackpot-payout`; §6 records the 2026-10-16 decision
- *   L6 the code's fee models are exactly the three, and the caption fits its cell
+ *   L6 the code's fee models are exactly the law's three (§3) plus `stake-share` — DECIDED 2026-10-24 and held off by
+ *      `fee-law-gate.ts` until release R5, so the code may carry it while the law in force names three, but never with
+ *      the gate open and §3 still silent about it — and the caption fits its cell
  *   L7 the decision the law cites exists in COMPLIANCE-DECISIONS
  *   L8 §2.12's sunset paragraph states MR-30's final-week rule in the words its buyers read: the dictionary's English
  *      `finalWeekRule`, word for word (no 10/10: the highest scores share equally, with no floor top-up) — S7-F9 14, the
@@ -22,17 +24,27 @@
  */
 import { readFileSync } from "node:fs";
 import { FEE_CAPTION_MAX_CHARS, FEE_MODELS, describeFeeModel } from "../src/lib/payout.ts";
+import { feeLawLive } from "../src/lib/fee-law-gate.ts";
 import { dict } from "../src/lib/i18n-dict.ts";
 
 process.exitCode = 1;
 const PROVE_RED = process.argv.includes("--prove-red");
 const read = (rel: string) => readFileSync(new URL(`../${rel}`, import.meta.url), "utf8").replace(/\r\n/g, "\n");
 
-type World = { rules: string; decisions: string; feeModels: readonly string[]; caption: string; finalWeekRule: string };
+/**
+ * The fee models the code must carry (L6): RULES §3's three, in its order, then `stake-share` — the FEE-TAX-2026-10 model,
+ * decided by Ali on 2026-10-24 (COMPLIANCE-DECISIONS) and NOT in force: `fee-law-gate.ts` keeps every door that could
+ * freeze it shut until release R5, which rewrites §3 in the same commit that opens the gate.
+ */
+const LAW_MODELS = ["capped-commission", "loser-share", "jackpot-payout"] as const;
+const CODE_MODELS = [...LAW_MODELS, "stake-share"] as const;
+
+type World = { rules: string; decisions: string; feeModels: readonly string[]; caption: string; finalWeekRule: string; feeLawLive: boolean };
 const REAL: World = {
   rules: read("docs/RULES.md"),
   decisions: read("docs/COMPLIANCE-DECISIONS.md"),
   feeModels: FEE_MODELS,
+  feeLawLive: feeLawLive(),
   caption: describeFeeModel({ feeModel: "jackpot-payout", jackpotFeeRate: 0.13 }).caption,
   // The players' sentence, as the hub, the slip, the confirm sheet and How to play draw it (DESIGN_AUTHORITY §M8a item 19).
   finalWeekRule: dict.en.millionea.finalWeekRule,
@@ -85,7 +97,11 @@ function check(w: World): string[] {
   if (!/`jackpot-payout` is \*\*Maswali Millionea's\*\*/.test(s3)) f.push("[L5] §3 does not name jackpot-payout as Millionea's model");
   const s6 = section(w.rules, /^## §6 · DECISION HISTORY/m);
   if (!/^\| 2026-10-16 \| ⭐ \*\*Maswali Millionea, a third product\*\*/m.test(s6)) f.push("[L5] §6 has no 2026-10-16 Millionea row");
-  if (JSON.stringify([...w.feeModels]) !== JSON.stringify(["capped-commission", "loser-share", "jackpot-payout"])) f.push(`[L6] the code's fee models are ${JSON.stringify(w.feeModels)}, not the three the law names`);
+  if (JSON.stringify([...w.feeModels]) !== JSON.stringify(CODE_MODELS)) {
+    f.push(`[L6] the code's fee models are ${JSON.stringify(w.feeModels)}, not the law's three (§3) plus stake-share (decided, held by fee-law-gate.ts)`);
+  }
+  // The fourth model may sit in the code only while the gate holds it: open, the law must name it.
+  if (w.feeLawLive && !s3.includes("`stake-share`")) f.push("[L6] fee-law-gate.ts is open, but RULES §3 does not name stake-share — a model in force the law does not state");
   if (w.caption.length === 0 || w.caption.length > FEE_CAPTION_MAX_CHARS) f.push(`[L6] the jackpot caption "${w.caption}" does not fit ${FEE_CAPTION_MAX_CHARS} characters`);
   if (!/^## 2026-10-16 · Maswali Millionea/m.test(w.decisions)) f.push("[L7] COMPLIANCE-DECISIONS has no 2026-10-16 Millionea decision for the law to cite");
   return f;
@@ -117,7 +133,9 @@ if (!PROVE_RED) {
     ["§2.8's extension removed", () => swap(REAL, "rules", "is the same, in full", "differs"), "[L4]"],
     ["§3 back to two fee models", () => swap(REAL, "rules", "## §3 · THE THREE FEE MODELS", "## §3 · THE TWO FEE MODELS"), "[L5]"],
     ["the history row removed", () => swap(REAL, "rules", "| 2026-10-16 | ⭐ **Maswali Millionea, a third product**", "| 2026-10-16 | Millionea"), "[L5]"],
-    ["the code forgets jackpot-payout", () => ({ ...REAL, feeModels: ["capped-commission", "loser-share"] }), "[L6]"],
+    ["the code forgets jackpot-payout", () => ({ ...REAL, feeModels: REAL.feeModels.filter((m) => m !== "jackpot-payout") }), "[L6]"],
+    ["the code forgets stake-share (back to the three alone)", () => ({ ...REAL, feeModels: [...LAW_MODELS] }), "[L6]"],
+    ["the fee-law gate opened while §3 still names three", () => ({ ...REAL, feeLawLive: true }), "[L6]"],
     ["a caption too long for its cell", () => ({ ...REAL, caption: "13% of the jackpot at payout" }), "[L6]"],
     ["the cited decision missing", () => swap(REAL, "decisions", "## 2026-10-16 · Maswali Millionea", "## 2026-10-16 · Weekly product"), "[L7]"],
     // S7-F9 14 · the law's sunset back to "runs normally" with the players' rule gone, and the players' sentence reworded

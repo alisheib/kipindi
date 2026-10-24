@@ -10,7 +10,9 @@
  *   §0  the switch itself: false in this build; the in-process seam flips it and puts it back; no door reads the bare
  *       constant (so flipping the seam really does open every door); the seam is named nowhere in `src/` but its file
  *   §1  SHUT — the platform save, a per-market override, an Up & Down profile (default, chain created, chain edited), the
- *       one act that moves every chain, and the stamp itself all REFUSE; the older laws still save
+ *       one act that moves every chain onto stake-share (or with a tax), and the stamp itself all REFUSE; the older laws
+ *       still save — and, since the R2 review, the act's read-only dry run RUNS shut and a legacy move (capped ↔
+ *       loser-share) goes through
  *   §2  OPEN (flipped in this process) — they ACCEPT, with the new rules: the tax required and bounded in whole basis points,
  *       the fee on every stake ≤ 30%, the winner-floor guard a WARNING (worst ratio + break-even lean), never a refusal;
  *       overrides still refuse a model or a tax; a profile never carries a tax; a chain on another model needs an explicit
@@ -51,6 +53,8 @@ function thrown(fn: () => unknown): unknown {
 }
 
 const OFFICER = "usr_fee_gate_officer";
+/** The officer of §1's legacy moves — kept apart so §2's "ONE audit row" counts §2's act alone. */
+const LEGACY_OFFICER = "usr_fee_gate_legacy";
 const REFUSAL = "The new fee law";
 const SS_PROFILE = { feeModel: "stake-share" as const, platformFeeRate: 0.03, operatorFeeRate: 0.10, feeCeilingRate: 1 / 3, estimatedWinningsRate: 0.4, showEstimatedWinnings: true };
 const LS_PROFILE = { ...UC.DEFAULT_UPDOWN_CONFIG.defaultRateProfile };
@@ -129,9 +133,26 @@ section("§1 · SHUT — every door refuses the new law");
   const d1 = await UC.setUpDownConfig({ defaultRateProfile: SS_PROFILE }, OFFICER);
   ok("1.11 · the product default refuses it", !d1.ok && err(d1).startsWith(REFUSAL), err(d1));
   const a1 = await UC.applyFeeProfileToEveryChain(SS_PROFILE, OFFICER, "A test of the shut gate, never applied.");
-  const a2 = await UC.applyFeeProfileToEveryChain(SS_PROFILE, OFFICER, "A test of the shut gate, never applied.", { dryRun: true });
-  const a3 = await UC.applyFeeProfileToEveryChain(LS_PROFILE, OFFICER, "A test of the shut gate, never applied.");
-  ok("1.12 · ★ the one act that moves every chain is refused whole — its dry run too, and for any profile", !a1.ok && !a2.ok && !a3.ok && err(a1).startsWith(REFUSAL) && err(a3).startsWith(REFUSAL), `${err(a1)} | ${err(a3)}`);
+  ok("1.12 · ★ the one act that moves every chain is refused onto stake-share while the gate is shut", !a1.ok && err(a1).startsWith(REFUSAL), err(a1));
+  const taxed = await UC.applyFeeProfileToEveryChain({ ...LS_PROFILE, winningsTaxRate: 0.15 }, OFFICER, "A test of the shut gate, never applied.");
+  ok("1.12b · …and so is any profile carrying a winnings tax", !taxed.ok && err(taxed).startsWith(REFUSAL), err(taxed));
+  // FEE-TAX R2 review · the dry run is READ-ONLY, so it runs with the gate shut — the admin card's counts, R5's preview.
+  const shape = j({ cfg: (await UC.getUpDownConfig()).defaultRateProfile, chains: (await UC.listChains()).map((c) => [c.id, c.rateProfile]) });
+  const a2 = await UC.applyFeeProfileToEveryChain(SS_PROFILE, OFFICER, "", { dryRun: true });
+  ok("1.12c · ★ the DRY RUN runs while the gate is shut: counts by state, the refusal the real act would meet named, nothing written",
+    a2.ok && a2.data.dryRun && a2.data.total === 1 && a2.data.moved === 1 && (a2.data.refusal ?? "").startsWith(REFUSAL)
+      && j({ cfg: (await UC.getUpDownConfig()).defaultRateProfile, chains: (await UC.listChains()).map((c) => [c.id, c.rateProfile]) }) === shape,
+    a2.ok ? j(a2.data) : err(a2));
+  // ⭐ FEE-TAX R2 review · a LEGACY move is not the new law: every chain to capped-commission and back, before R5.
+  const toCapped = await UC.applyFeeProfileToEveryChain(CAP_PROFILE, LEGACY_OFFICER, "A legacy move, every chain to capped-commission and back.");
+  const cfgCapped = await UC.getUpDownConfig();
+  const cappedModels = (await UC.listChains()).map((c) => resolveFeeModel(UC.rateProfileOf(c, cfgCapped)));
+  const toLoser = await UC.applyFeeProfileToEveryChain(LS_PROFILE, LEGACY_OFFICER, "A legacy move, every chain back to loser-share.");
+  const cfgBack = await UC.getUpDownConfig();
+  ok("1.12d · ★ a LEGACY move goes through while the gate is shut — every chain to capped-commission, then back to loser-share",
+    toCapped.ok && toCapped.data.moved === 1 && cappedModels.every((m) => m === "capped-commission") && toLoser.ok && toLoser.data.moved === 1
+      && cfgBack.defaultRateProfile.feeModel === "loser-share" && (await UC.listChains()).every((c) => j(c.rateProfile) === j(LS_PROFILE)),
+    `${toCapped.ok ? j(toCapped.data) : err(toCapped)} | ${toLoser.ok ? j(toLoser.data) : err(toLoser)}`);
   const stamp = thrown(() => MC.snapshotFromConfig({ ...MC.DEFAULT_GLOBAL_CONFIG, feeModel: "stake-share", winningsTaxRate: 0.15 }));
   ok("1.13 · ★ the stamp itself refuses a stake-share market (`RatesRefused`) — the last door every product passes", MC.isRatesRefused(stamp) && String((stamp as Error).message).includes(REFUSAL), String(stamp));
   const okSave = await MC.setGlobalConfig({ feeModel: "loser-share", platformFeeRate: 0.03 }, OFFICER);
@@ -156,6 +177,13 @@ let explicitChainId = "";
   const warn = s1.ok ? s1.warn ?? "" : "";
   ok("2.5 · ★ stake-share saves, and the winner-floor guard WARNS — never refuses — with the worst ratio and the break-even lean",
     s1.ok && /87\.\d%/.test(warn) && warn.includes("14.95%"), s1.ok ? warn : err(s1));
+  ok("2.5b · the worst case's pool is printed to one decimal — 99.9/0.1, never \"100/0\" (a one-sided pool is refunded in full)",
+    warn.includes("99.9/0.1") && !warn.includes("100/0"), warn);
+  const zero = await MC.setGlobalConfig({ platformFeeRate: 0, operatorFeeRate: 0 }, OFFICER);
+  const zeroWarn = zero.ok ? zero.warn ?? "" : "";
+  const restore = await MC.setGlobalConfig({ platformFeeRate: 0.03, operatorFeeRate: 0.10 }, OFFICER);
+  ok("2.5c · with no fee at all no winner is paid below their stake — so the below-stake sentence is NOT emitted",
+    zero.ok && zeroWarn.length > 0 && !/less than they staked/.test(zeroWarn) && restore.ok, zero.ok ? zeroWarn : err(zero));
   const g = await MC.getGlobalConfig();
   ok("2.6 · the platform is on stake-share at 13% with a 15% tax", g.feeModel === "stake-share" && g.platformFeeRate === 0.03 && g.operatorFeeRate === 0.10 && g.winningsTaxRate === 0.15, j({ m: g.feeModel, t: g.winningsTaxRate }));
   const o1 = await MC.setMarketOverride("mkt_fee_gate", { winningsTaxRate: 0.2 }, OFFICER);
@@ -165,6 +193,12 @@ let explicitChainId = "";
     snap.v === 3 && snap.feeModel === "stake-share" && snap.winningsTaxRate === 0.15 && snap.platformFeeRate === 0.03 && snap.operatorFeeRate === 0.10, j(snap));
   const noTax = thrown(() => MC.snapshotFromConfig({ ...g, winningsTaxRate: undefined }));
   ok("2.9 · …and refuses (`RatesRefused`) to stamp one without its tax", MC.isRatesRefused(noTax), String(noTax));
+  // FEE-TAX R2 review · a rate between two basis points would be frozen as one rate and charged as another (rateBp rounds).
+  const halfBp = thrown(() => MC.snapshotFromConfig({ ...g, platformFeeRate: 0.03125 }));
+  const halfBpTax = thrown(() => MC.snapshotFromConfig({ ...g, winningsTaxRate: 0.12345 }));
+  ok("2.9b · ★ …and refuses a hand-edited rate between two basis points — 0.03125, or a 0.12345 tax — in so many words",
+    MC.isRatesRefused(halfBp) && /whole number of basis points/.test(String((halfBp as Error).message))
+      && MC.isRatesRefused(halfBpTax) && /whole number of basis points/.test(String((halfBpTax as Error).message)), `${String(halfBp)} | ${String(halfBpTax)}`);
   const m = await MS.createMarket(marketInput("Fee gate · open"));
   ok("2.10 · ★ a market created now freezes the new law, read fresh and stamped complete", m.feeSnapshot?.v === 3 && m.feeSnapshot?.feeModel === "stake-share" && m.feeSnapshot?.winningsTaxRate === 0.15, j(m.feeSnapshot));
 
@@ -209,13 +243,27 @@ let explicitChainId = "";
   const rows = AU.getAuditPage({ category: "ADMIN", actorId: OFFICER, limit: 500 }).filter((e) => e.action === "updown.fee_profile.applied_everywhere");
   const payload = rows[0]?.payload as { counts?: { moved?: number }; reason?: string } | undefined;
   ok("2.18 · ONE audit row, with the counts and the reason", rows.length === 1 && payload?.counts?.moved === 5 && /2026-10-24/.test(payload?.reason ?? ""), j(rows.map((r) => r.payload)));
+  // FEE-TAX R2 review · the act's own record is written INSIDE its transaction, and the audit row names the same act.
+  const acts = await UC.listFeeProfileActs();
+  const last = acts[acts.length - 1] as { actId?: string; officerId?: string; reason?: string; at?: string; counts?: { moved?: number; byState?: unknown } } | undefined;
+  ok("2.18b · ★ the act's record — officer, reason, counts, time — was written with it, and the audit row carries the same act id",
+    acts.length === 3 && last?.officerId === OFFICER && /2026-10-24/.test(last?.reason ?? "") && last?.counts?.moved === 5 && j(last?.counts?.byState) === j(want)
+      && typeof last?.at === "string" && !Number.isNaN(Date.parse(last.at)) && applied.ok && last?.actId === applied.data.actId
+      && (rows[0]?.payload as { actId?: string } | undefined)?.actId === last?.actId,
+    j(acts.map((a) => ({ actId: (a as { actId?: string }).actId, officerId: (a as { officerId?: string }).officerId }))));
   const inherit = await UC.createChain({ assetId, durationMinutes: 5 }, OFFICER);
   const stale = await UC.createChain({ assetId, durationMinutes: 10, rateProfile: LS_PROFILE }, OFFICER);
-  ok("2.19 · after it: a new chain takes stake-share; one on the old model is refused without an override",
-    inherit.ok && resolveFeeModel(inherit.data.rateProfile as object) === "stake-share" && !stale.ok, `${err(inherit)} | ${err(stale)}`);
+  ok("2.19 · after it: a new chain takes stake-share; one on the old model is refused without an override — and the refusal SAYS why",
+    inherit.ok && resolveFeeModel(inherit.data.rateProfile as object) === "stake-share"
+      && !stale.ok && /This fee profile is loser-share, but Up & Down chains run on stake-share/.test(err(stale)) && /explicit override/.test(err(stale)),
+    `${err(inherit)} | ${err(stale)}`);
   const noModel = await UC.applyFeeProfileToEveryChain({ platformFeeRate: 0.03, operatorFeeRate: 0.10 }, OFFICER, "A profile that names no model.");
   const noReason = await UC.applyFeeProfileToEveryChain(SS_PROFILE, OFFICER, " ");
   ok("2.20 · the act refuses a profile that names no model, and one without a reason", !noModel.ok && !noReason.ok, `${err(noModel)} | ${err(noReason)}`);
+  // The other direction (FEE-TAX R2 review): moving the default OFF stake-share alone would split the board too.
+  const off = await UC.setUpDownConfig({ defaultRateProfile: LS_PROFILE }, OFFICER);
+  ok("2.21 · ★ the settings save cannot move the default OFF stake-share alone either — only the one act moves it",
+    !off.ok && /to or from the stake-share fee model/.test(err(off)) && (await UC.getUpDownConfig()).defaultRateProfile.feeModel === "stake-share", err(off));
 }
 
 // ═══ §3 · SHUT AGAIN, OVER A STORED STAKE-SHARE MODEL ═════════════════════════════════════════════════════════════════

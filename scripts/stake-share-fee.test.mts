@@ -273,6 +273,12 @@ section("§7 · a projection onto an empty other side is the stake — never 87%
     !isErr(f) && f.fee === 0 && f.netPool === 25_000 && f.winningsTax === undefined && !isErr(g) && g.fee === 0, `${msg(f)} · ${msg(g)}`);
   const control = attempt(() => P.payoutFor({ yesPool: 20_000, noPool: 1, side: "YES", stake: 5_000 }, SS));
   ok("7.5 · CONTROL · one shilling on the other side and the fee applies: 4,350, not the stake", !isErr(control) && control.payout === 4_350, msg(isErr(control) ? control : control.payout));
+  // FEE-TAX R2 review · a refund needs no rate: the one-sided answer is decided BEFORE the pricing read that wants the tax.
+  const noTaxOneSided = attempt(() => P.poolFee(25_000, 0, PROFILE, "YES"));
+  ok("7.6 · ★ `poolFee` refunds a one-sided pool even when its rates lack the tax — it never reads a rate to refund",
+    !isErr(noTaxOneSided) && noTaxOneSided.fee === 0 && noTaxOneSided.netPool === 25_000 && noTaxOneSided.winningsTax === undefined, msg(noTaxOneSided));
+  ok("7.7 · CONTROL · …while a two-sided pool with a side still refuses those rates (a price needs the tax)",
+    isErr(attempt(() => P.poolFee(25_000, 1, PROFILE, "YES"))));
 }
 
 // ═══ §8 · THE READ ════════════════════════════════════════════════════════════════════════════════════════════════════
@@ -296,6 +302,14 @@ section("§8 · `readRates` — a stake-share rate set is read, never completed"
   ok("8.10 · every other model IGNORES a tax: loser-share is 390 with or without one, and carries no tax field",
     withTax.fee === 390 && withTax.winningsTax === undefined && canon(withTax) === canon(P.poolFee(7_000, 3_000, LS, "YES")));
   ok("8.11 · CONTROL · an unknown model is still refused, never coerced", isErr(attempt(() => P.resolveFeeModel({ feeModel: "mystery" } as never))));
+  // FEE-TAX R2 review · a rate between two basis points would be frozen as one figure and charged as another (rateBp rounds
+  // 312.5 → 313 and 1,234.5 → 1,235), so the read that prices refuses it — terms reads included.
+  ok("8.12 · ★ a platform rate between basis points (0.03125) → refused, on a price and on a terms read",
+    refuses({ ...SS, platformFeeRate: 0.03125 }) && isErr(attempt(() => P.resolveFeeModel({ ...PROFILE, platformFeeRate: 0.03125 }))));
+  ok("8.13 · ★ a winnings tax between basis points (0.12345) → refused", refuses({ ...SS, winningsTaxRate: 0.12345 }));
+  ok("8.14 · CONTROL · whole basis points still read: 2.75% + 10% with a 12.34% tax prices, and `isWholeBasisPoints` says why",
+    !refuses({ ...SS, platformFeeRate: 0.0275, winningsTaxRate: 0.1234 }) && P.isWholeBasisPoints(0.1275) && P.isWholeBasisPoints(0.0001)
+      && !P.isWholeBasisPoints(0.03125) && !P.isWholeBasisPoints(0.12345) && !P.isWholeBasisPoints(Number.NaN));
 }
 
 // ═══ §9 · THE SNAPSHOT READER ═════════════════════════════════════════════════════════════════════════════════════════

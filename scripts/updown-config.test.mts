@@ -664,9 +664,15 @@ let goldId = "";
      !taxed.ok && /cannot carry a winnings tax/.test(taxed.reason), taxed.ok ? "accepted" : taxed.reason);
   const ss = validateRateConfig(SS, { scope: "profile" });
   ok("10.2 · a stake-share profile is refused while the fee law is not in force", !ss.ok && /not yet in force/.test(ss.reason), ss.ok ? "accepted" : ss.reason);
+  // ⭐ FEE-TAX R2 review · a LEGACY move (loser-share ↔ capped-commission) saves through the settings, as it did before R2 —
+  // the first cut refused every model change here, so a legacy move was impossible until R5. Only a move to or from
+  // `stake-share` is the one act's (`test:fee-gate` 2.14 and 2.21 drive that refusal with the gate open).
   const model = await setUpDownConfig({ defaultRateProfile: { feeModel: "capped-commission", commissionRate: 0.13, feeCeilingRate: 1 / 3 } }, OFFICER);
-  ok("10.3 · ⛔ the default's fee MODEL cannot move through the settings save — only with every chain, in one act",
-     !model.ok && /every chain/.test(model.error), model.ok ? "accepted" : model.error);
+  const movedTo = (await getUpDownConfig()).defaultRateProfile.feeModel;
+  const back = await setUpDownConfig({ defaultRateProfile: { ...LS } }, OFFICER);
+  ok("10.3 · ★ a LEGACY move of the default's model (to capped-commission, and back) saves — it is not the new law",
+     model.ok && movedTo === "capped-commission" && back.ok && (await getUpDownConfig()).defaultRateProfile.feeModel === "loser-share",
+     model.ok ? (back.ok ? "" : back.error) : model.error);
   const tuned = await setUpDownConfig({ defaultRateProfile: { ...LS, platformFeeRate: 0.04 } }, OFFICER);
   const restored = await setUpDownConfig({ defaultRateProfile: { ...LS } }, OFFICER);
   ok("10.4 · …its RATES still tune under the same model", tuned.ok && restored.ok && (await getUpDownConfig()).defaultRateProfile.platformFeeRate === 0.03,
@@ -721,10 +727,15 @@ let goldId = "";
     ok("10.9 · a write whose read-back already holds something else is REPORTED, never claimed as saved",
        !contested.ok && /another save changed/.test(contested.error), contested.ok ? "claimed" : contested.error);
 
-    // The fresh read at stamping: a chain with no profile of its own takes the default AS STORED.
+    // The fresh read at stamping: a chain with no profile of its own takes the default AS STORED. (A real chain ROW since
+    // the R2 review: `rateProfileForStamping` re-reads the chain itself, never the object handed in.)
     rows.set(KEY, { ...DEFAULT_UPDOWN_CONFIG, defaultRateProfile: { ...LS, platformFeeRate: 0.02 }, v: 5 });
     const fresh = await readUpDownConfigFresh();
-    const nullChain = { rateProfile: null } as unknown as Parameters<typeof rateProfileForStamping>[0];
+    const stampedAt = new Date().toISOString();
+    await chainStore.upsert({ id: "udc_stamp_null", assetId: "ast_stamp", durationMinutes: 60, state: "STOPPED", gridAnchorAt: stampedAt,
+      nextBoundaryAt: null, currentRoundId: null, minStake: null, maxStake: null, rateProfile: null, marginBps: null,
+      createdBy: OFFICER, createdAt: stampedAt, updatedAt: stampedAt });
+    const nullChain = (await chainStore.get("udc_stamp_null"))!;
     const stamped = await rateProfileForStamping(nullChain);
     ok("10.10 · ★ a round of a profile-less chain is stamped from the row read FRESH, not this container's copy",
        fresh.ok && stamped.ok && stamped.profile.platformFeeRate === 0.02, JSON.stringify(stamped));
@@ -735,6 +746,106 @@ let goldId = "";
     ok("10.11 · ★ …and a read that fails opens NO round (fails closed)", !failed.ok && !failedFresh.ok, JSON.stringify(failed));
   } finally {
     __setUpDownConfigStoreForTest(null);
+  }
+}
+
+// ── §11 · FEE-TAX R2 review — a stale FORM, a blank field, the chain ROW at the stamp, the readers, an absent row ─────────
+// (a) `opts.baseline`: only the fields the officer changed are written, and one another officer moved since the page was
+// rendered is refused. (b) `undefined` never reaches the row. (c) A round is stamped from the chain's ROW read fresh, and
+// never with a tax from its profile. (d) A profile naming no model is read as the PLATFORM's model it really stamps.
+// (e) An absent row with a database still stamps — and is alerted once. The fake store clones like jsonb.
+{
+  const UCm = await import("../src/lib/server/updown-config.ts");
+  const { auditFlush, getAuditPage } = await import("../src/lib/server/audit.ts");
+  const LS = { ...DEFAULT_UPDOWN_CONFIG.defaultRateProfile };
+  const CAPPED = { feeModel: "capped-commission" as const, commissionRate: 0.13, feeCeilingRate: 1 / 3 };
+  const canon = (v: unknown): string =>
+    v && typeof v === "object" && !Array.isArray(v)
+      ? `{${Object.keys(v as object).sort().map((k) => `${JSON.stringify(k)}:${canon((v as Record<string, unknown>)[k])}`).join(",")}}`
+      : Array.isArray(v) ? `[${v.map(canon).join(",")}]` : JSON.stringify(v ?? null);
+  const jsonb = <T,>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
+  const rows = new Map<string, unknown>();
+  let swaps = 0;
+  const KEY = "updown.config";
+  const row = () => rows.get(KEY) as Record<string, unknown>;
+  UCm.__setUpDownConfigStoreForTest({
+    hasDatabase: () => true,
+    loadConfigResult: (async (key: string) => ({ ok: true, value: rows.has(key) ? jsonb(rows.get(key)) : null })) as never,
+    replaceConfigIfValue: async (key: string, expected: unknown, value: unknown) => {
+      swaps++;
+      if (!rows.has(key) || canon(rows.get(key)) !== canon(expected)) return false;
+      rows.set(key, jsonb(value));
+      return true;
+    },
+    createConfigIfAbsent: async (key: string, value: unknown) => { if (rows.has(key)) return "exists" as const; rows.set(key, jsonb(value)); return "created" as const; },
+  });
+  try {
+    // (a) The form was rendered from the defaults; ANOTHER officer has since moved the staleness window to 70 s.
+    const rendered = { ...DEFAULT_UPDOWN_CONFIG };
+    rows.set(KEY, jsonb({ ...rendered, maxStalenessSeconds: 70, v: 5 }));
+    const s1 = await setUpDownConfig({ ...rendered, confidenceThreshold: 91 }, OFFICER, { baseline: rendered });
+    ok("11.1 · ★ a baselined save writes ONLY the changed field — the other officer's 70 s survives the whole posted form",
+       s1.ok && row().confidenceThreshold === 91 && row().maxStalenessSeconds === 70, s1.ok ? JSON.stringify({ s: row().maxStalenessSeconds }) : s1.error);
+    const s2 = await setUpDownConfig({ ...rendered, maxStalenessSeconds: 100 }, OFFICER, { baseline: rendered });
+    ok("11.2 · ★ a changed field another officer moved since the page opened is REFUSED — nothing written",
+       !s2.ok && /^Another officer changed the max staleness seconds since this page was opened — reload and try again/.test(s2.error) && row().maxStalenessSeconds === 70,
+       s2.ok ? "accepted" : s2.error);
+    const before = swaps;
+    const s3 = await setUpDownConfig({ ...rendered }, OFFICER, { baseline: rendered });
+    ok("11.3 · a form posted unchanged writes NOTHING — `unchanged`, no swap", s3.ok && s3.unchanged === true && swaps === before);
+    const reordered = Object.fromEntries(Object.entries(rendered.defaultRateProfile).reverse());
+    const s4 = await setUpDownConfig({ defaultRateProfile: reordered }, OFFICER, { baseline: rendered });
+    ok("11.4 · an object field compares DEEPLY, key order ignored — the same profile in another order is not a change", s4.ok && s4.unchanged === true);
+
+    // (b) a blank field never reaches the row, and the save that landed reads back as landed.
+    const s5 = await setUpDownConfig({ confidenceThreshold: 88, maxObservationAttempts: undefined }, OFFICER);
+    ok("11.5 · ★ an `undefined` member is stripped: the save lands and reads back as landed, and the stored attempts survive",
+       s5.ok && row().confidenceThreshold === 88 && row().maxObservationAttempts === DEFAULT_UPDOWN_CONFIG.maxObservationAttempts, s5.ok ? "" : s5.error);
+
+    // (c) the chain ROW at the stamp, and never a tax from a profile.
+    const t = new Date().toISOString();
+    const plant = (id: string, rateProfile: Record<string, unknown> | null) => chainStore.upsert({ id, assetId: "ast_r2", durationMinutes: 60, state: "STOPPED",
+      gridAnchorAt: t, nextBoundaryAt: null, currentRoundId: null, minStake: null, maxStake: null, rateProfile, marginBps: null, createdBy: OFFICER, createdAt: t, updatedAt: t });
+    await plant("udc_r2_row", { ...LS });
+    const stale = { ...(await chainStore.get("udc_r2_row"))!, rateProfile: { ...CAPPED } as Record<string, unknown> };
+    const fromRow = await UCm.rateProfileForStamping(stale);
+    ok("11.6 · ★ a round is stamped from the chain's ROW, re-read — not the (stale) object the tick loaded",
+       fromRow.ok && fromRow.profile.feeModel === "loser-share", JSON.stringify(fromRow));
+    const gone = await UCm.rateProfileForStamping({ ...stale, id: "udc_r2_gone" });
+    ok("11.7 · …and a chain that no longer exists opens no round", !gone.ok && /no longer exists/.test(gone.error), JSON.stringify(gone));
+    await plant("udc_r2_taxed", { ...LS, winningsTaxRate: 0.4 });
+    const taxed = await UCm.rateProfileForStamping((await chainStore.get("udc_r2_taxed"))!);
+    ok("11.8 · ★ a profile carrying a winnings tax (a hand-edited row) is stamped WITHOUT it — the tax is always the platform's",
+       taxed.ok && !("winningsTaxRate" in taxed.profile) && taxed.profile.feeModel === "loser-share", JSON.stringify(taxed));
+
+    // (d) a profile naming no model stamps the PLATFORM's — the readers name that, never "capped".
+    const cfgLS = { ...DEFAULT_UPDOWN_CONFIG, defaultRateProfile: { ...LS } };
+    const floating = { rateProfile: { commissionRate: 0.13, feeCeilingRate: 1 / 3 } as Record<string, unknown> };
+    const platform = { feeModel: "loser-share" as const, platformFeeRate: 0.03, operatorFeeRate: 0.10, commissionRate: 0.10, feeCeilingRate: 1 / 3 };
+    const read = UCm.boardFeeSummary([floating], cfgLS, platform);
+    ok("11.9 · ★ a chain whose profile names no model is the PLATFORM's model on the board (one law, \"loser-share 13%\") — not \"capped\"",
+       !read.split && read.models.length === 1 && read.models[0] === "loser-share" && read.caption === "loser-share 13%", JSON.stringify(read));
+    ok("11.10 · …and the mismatch check agrees: no refusal for it with the platform's terms (and today's reading without them)",
+       UCm.feeModelMismatch(floating.rateProfile, cfgLS, platform) === null && /capped-commission/.test(UCm.feeModelMismatch(floating.rateProfile, cfgLS) ?? ""));
+    ok("11.11 · the stamped terms are the platform's under the profile's own — its 13% commission kept, the model the platform's",
+       canon(UCm.stampedFeeTermsOf(floating.rateProfile, platform)) === canon({ ...platform, commissionRate: 0.13 }));
+
+    // (e) an ABSENT row with a database: a round of an inheriting chain still stamps — and it is alerted once per container.
+    const alerts = () => getAuditPage({ category: "COMPLIANCE", limit: 500 }).filter((e) => e.action === "config.stamped_from_defaults" && e.targetId === KEY).length;
+    await plant("udc_r2_inherits", null);
+    const inherits = (await chainStore.get("udc_r2_inherits"))!;
+    rows.clear();
+    await auditFlush();
+    const n0 = alerts();
+    const r1 = await UCm.rateProfileForStamping(inherits);
+    const r2 = await UCm.rateProfileForStamping(inherits);
+    const f = await UCm.readUpDownConfigFresh();
+    await auditFlush();
+    ok("11.12 · ★ an absent row still stamps the code default (refusing would stop every inheriting round), `stored: false` — alerted ONCE",
+       r1.ok && r2.ok && r1.profile.feeModel === DEFAULT_UPDOWN_CONFIG.defaultRateProfile.feeModel && f.ok && !f.stored && alerts() === n0 + 1,
+       `${alerts() - n0} alert(s)`);
+  } finally {
+    UCm.__setUpDownConfigStoreForTest(null);
   }
 }
 

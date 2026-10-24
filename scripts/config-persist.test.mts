@@ -243,5 +243,117 @@ await (async () => {
   ok("9.3 · a per-market override can never carry a tax or a model", !over.ok && /per-market override/.test(over.error));
 })();
 
+// 10. FEE-TAX R2 review · A STALE FORM, A BLANK FIELD, AN ABSENT ROW.
+//
+// ⛔ THE DEFECTS. (a) Compare-and-swap stops a stale CONTAINER, not a stale FORM: a page rendered at 09:00 and saved at 09:20
+// posted back every field another officer had saved at 09:10. With `opts.baseline` (the values the form was rendered with)
+// only the changed fields are written, and a changed field someone else moved since is refused. (b) `{ x: undefined }`
+// merged over the row erased the stored x, and the read-back called a landed save a lost one. (c) An absent row stamped
+// code defaults in silence — it must still stamp (availability), and say so once per container.
+// The fake store here clones like jsonb (`undefined` keys dropped) — which is what made (b) visible.
+await (async () => {
+  const MC = await import("../src/lib/server/market-config.ts");
+  const { createMarket } = await import("../src/lib/server/market-service.ts");
+  const { auditFlush, getAuditPage } = await import("../src/lib/server/audit.ts");
+  const { DEFAULT_GLOBAL_CONFIG: D } = MC;
+  const canon = (v: unknown): string =>
+    v && typeof v === "object" && !Array.isArray(v)
+      ? `{${Object.keys(v as object).sort().map((k) => `${JSON.stringify(k)}:${canon((v as Record<string, unknown>)[k])}`).join(",")}}`
+      : Array.isArray(v) ? `[${v.map(canon).join(",")}]` : JSON.stringify(v ?? null);
+  const jsonb = <T,>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
+  const rows = new Map<string, unknown>();
+  let swaps = 0;
+  const KEY = "market.config";
+  type Row = { global: Record<string, unknown>; perMarket: Array<[string, Record<string, unknown>]>; v: number };
+  const row = () => rows.get(KEY) as Row;
+  MC.__setMarketConfigStoreForTest({
+    hasDatabase: () => true,
+    loadConfigResult: (async (key: string) => ({ ok: true, value: rows.has(key) ? jsonb(rows.get(key)) : null })) as never,
+    replaceConfigIfValue: async (key: string, expected: unknown, value: unknown) => {
+      swaps++;
+      if (!rows.has(key) || canon(rows.get(key)) !== canon(expected)) return false;
+      rows.set(key, jsonb(value));
+      return true;
+    },
+    createConfigIfAbsent: async (key: string, value: unknown) => { if (rows.has(key)) return "exists" as const; rows.set(key, jsonb(value)); return "created" as const; },
+  });
+  const OFF = "usr_baseline_officer";
+  try {
+    // The form was rendered from this…
+    const rendered = { ...D, withdrawalFeeRate: 0.015, minStake: 600 };
+    // …and ANOTHER officer has since moved the withdrawal fee.
+    rows.set(KEY, jsonb({ global: { ...rendered, withdrawalFeeRate: 0.02 }, perMarket: [], v: 4 }));
+    const s1 = await MC.setGlobalConfig({ ...rendered, minStake: 800 }, OFF, { baseline: rendered });
+    ok("10.1 · ★ a baselined save writes ONLY what the officer changed — the other officer's 2% survives the whole posted form",
+       s1.ok && row().global.minStake === 800 && row().global.withdrawalFeeRate === 0.02);
+    await auditFlush();
+    const a1 = getAuditPage({ category: "ADMIN", actorId: OFF, limit: 50 }).find((e) => e.action === "config.global.updated");
+    ok("10.2 · …and its audit row names that one change", canon(Object.keys((a1?.payload?.changes as object) ?? {})) === canon(["minStake"]));
+
+    const s2 = await MC.setGlobalConfig({ ...rendered, withdrawalFeeRate: 0.03 }, OFF, { baseline: rendered });
+    ok("10.3 · ★ a changed field another officer moved since the page opened is REFUSED, in plain words — nothing written",
+       !s2.ok && /^Another officer changed the withdrawal fee rate since this page was opened — reload and try again/.test(s2.error)
+         && row().global.withdrawalFeeRate === 0.02 && row().global.minStake === 800, s2.ok ? "accepted" : s2.error);
+
+    const before = swaps;
+    const s3 = await MC.setGlobalConfig({ ...rendered }, OFF, { baseline: rendered });
+    ok("10.4 · a form posted unchanged writes NOTHING — no swap, and it says `unchanged`", s3.ok && s3.unchanged === true && swaps === before);
+
+    const s4 = await MC.setGlobalConfig({ minStake: 1_000 }, OFF);
+    ok("10.5 · CONTROL · without a baseline every posted field is written, as before", s4.ok && row().global.minStake === 1_000);
+
+    // (b) a blank field: an `undefined` member must neither erase the stored value nor fail the read-back.
+    const s5 = await MC.setGlobalConfig({ minStake: 1_100, commissionRate: undefined }, OFF);
+    ok("10.6 · ★ an `undefined` member is stripped: the save lands and reads back as landed (no false \"another save changed\")",
+       s5.ok && row().global.minStake === 1_100, s5.ok ? "" : s5.error);
+    ok("10.7 · …and the stored commission rate is still there, not erased to a code default", row().global.commissionRate === D.commissionRate);
+
+    // A per-market override: its baseline is the STORED override, as rendered.
+    rows.set(KEY, jsonb({ global: { ...D }, perMarket: [["mkt_b", { minStake: 2_000, maxStake: 50_000 }]], v: 4 }));
+    const renderedOverride = { minStake: 2_000, maxStake: 50_000 };
+    rows.set(KEY, jsonb({ ...row(), perMarket: [["mkt_b", { minStake: 2_000, maxStake: 40_000 }]] })); // another officer
+    const o1 = await MC.setMarketOverride("mkt_b", { minStake: 2_500, maxStake: 50_000 }, OFF, { baseline: renderedOverride });
+    ok("10.8 · ★ an override save writes only its changed field — the other officer's 40,000 maximum survives",
+       o1.ok && canon(row().perMarket) === canon([["mkt_b", { minStake: 2_500, maxStake: 40_000 }]]), canon(row().perMarket));
+    const o2 = await MC.setMarketOverride("mkt_b", { maxStake: 60_000 }, OFF, { baseline: renderedOverride });
+    ok("10.9 · …and refuses a changed field moved since the page opened", !o2.ok && /Another officer changed the max stake/.test(o2.error), o2.ok ? "accepted" : o2.error);
+
+    // An override lands on the market's EFFECTIVE config: a maximum below the market's own minimum is refused.
+    rows.set(KEY, jsonb({ global: { ...D }, perMarket: [["mkt_c", { minStake: 5_000 }]], v: 4 }));
+    const o3 = await MC.setMarketOverride("mkt_c", { maxStake: 3_000 }, OFF);
+    ok("10.10 · ★ an override is validated against the market's own override too — max 3,000 under its min 5,000 is refused",
+       !o3.ok && /Max stake must be greater than or equal to min stake/.test(o3.error), o3.ok ? "accepted" : o3.error);
+
+    // (c) an ABSENT row: stamped from code defaults — never refused — and alerted ONCE per container.
+    const alerts = () => getAuditPage({ category: "COMPLIANCE", limit: 500 }).filter((e) => e.action === "config.stamped_from_defaults" && e.targetId === KEY).length;
+    rows.clear();
+    await auditFlush();
+    const n0 = alerts();
+    const f1 = await MC.readMarketConfigFresh();
+    const f2 = await MC.readMarketConfigFresh();
+    await auditFlush();
+    ok("10.11 · ★ a stamping read of an absent row answers the defaults, says `stored: false`, and alerts ONCE (not per read)",
+       f1.ok && !f1.stored && f2.ok && !f2.stored && alerts() === n0 + 1, `${alerts() - n0} alert(s)`);
+    const marketInput = { titleEn: "Absent row", titleSw: "Soko", category: "macro", sourceUrl: "https://bot.go.tz", resolutionCriterion: "Resolves at the official date.",
+      resolutionAt: new Date(Date.now() + 7 * 864e5).toISOString(), proposedBy: "test" } as never;
+    let made: unknown = null;
+    try { made = await createMarket(marketInput); } catch (e) { made = e; }
+    ok("10.12 · ★ …and a market is STILL created from it (refusing would stop every new market and round) — today's defaults",
+       !(made instanceof Error) && (made as { feeSnapshot?: { feeModel?: string } })?.feeSnapshot?.feeModel === D.feeModel, String(made));
+    const c1 = await MC.readMarketConfigFresh({ purpose: "check" });
+    await auditFlush();
+    ok("10.13 · a CHECK read (an officer's act validating, nothing stamped) raises nothing", c1.ok && !c1.stored && alerts() === n0 + 1);
+    rows.set(KEY, jsonb({ global: { ...D }, perMarket: [], v: 4 }));
+    const f3 = await MC.readMarketConfigFresh();
+    rows.clear();
+    await MC.readMarketConfigFresh();
+    await auditFlush();
+    ok("10.14 · the row read again re-arms it (`stored: true`), so a row that goes missing a second time alerts again",
+       f3.ok && f3.stored && alerts() === n0 + 2, `${alerts() - n0} alert(s)`);
+  } finally {
+    MC.__setMarketConfigStoreForTest(null);
+  }
+})();
+
 console.log(`\nconfig-persist: ${pass} passed, ${fail} failed`);
 if (fail > 0) process.exit(1);

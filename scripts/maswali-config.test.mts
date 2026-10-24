@@ -211,7 +211,10 @@ console.log("\n§5 · the licence basis gates the open: the Owner's record, or h
 // ── §6 · the fee model ──────────────────────────────────────────────────────
 console.log("\n§6 · jackpot-payout: read, frozen with its rate, never a pool fee");
 {
-  ok("6.1 · three fee models, in RULES §3's order", JSON.stringify(FEE_MODELS) === JSON.stringify(["capped-commission", "loser-share", "jackpot-payout"]));
+  // FEE-TAX-2026-10 · RULES §3's three, in its order, then `stake-share` — DECIDED 2026-10-24 and held off by
+  // `fee-law-gate.ts` until release R5, so a snapshot that froze it reads as itself (`test:maswali-law` L6, `test:fee-gate`).
+  ok("6.1 · the law's three fee models, in RULES §3's order, then stake-share (decided, held by fee-law-gate.ts)",
+    JSON.stringify(FEE_MODELS) === JSON.stringify(["capped-commission", "loser-share", "jackpot-payout", "stake-share"]), JSON.stringify(FEE_MODELS));
   const g = await getGlobalConfig();
   const frozen = snapshotFromConfig({ ...g, feeModel: "jackpot-payout", jackpotFeeRate: 0.13 });
   ok("6.2 · a week's feeSnapshot freezes the model AND its rate, with the global levies", frozen.feeModel === "jackpot-payout"

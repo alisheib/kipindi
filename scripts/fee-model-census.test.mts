@@ -46,9 +46,9 @@ const REGISTRY: Record<string, [number, string]> = {
   "src/lib/payout.ts": [16, "the arithmetic: readRates names stake-share first; poolFee / describeFeeModel / chargedFee / settledPayoutFor / worstCaseWinnerRatio each name it before the capped fallback; the figure functions return null for every other model"],
   "src/lib/server/market-config.ts": [12, "the stamp (stake-share stamped complete or refused), hasOwnSnapshot, snapshotOrLegacy's pass-through (no coercion to capped), validate's gate"],
   "src/lib/server/market-service.ts": [4, "the settlement audit record names stake-share's payout model and rates (R2b replaces the split)"],
-  "src/lib/server/updown-config.ts": [6, "the v4 reconcile (exact retired default only), the split caption names every model, the preview lays the platform's tax beside a stake-share profile (never a default), the apply act names its three models"],
+  "src/lib/server/updown-config.ts": [9, "the v4 reconcile (exact retired default only), the split caption names every model, stampedFeeTermsOf lays the platform's tax beside a stake-share profile only (never a default), the settings save refuses a default move to or from stake-share (a legacy move passes), the apply act names its three models and gates a stake-share target only (R2 review)"],
   "src/lib/server/maswali-console.ts": [1, "jackpot-payout only — a Millionea week's own model, never a pool model"],
-  "src/lib/server/maswali-player.ts": [1, "jackpot-payout only"],
+  "src/lib/server/maswali-player.ts": [1, "jackpot-payout only — a week whose snapshot froze any other model shows the player no terms (null), never a pool model's"],
   "src/lib/server/maswali-settlement.ts": [1, "jackpot-payout only — refuses any other model"],
   "src/lib/journey/sheet-seed.ts": [2, "a seed on any model but the two older ones is NOT read — the link navigates instead (R2c)"],
   "src/lib/markets/estimate.ts": [1, "anything but loser-share is `hidden` — never priced through the loser-share card arithmetic (R2c)"],
@@ -120,8 +120,10 @@ section("§3 · the canonical functions NAME stake-share before any fallback");
     return a >= 0 && b >= 0 && a < b;
   };
   const pf = body(pay, "poolFee");
-  ok("3.1 · `poolFee` takes stake-share to its own arm before the loser-share and capped arithmetic",
-    before(pf, `r.feeModel === "stake-share"`, `r.feeModel === "loser-share"`) && before(pf, `r.feeModel === "stake-share"`, "r.commissionRate * pool"));
+  // The arm is chosen on the model alone, before any rate is read (FEE-TAX R2 review: a one-sided refund needs no rate).
+  ok("3.1 · `poolFee` takes stake-share to its own arm — on the model, before any rate is read — ahead of the loser-share and capped arithmetic",
+    before(pf, `readFeeModel(rates?.feeModel) === "stake-share"`, "readRates(") && before(pf, `=== "stake-share"`, `r.feeModel === "loser-share"`)
+      && before(pf, `=== "stake-share"`, "r.commissionRate * pool"));
   const dm = body(pay, "describeFeeModel");
   ok("3.2 · `describeFeeModel` names stake-share before the capped caption", before(dm, `r.feeModel === "stake-share"`, "`capped "));
   const cf = body(pay, "chargedFee");
