@@ -73,6 +73,7 @@
     "test:stake-share-fee": "tsx scripts/stake-share-fee.test.mts",
     "test:fee-gate": "tsx scripts/fee-gate.test.mts",
     "test:fee-law-switch": "tsx scripts/fee-law-switch.test.mts",
+    "red:fee-law-switch": "node scripts/red-fee-law-switch.mjs",
     "test:fee-model-census": "tsx scripts/fee-model-census.test.mts",
     "test:winnings-tax-ledger": "tsx scripts/db-scratch.mts --run npx tsx scripts/winnings-tax-ledger.test.mts",
     "test:below-stake-warning": "tsx scripts/below-stake-warning.test.mts",
