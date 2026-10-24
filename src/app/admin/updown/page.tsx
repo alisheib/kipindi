@@ -4,7 +4,7 @@ import { AdminPageGate } from "@/components/admin/admin-section-gate";
 import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ScrollX } from "@/components/ui/scroll-x";
-import { listAssets, listChains, getUpDownConfig, getStoredUpDownStakeDefaults, ALLOWED_DURATIONS, resolveScheduledMarginBps, boardFeeSummary } from "@/lib/server/updown-config";
+import { listAssets, listChains, getUpDownConfig, getStoredUpDownStakeDefaults, readUpDownConfigFresh, ALLOWED_DURATIONS, resolveScheduledMarginBps, boardFeeSummary } from "@/lib/server/updown-config";
 import { getGlobalConfig } from "@/lib/server/market-config";
 // E-46: the Add-asset form is driven by the catalogue, so a symbol/category pair that
 // cannot work is not offerable. The server enforces the same rule in `createAsset`.
@@ -14,7 +14,7 @@ import { SYMBOL_CATALOGUE, symbolReadiness, readinessMark, findSymbol } from "@/
 import { marketSessionAt, nextOpenAfter } from "@/lib/server/market-calendar";
 // ⭐ E-84 / the dynamic gate — each asset's measured record, and the advice derived from it.
 import { feedAdviceLookup } from "@/lib/server/updown-feed-history";
-import { playbookLookup, toReadinessAdvice } from "@/lib/server/updown-playbook-store";
+import { playbookFeeFor, playbookLookup, toReadinessAdvice } from "@/lib/server/updown-playbook-store";
 import { MIN_SAMPLES_FOR_ADVICE, chainDurationCaution } from "@/lib/server/updown-feed-advice";
 import { observationStore, roundStore } from "@/lib/server/updown-dal";
 // E-90 · the pools decide whether a decided round actually paid anybody.
@@ -84,6 +84,12 @@ async function AdminUpDownContent({ searchParams }: UpDownProps) {
     const qs = p.toString();
     return (qs ? `/admin/updown?${qs}` : "/admin/updown") as Route;
   };
+  /* ⭐ READ FRESH, FIRST (FEE-TAX-2026-10, R2c; the independent review of R2a). The row replaces this container's copy, so
+     everything below that reads the settings — the thresholds form above all — is drawn from what is stored NOW, and the
+     form posts what it was drawn with as its `baseline`: a page served by a container that booted before another
+     officer's save can no longer write that officer's change back. ⛔ When the read fails the thresholds are not drawn as
+     a form at all (the card says so). */
+  const freshCfg = await readUpDownConfigFresh().catch((e: unknown) => ({ ok: false as const, error: String((e as Error)?.message ?? e) }));
   // The product default stake bounds as STORED, beside the enforced ones `cfg` carries (floored on read, 2026-10-07).
   const storedStakeDefaults = await getStoredUpDownStakeDefaults().catch(() => null);
   const [assets, allChains, cfg, feed, book] = await Promise.all([
@@ -274,6 +280,9 @@ async function AdminUpDownContent({ searchParams }: UpDownProps) {
   // outcome-DEPENDENT and `poolFee` charges NOTHING when it is not told a winner, so one
   // must be passed here or the preview would read TZS 0 on the current model.
   const feePreview = poolFee(FEE_PREVIEW_POOL / 2, FEE_PREVIEW_POOL / 2, boardFee.profile, "YES");
+  // FEE-TAX-2026-10 · the fee the asset playbook's directional sentence measures against: the board's own priced profile
+  // (the platform's tax laid beside a stake-share one, exactly as the stamp lays it), reduced to its break-even.
+  const playbookFee = playbookFeeFor(boardFee.profile);
 
   // This game's OWN economics — 30-day money split (Up & Down only) + its own AI spend.
   // GGR is TZS (commission we keep on this game); AI cost is USD (what the oracle spent
@@ -548,8 +557,10 @@ async function AdminUpDownContent({ searchParams }: UpDownProps) {
               assetReadiness={Object.fromEntries(
                 assets.filter((a) => a.enabled).map((a) => {
                   const spec = findSymbol(a.symbol);
+                  // FEE-TAX-2026-10 · the asset's verdict states the break-even of the fee a new chain on it freezes
+                  // (`playbookFee`, the board's own priced profile) — never "50% + the knob" as if every model shared it.
                   const own = symbolReadiness(spec, undefined, feed?.advise(a.key), undefined,
-                    toReadinessAdvice(book?.asset(a.symbol)));
+                    toReadinessAdvice(book?.asset(a.symbol, playbookFee)));
                   const usable = ALLOWED_DURATIONS.filter(
                     (d) => symbolReadiness(spec, d, feed?.advise(a.key, d), feed?.movement(a.key, d),
                       toReadinessAdvice(book?.choice(a.symbol, d, spec?.minDurationMinutes ?? null))).level !== 3,
@@ -969,6 +980,11 @@ async function AdminUpDownContent({ searchParams }: UpDownProps) {
         <AdminCard title="Thresholds" sw="Vigezo">
           {!canConfig ? (
             <ControlLocked what="Change the thresholds" need={CONTROL_DOMAIN.updateThresholds} block />
+          ) : !freshCfg.ok ? (
+            <p className="text-body-sm text-danger-fg">
+              The Up &amp; Down settings could not be read, so the thresholds cannot be shown or changed now. Reload the page
+              to try again.
+            </p>
           ) : (
             <>
             {/* ⭐ A STORED DEFAULT UNDER THE PLATFORM MINIMUM IS SAID, NOT HIDDEN (2026-10-07): the form shows the
@@ -985,6 +1001,15 @@ async function AdminUpDownContent({ searchParams }: UpDownProps) {
               defaultMinStake={cfg.defaultMinStake}
               defaultMaxStake={cfg.defaultMaxStake}
               defaultMarginBps={cfg.defaultMarginBps}
+              baseline={{
+                // The six fields as STORED by the fresh read (the stake bounds unfloored), for the writer's compare.
+                maxStalenessSeconds: freshCfg.config.maxStalenessSeconds,
+                confidenceThreshold: freshCfg.config.confidenceThreshold,
+                maxObservationAttempts: freshCfg.config.maxObservationAttempts,
+                defaultMinStake: freshCfg.config.defaultMinStake,
+                defaultMaxStake: freshCfg.config.defaultMaxStake,
+                defaultMarginBps: freshCfg.config.defaultMarginBps,
+              }}
             />
             </>
           )}
