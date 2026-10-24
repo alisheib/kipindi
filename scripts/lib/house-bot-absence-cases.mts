@@ -143,7 +143,11 @@ export const U43_REVIEWED_BLOBS: Readonly<Record<string, string>> = {
   // blocks — `secondOfficer.*` (57 keys) and `feeChange.millioneaOpenHeld` (1 key), in en, sw and zh — no line removed,
   // no other line changed; the added lines scanned for every house / desk / bot / liquidity word in the three languages:
   // none.
-  "src/lib/i18n-dict.ts": "e6c25553ba10de8b46504e820ed31091f9ee3b86",
+  // D19a RE-PINNED AT FEE-TAX R2 (was e6c25553b, R1's; the lead, 2026-10-24 — lane R2c's bet-screen words for the
+  // stake-share fee, gated off until R5): its diff against e6c25553b is 58 ADDED lines — `market.ss*` (12 keys) and
+  // `journey.ssEstimateNote` / `ssEstimateNoteCompact` (2 keys), in en, sw and zh — no line removed, no other line changed;
+  // the added lines scanned for every house / desk / bot / liquidity word in the three languages: none.
+  "src/lib/i18n-dict.ts": "4749a3b7ab6a0f60fd60a79ade3e74ed773366b9",
   "src/app/legal/rules/_content-up-down.tsx": "a2ee86a3f3fd39cba34ddfdfd8ef316f7961cdf9",
   "src/app/legal/rules/up-down/page.tsx": "d6ab15942ad15e0812abf22fe236e27f91e586f5",
 };
@@ -338,6 +342,11 @@ export async function runAbsenceCases(ok: Ok, section: Section, ROOT: string): P
       // superseded). No published word and no code changed: `git diff origin/main -- src/app/legal/` is that one JSX
       // comment. Re-pinned at the lane commit that made it (07e643421), on the lead's decision (b) of 2026-10-23.
       ["src/app/legal/legal-nav.tsx", "07e643421d92bd5c090c8ff511cba35fb9c4c2ce"],
+      // 2026-10-24 (FEE-TAX R2, lane a): CODE ONLY — `ratesFrom`'s rate lookup gains a stake-share arm (the rate of every
+      // stake). No published word changed: under the two models any market can hold today the expression is the old one,
+      // byte for byte, and no saved config can hold stake-share while `fee-law-gate.ts` is shut. Release R5 rewrites the
+      // rulebooks' words in the commit that opens the gate. Pinned at the lane commit that made it (8f78059db).
+      ["src/app/legal/rules/_shared.tsx", "8f78059dbd9773be35d8ffc31c4f416e60730846"],
     ]);
     const approvedBlob = (rel: string) => { try { return lf(git("cat-file", "blob", `${APPROVED_REF}:${rel}`)); } catch { return null; } };
     const extraBlob = (rel: string) => { try { return lf(git("cat-file", "blob", `${APPROVED_EXTRA.get(rel)}:${rel}`)); } catch { return null; } };
