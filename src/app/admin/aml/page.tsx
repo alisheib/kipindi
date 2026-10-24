@@ -17,6 +17,7 @@ import { currentSession } from "@/lib/server/auth-service";
 import { TWO_PERSON_THRESHOLD_TZS } from "./constants";
 import { WITHDRAW_MAX_TZS } from "@/lib/server/validators";
 import { listFirstSignatures } from "./stage1-store";
+import { secondOfficerChecksOn } from "@/lib/server/second-officer-policy";
 import { AdminBody } from "@/components/admin/admin-body";
 import { KpiGrid } from "@/components/admin/admin-body";
 
@@ -56,6 +57,9 @@ async function AdminAmlContent({ searchParams }: AmlProps) {
   // stage-1 is audited under COMPLIANCE, and the ring forgets on deploy — so
   // the badge + KPI never populated and officers couldn't see who signed first.
   const stage1 = await listFirstSignatures(inReviewAll.map((t) => t.id));
+  // FEE-TAX R1 · the two-officer release binds only while the Owner's "Second-officer checks" are ON (read fresh, as
+  // `amlReleaseStep` reads it); OFF, no row here needs a second officer and none is labelled as if it did.
+  const secondOfficer = await secondOfficerChecksOn();
 
   // Review queue (prefix "r") — newest first by default.
   const r = parseSort(sp, ["time", "type", "amount", "provider"] as const, "time", "desc", "r");
@@ -88,7 +92,7 @@ async function AdminAmlContent({ searchParams }: AmlProps) {
   // ruling). The two-officer rule in approveAmlAction still binds a withdrawal held BEFORE that date, so this
   // counts those LEGACY holds only. A deposit owed back is never two-officer (the action refuses a deposit
   // before that rule), so counting it here — as the old amount-only filter did — overstated the two-officer load.
-  const legacyTwoOfficer = (t: StoredTxn) => t.type === "WITHDRAWAL" && Math.abs(t.amount) >= TWO_PERSON_THRESHOLD_TZS;
+  const legacyTwoOfficer = (t: StoredTxn) => secondOfficer && t.type === "WITHDRAWAL" && Math.abs(t.amount) >= TWO_PERSON_THRESHOLD_TZS;
   const largeCount = inReviewAll.filter(legacyTwoOfficer).length;
   const awaitingSecond = inReviewAll.filter((t) => stage1.has(t.id)).length;
 
@@ -187,7 +191,9 @@ async function AdminAmlContent({ searchParams }: AmlProps) {
             <div className="text-caption text-text-secondary space-y-1">
               <p className="text-text font-bold">No withdrawal is held for review since <span className="whitespace-nowrap">2026-09-13</span></p>
               <p>Owner ruling: any withdrawal up to the <span className="whitespace-nowrap">{formatTzs(WITHDRAW_MAX_TZS)}</span> per-withdrawal cap is sent once identity is approved, and no officer reviews it first. Rows here were held before that date, or are deposits owed back to excluded players.</p>
-              <p>Approve dispatches a held withdrawal; Reject returns it to the player&apos;s wallet. A held withdrawal of {formatTzs(TWO_PERSON_THRESHOLD_TZS)} or more still needs two different officers: the first records stage&nbsp;1, a second releases it.</p>
+              {secondOfficer
+                ? <p>Approve dispatches a held withdrawal; Reject returns it to the player&apos;s wallet. A held withdrawal of {formatTzs(TWO_PERSON_THRESHOLD_TZS)} or more still needs two different officers: the first records stage&nbsp;1, a second releases it.</p>
+                : <p>Approve dispatches a held withdrawal; Reject returns it to the player&apos;s wallet. Second-officer checks are off, so one officer&apos;s approval releases any of them.</p>}
               <p>A deposit owed back cannot be approved, and Reject only closes its row: it sends no money, so the return is still owed. No self-review; each decision and its reason are recorded in the audit log.</p>
             </div>
           </div>

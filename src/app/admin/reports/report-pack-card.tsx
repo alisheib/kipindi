@@ -8,6 +8,7 @@ import { getReportPack, PACK_STEPS, PACK_HISTORY_INCOMPLETE_LINE, currentPackPer
 // The Swahili subtitle takes Swahili month names; this card is a fixed EN/SW pair, not a locale switch.
 import { dict } from "@/lib/i18n-dict";
 import { currentSession } from "@/lib/server/auth-service";
+import { secondOfficerChecksOn } from "@/lib/server/second-officer-policy";
 import { ReportPackControls, CopyHash } from "./report-pack-controls";
 
 function kb(bytes: number): string {
@@ -39,7 +40,10 @@ export async function ReportPackCard() {
     );
   }
   const session = await currentSession();
-  const isPreparer = !!session && pack.preparedBy === session.userId;
+  // FEE-TAX R1 · the preparer is kept from approving only while the Owner's "Second-officer checks" are ON — read fresh,
+  // as the approval reads it (`packApprovalGate`). OFF, the preparer is offered the approval like any signing officer.
+  const secondOfficer = await secondOfficerChecksOn();
+  const preparerBlocked = secondOfficer && !!session && pack.preparedBy === session.userId;
 
   const stateIndex = PACK_STEPS.findIndex((s) => s.state === pack.state);
   const sealed = pack.state === "acknowledged";
@@ -187,11 +191,11 @@ export async function ReportPackCard() {
             <I.shieldcheck s={16} className="mt-0.5 shrink-0" style={{ color: "var(--gold-400)" }} />
             <p className="text-body-sm text-text-muted">
               Pack acknowledged by the Gaming Board{pack.acknowledgedAt ? ` on ${formatDateTime(pack.acknowledgedAt)}` : ""}.
-              The two-officer chain is complete and immutable.
+              The signing chain is complete and immutable.
             </p>
           </div>
         ) : (
-          <ReportPackControls period={period} state={pack.state} isPreparer={isPreparer} />
+          <ReportPackControls period={period} state={pack.state} preparerBlocked={preparerBlocked} />
         )}
         {/* ⛔ `text-body-sm`, NOT `text-[10px]`. THIS IS A SENTENCE, AND §T4's READING FLOOR IS 12.5px — the rule
             DG-A-14 settled by reading 48 strings that sat 2-4px under it wearing an eyebrow's clothes. It arrived
@@ -201,7 +205,9 @@ export async function ReportPackCard() {
             `test:type-scale` §3 and §4 DOWN together. */}
         {!pack.historyIncomplete && (
           <p className="mt-2 text-center font-mono text-body-sm text-text-subtle">
-            Submit stays locked until the pack is prepared by one officer and approved by a second.
+            {secondOfficer
+              ? "Submit stays locked until the pack is prepared by one officer and approved by a second."
+              : "Submit stays locked until the pack is prepared and approved. Second-officer checks are off: one officer may sign both."}
           </p>
         )}
       </div>

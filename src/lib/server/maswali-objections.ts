@@ -10,8 +10,12 @@
  *   · THE WINDOW — the week's own, frozen in its rules: 24 hours from the moment the graded set became final, never
  *     closing before 12:00 EAT (`objectionWindowEnd` → `week.objectionsCloseAt`), never the platform's live setting.
  *   · THE RULING — REJECT, or uphold with REVERSE (the other side won), VOID (on a ground from the closed list, MR-15) or
- *     REINSTATE (a voided question comes back with its result), by an officer other than the one who sealed the question
- *     or confirmed its seal, and other than the one whose upheld ruling set its present result; ADMIN — the Owner — is the fallback (the platform's ruling gate: ADMIN or COMPLIANCE). An
+ *     REINSTATE (a voided question comes back with its result), by a ruling officer (the platform's ruling gate: ADMIN or
+ *     COMPLIANCE) — never the objector, never one holding a ticket in the week. ⛔ FEE-TAX R1 · while the Owner's
+ *     "Second-officer checks" are ON (a stored ON, or a read that fails — nothing stored is the Owner's OFF;
+ *     `second-officer-policy.ts`), also never the officer who
+ *     sealed the question or confirmed its seal, nor the one whose upheld ruling set its present result; while they are OFF
+ *     any ruling officer rules (ruling 6 of 2026-10-24). An
  *     upheld change that changes the graded set re-runs MR-17 and restarts the window ONCE (`week.objectionRestarted`).
  *   · THE MONEY — an OPEN objection freezes the week: its settlement and its week void both refuse (`countOpenObjections`,
  *     OB.1–OB.5). A filing takes the chain lock every settlement section and every seal takes, so a filing and a release
@@ -37,6 +41,7 @@ import { afterCommit, withLock } from "./locks";
 import { db, type ObjectionReason, type StoredObjection } from "./store";
 import { DETAIL_MAX, DETAIL_MIN, OBJECTION_REASONS, requireRulingOfficer } from "./objections-service";
 import { MASWALI_CHAIN_LOCK, frozenRules, gradable, recomputeGateLocked, recordOwed, type OwedAudit } from "./maswali-service";
+import { secondOfficerChecksOn } from "./second-officer-policy";
 import { questionStore, ticketStore, weekStore, type StoredQuestion, type StoredWeek } from "./maswali-dal";
 import { invalidateMillioneaRegisterWeek } from "./maswali-register-cache";
 import { gradedSet, slotLabel, slotOf, SLOT_COUNT, type GradableQuestion, type MaswaliOutcome } from "@/lib/maswali-score";
@@ -204,10 +209,10 @@ const lastUpheldAt = (rows: readonly StoredObjection[], slot: number): string | 
 /**
  * Rule on one OPEN Millionea objection (MR-16). `expectedOutcome` / `expectedSealedAt` are the seal the officer reviewed,
  * as a correction names it: a ruling on a result that changed since is refused, so two rulings on one question can never
- * stack (two REVERSEs flipping it back). Separation of duties: never the objector, never the question's sealer or the
- * officer who confirmed its seal, never the officer whose upheld ruling set its present result, never an officer holding
- * a live ticket in the week (MR-14); ADMIN or COMPLIANCE, ADMIN —
- * the Owner — being the fallback when every other officer sealed. A REJECT changes nothing but the case; an upheld remedy
+ * stack (two REVERSEs flipping it back). Separation of duties: never the objector, never an officer holding a live ticket in
+ * the week (MR-14); ADMIN or COMPLIANCE. ⛔ FEE-TAX R1 · and, while the Owner's second-officer checks are ON, never the
+ * question's sealer or the officer who confirmed its seal, never the officer whose upheld ruling set its present result —
+ * OFF, any ruling officer rules on it, the sealer included. A REJECT changes nothing but the case; an upheld remedy
  * re-seals the question (`sealedAt` moves, so every reviewed form refreshes) and, when the graded set changed, re-runs
  * MR-17 and restarts the window once. `changed`: the graded set changed; `restarted`: the window restarts (now, or at the
  * seal the re-graded set still needs).
@@ -236,6 +241,8 @@ export async function decideMillioneaObjection(input: {
   if (!(await requireRulingOfficer(input.officerId, "maswali.objection.rule"))) {
     return refuse("Only the Owner or a Compliance officer rules on an objection.");
   }
+  // FEE-TAX R1 · asked before the lock, as the seal asks the two-officer setting: a read that cannot answer reads ON.
+  const secondOfficer = await secondOfficerChecksOn();
 
   /** `ruled`: an upheld change's facts for the holders' notice (S6-NOTICES) — its week, question, filer, the outcome it ruled
    *  from and its record's instant; null for a REJECT, which changes no result. */
@@ -252,23 +259,28 @@ export async function decideMillioneaObjection(input: {
     const questions = await questionStore.listForWeek(week.id, tx ?? undefined);
     const q = questions.find((x) => x.slot === o.questionOrdinal);
     if (!q || q.outcome === null) return refuse("The question objected to has no result.");
-    // ⛔ Separation of duties (MR-16, MR-14).
+    // ⛔ Separation of duties (MR-16, MR-14). The objector's own case is a holder's own claim — it stays whatever the Owner's
+    //    setting says (ruling 6b keeps an officer's checks on their own account).
     if (o.userId === input.officerId) {
       audit({ category: "COMPLIANCE", action: "objection.self_review_blocked", actorId: input.officerId, targetType: "Objection", targetId: o.id, payload: { week: week.code, slot: slotLabel(q.slot) } });
       return refuse("You cannot rule on your own objection.");
     }
-    if (q.sealedBy === input.officerId || q.stage2By === input.officerId) {
-      audit({ category: "COMPLIANCE", action: "maswali.objection.sealer_blocked", actorId: input.officerId, targetType: "MaswaliQuestion", targetId: q.id,
-        payload: { week: week.code, slot: slotLabel(q.slot), objectionId: o.id } });
-      return refuse(`You sealed ${slotLabel(q.slot)} or confirmed its seal: another officer rules on its objections — the Owner (ADMIN) is the fallback.`);
-    }
-    // ⭐ MR-16, HELD ABSOLUTE: the officer whose upheld ruling set the question's present result is its author now, so the
-    //    objections to it go to another officer, as the sealer's do (rulings serialize on this lock: the last one is read
-    //    committed).
-    if (lastUpheldRuler(await db.objection.listForMarket(o.marketId), q.slot) === input.officerId) {
-      audit({ category: "COMPLIANCE", action: "maswali.objection.author_blocked", actorId: input.officerId, targetType: "MaswaliQuestion", targetId: q.id,
-        payload: { week: week.code, slot: slotLabel(q.slot), objectionId: o.id } });
-      return refuse(`You set ${slotLabel(q.slot)}'s present result on an earlier objection: another officer rules on its objections — the Owner (ADMIN) is the fallback.`);
+    // ⛔ FEE-TAX R1 · the question's own officers — its sealer and confirmer, and the officer whose upheld ruling set its
+    //    present result — are barred while the Owner's "Second-officer checks" are ON; OFF, they rule as any officer does
+    //    (ruling 6 of 2026-10-24, which supersedes "separation stays absolute" of 2026-10-22).
+    if (secondOfficer) {
+      if (q.sealedBy === input.officerId || q.stage2By === input.officerId) {
+        audit({ category: "COMPLIANCE", action: "maswali.objection.sealer_blocked", actorId: input.officerId, targetType: "MaswaliQuestion", targetId: q.id,
+          payload: { week: week.code, slot: slotLabel(q.slot), objectionId: o.id } });
+        return refuse(`You sealed ${slotLabel(q.slot)} or confirmed its seal: another officer rules on its objections — the Owner (ADMIN) is the fallback.`);
+      }
+      // ⭐ MR-16: the officer whose upheld ruling set the question's present result is its author now, so the objections to
+      //    it go to another officer, as the sealer's do (rulings serialize on this lock: the last one is read committed).
+      if (lastUpheldRuler(await db.objection.listForMarket(o.marketId), q.slot) === input.officerId) {
+        audit({ category: "COMPLIANCE", action: "maswali.objection.author_blocked", actorId: input.officerId, targetType: "MaswaliQuestion", targetId: q.id,
+          payload: { week: week.code, slot: slotLabel(q.slot), objectionId: o.id } });
+        return refuse(`You set ${slotLabel(q.slot)}'s present result on an earlier objection: another officer rules on its objections — the Owner (ADMIN) is the fallback.`);
+      }
     }
     if ((await ticketStore.countLiveForUser(week.id, input.officerId, tx ?? undefined)) > 0) {
       return refuse("An officer who holds a ticket in this week cannot rule on its objections.");

@@ -4,7 +4,8 @@
  * A real, explainable risk score (0–100) derived ONLY from live signals — no
  * fabricated numbers. Every point is attributed to a named factor the officer
  * can see. Approvals at or above KYC_MAKER_CHECKER_THRESHOLD require a second
- * officer (maker-checker), enforced in the workstation actions.
+ * officer (maker-checker) while the Owner's second-officer checks are ON — decided in
+ * `kycApprovalMakerChecker` below, which the workstation's approval asks (FEE-TAX R1).
  *
  * We deliberately DON'T invent a sanctions/PEP score or a document-liveness
  * score — those feeds don't exist yet, so they stay as officer-judgment
@@ -30,6 +31,8 @@
 import { db, type StoredTxn, type StoredKycStageRow, type StoredWallet } from "./store";
 import { getAuditByActionsDurable, getAuditForTargetsDurable, type AuditEntry } from "./audit";
 import { readKycMoneySnapshot } from "./kyc-money";
+import { twoOfficerGate } from "./two-officer";
+import { secondOfficerChecksOn } from "./second-officer-policy";
 import { formatTzs } from "@/lib/utils";
 
 export const KYC_MAKER_CHECKER_THRESHOLD = 70;
@@ -391,4 +394,38 @@ export async function getApprovalRecommendation(userId: string, version: string)
   if (!match || !match.actorId) return null;
   const u = await db.user.findById(match.actorId);
   return { officerId: match.actorId, officerName: u?.displayName?.trim() || match.actorId, at: match.createdAt };
+}
+
+/**
+ * ⭐ THE HIGH-RISK MAKER-CHECKER ON AN IDENTITY APPROVAL — the one decision `approveKycWorkstationAction` asks before it
+ * approves, kept here so it can be driven without a session (FEE-TAX R1). At or above KYC_MAKER_CHECKER_THRESHOLD an
+ * approval needs an earlier recommendation, on THIS version of the case (`getApprovalRecommendation`), from a DIFFERENT
+ * officer (`twoOfficerGate`, which records a refused self-approval); a risk score that cannot be read refuses, because the
+ * rule could not then be checked.
+ * ⛔ ALL OF IT IS THE OWNER'S "SECOND-OFFICER CHECKS" SETTING (ruling 6 of 2026-10-24, `second-officer-policy.ts`): while it
+ *    is ON — a stored ON, or a read that fails; nothing stored is the Owner's OFF — it refuses exactly as before; while it
+ *    is OFF neither the recommendation nor the
+ *    risk read can refuse, and the officer approves at any score. The score is still read for the approval's audit row
+ *    (`riskScore`, null when it could not be read), and `makerChecker` says whether the rule was applied to this approval.
+ * ⛔ The threshold keeps its other job whatever the setting: an automatic check at or above it is routed to an officer.
+ */
+export async function kycApprovalMakerChecker(input: { userId: string; version: string; officerId: string }): Promise<
+  { ok: true; riskScore: number | null; makerChecker: boolean } | { ok: false; error: string }
+> {
+  const checksOn = await secondOfficerChecksOn();
+  const risk = await kycRiskScore(input.userId).catch(() => null);
+  if (!checksOn) return { ok: true, riskScore: risk?.score ?? null, makerChecker: false };
+  // ⛔ A risk score that cannot be read is not a low one — the two-officer rule would silently not apply.
+  if (!risk) return { ok: false, error: "The risk score could not be read, so the two-officer rule cannot be checked. Try again." };
+  if (risk.score < KYC_MAKER_CHECKER_THRESHOLD) return { ok: true, riskScore: risk.score, makerChecker: false };
+  const rec = await getApprovalRecommendation(input.userId, input.version);
+  if (!rec) return { ok: false, error: `High-risk (score ${risk.score}) — a second officer must first recommend approval of this version of the case.` };
+  const conflict = twoOfficerGate({
+    makerId: rec.officerId,
+    checkerId: input.officerId,
+    reason: "you recommended this approval; a different officer must seal it.",
+    audit: { action: "kyc.approve.conflict_blocked", targetType: "User", targetId: input.userId, payload: { recommendedBy: rec.officerId } },
+  });
+  if (conflict) return { ok: false, error: conflict.error };
+  return { ok: true, riskScore: risk.score, makerChecker: true };
 }

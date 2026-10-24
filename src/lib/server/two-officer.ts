@@ -16,9 +16,17 @@
  *
  * Returns `{ error }` when the gate BLOCKS (maker === checker) — and writes the
  * conflict to the audit chain as it does so — or `null` when the gate passes.
+ *
+ * ⭐ FEE-TAX R1 · `secondOfficerGate` is the same gate under the Owner's "Second-officer checks" setting
+ * (`second-officer-policy.ts`; ruling 6 of 2026-10-24): it asks `twoOfficerGate` only while the setting is ON — a stored
+ * ON, or a read that fails — and passes while it is OFF (a stored OFF, or nothing stored: the Owner's ruling). The report
+ * pack's approval (`packApprovalGate`) and the chain purge's
+ * second stage (`purgeStage2Gate`) call it; the KYC maker-checker (`kycApprovalMakerChecker`) asks the setting itself, since
+ * its fail-closed risk read is gated too, and then this plain comparison. `twoOfficerGate` itself stays the comparison.
  */
 import { audit } from "./audit";
 import { CEREMONY } from "@/lib/admin-status-lexicon";
+import { secondOfficerChecksOn } from "./second-officer-policy";
 
 export type TwoOfficerGateParams = {
   /** The officer who performed the first step (preparedBy / recommender / stage-1). */
@@ -61,4 +69,13 @@ export function twoOfficerGate(p: TwoOfficerGateParams): { error: string } | nul
     return { error: `${CEREMONY.secondOfficerRequired.en} — ${p.reason}` };
   }
   return null;
+}
+
+/**
+ * The maker-checker rule while the Owner's second-officer checks are ON; a pass while they are OFF (the act then proceeds as
+ * any officer's, and its own audit row still names who did it). Read fresh on every call — see `second-officer-policy.ts`.
+ */
+export async function secondOfficerGate(p: TwoOfficerGateParams): Promise<{ error: string } | null> {
+  if (!(await secondOfficerChecksOn())) return null;
+  return twoOfficerGate(p);
 }

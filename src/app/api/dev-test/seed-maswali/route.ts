@@ -28,7 +28,7 @@ import { db } from "@/lib/server/store";
 import type { StoredUser, StoredWallet } from "@/lib/server/store";
 import { randomId } from "@/lib/server/crypto";
 import {
-  __setMaswaliCloseClockForTests, attestParity, closeWeek, createWeek, openWeek, purchaseMaswaliTickets, readDraftVersion, rolloutSells, sealQuestion,
+  __liftMillioneaOpenHoldForTests, __setMaswaliCloseClockForTests, attestParity, closeWeek, createWeek, openWeek, purchaseMaswaliTickets, readDraftVersion, rolloutSells, sealQuestion,
   type DraftQuestionInput,
 } from "@/lib/server/maswali-service";
 import { millioneaStateNow } from "@/lib/server/millionea-switch";
@@ -119,6 +119,9 @@ async function closeAndSeal(week: { id: string; closesAt: string }, ms: number, 
 export async function POST() {
   if (process.env.NODE_ENV === "production") return NextResponse.json({ ok: false, error: "Not available" }, { status: 404 });
   __setMaswaliCloseClockForTests((weekClockMs) => weekClockMs);
+  // FEE-TAX R1 · the S8 hold (`oldFeeModelHold`) is lifted for this seed's own opens — the weeks it builds sell under the
+  // model the console is QA'd on — and put back in the `finally` below. ⛔ The seam refuses in production; so does this route.
+  const heldBefore = __liftMillioneaOpenHoldForTests(true);
   try {
     if (!rolloutSells(await millioneaStateNow(0), "PUBLIC")) {
       return NextResponse.json({ ok: false, error: "Start next dev with FEATURE_MILLIONEA=ACTIVE to seed Millionea weeks: the ticket arm reads the real rollout." }, { status: 409 });
@@ -176,5 +179,6 @@ export async function POST() {
     return NextResponse.json({ ok: false, error: String((err as Error).message ?? err) }, { status: 500 });
   } finally {
     __setMaswaliCloseClockForTests(null);
+    __liftMillioneaOpenHoldForTests(heldBefore);
   }
 }

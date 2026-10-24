@@ -28,7 +28,7 @@ import { db } from "@/lib/server/store";
 import type { StoredUser, StoredWallet } from "@/lib/server/store";
 import { randomId } from "@/lib/server/crypto";
 import {
-  __setMaswaliCloseClockForTests, attestParity, closeWeek, createWeek, openWeek, purchaseMaswaliTickets, readDraftVersion, sealQuestion, type DraftQuestionInput,
+  __liftMillioneaOpenHoldForTests, __setMaswaliCloseClockForTests, attestParity, closeWeek, createWeek, openWeek, purchaseMaswaliTickets, readDraftVersion, sealQuestion, type DraftQuestionInput,
 } from "@/lib/server/maswali-service";
 import { questionStore, ticketStore, weekStore } from "@/lib/server/maswali-dal";
 import { fundMaswaliGuarantee, guaranteeReader, GUARANTEE_FUND_WORD, maswaliAccountBalance } from "@/lib/server/maswali-money-service";
@@ -170,6 +170,8 @@ export async function POST(req: Request) {
   const ownerId = String(body?.ownerId ?? "");
   // Each close reads its week's own clock as the database's (the seeds' and the suites' seam): these weeks close in the future.
   __setMaswaliCloseClockForTests((weekClockMs) => weekClockMs);
+  // FEE-TAX R1 · the S8 hold lifted for this seed's own opens, and put back in the `finally` (`seed-maswali`'s note).
+  const heldBefore = __liftMillioneaOpenHoldForTests(true);
   try {
     if (body.step === "door") return NextResponse.json({ ok: true, ...(await seedDoor()) });
     const owner = await db.user.findById(ownerId);
@@ -208,5 +210,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: String((e as Error)?.message ?? e) }, { status: 500 });
   } finally {
     __setMaswaliCloseClockForTests(null);
+    __liftMillioneaOpenHoldForTests(heldBefore);
   }
 }

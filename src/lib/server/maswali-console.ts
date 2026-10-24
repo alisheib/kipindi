@@ -20,7 +20,7 @@ import { withLock } from "./locks";
 import { millioneaNoticeHref } from "./notification-service";
 import { winnerSmsRecords, winnerSmsTargetId } from "./maswali-winner-sms";
 import {
-  calendarStartMs, deadlinesUnderRules, frozenRules, gradable, guaranteeProblem, openProblems, proposeVoidsAtDeadline, stopNextActNow, sunsetState,
+  calendarStartMs, deadlinesUnderRules, frozenRules, gradable, guaranteeProblem, oldFeeModelHold, openProblems, proposeVoidsAtDeadline, stopNextActNow, sunsetState,
 } from "./maswali-service";
 import { guaranteeReader, maswaliAccountBalance } from "./maswali-money-service";
 import { FLOAT_ALERT_BUFFER_TZS, previewMaswaliSettlement, type MaswaliSettlementPreview } from "./maswali-settlement";
@@ -142,6 +142,10 @@ export async function consoleWeekDetail(weekId: string, now: Date = new Date()):
       problems = await openProblems(due.week, due.questions, rules, now.getTime());
       const licence = getLicenceStanding();
       if (licence.holds !== null) problems.unshift(licence.holds);
+      // ⛔ FEE-TAX R1 · the S8 hold, first: a public week whose open would freeze the old fee model does not open, and the
+      // checklist says so in the open's own words (`oldFeeModelHold`) rather than "every check passes".
+      const held = oldFeeModelHold(week, getMaswaliConfig());
+      if (held) problems.unshift(held);
       const short = await guaranteeProblem(week, rules, guaranteeReader);
       if (short) problems.push(short);
     }

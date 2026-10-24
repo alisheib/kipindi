@@ -44,7 +44,7 @@ import { randomId } from "@/lib/server/crypto";
 import { createSession } from "@/lib/server/session";
 import { coolOff } from "@/lib/server/responsible-gambling";
 import {
-  SUNSET_WORD, __setMaswaliCloseClockForTests, attestParity, closeWeek, createWeek, gradable, moveClose, openWeek, purchaseMaswaliTickets, readDraftVersion,
+  SUNSET_WORD, __liftMillioneaOpenHoldForTests, __setMaswaliCloseClockForTests, attestParity, closeWeek, createWeek, gradable, moveClose, openWeek, purchaseMaswaliTickets, readDraftVersion,
   sealQuestion, sunsetMaswali, voidWeek, type DraftQuestionInput,
 } from "@/lib/server/maswali-service";
 import { questionStore, weekStore, type StoredWeek } from "@/lib/server/maswali-dal";
@@ -114,8 +114,10 @@ export async function POST(req: Request) {
   // S7 (MB-84) · a close that is not early waits for the database's clock; the seeded weeks run on their own week clock,
   // so this request hands the close that clock as the database's — as `seed-maswali` does — and puts it back after.
   __setMaswaliCloseClockForTests((weekClockMs) => weekClockMs);
+  // FEE-TAX R1 · the S8 hold lifted for this act's own opens, and put back after it (`seed-maswali`'s note).
+  const heldBefore = __liftMillioneaOpenHoldForTests(true);
   let res: NextResponse;
-  try { res = await act(b); } finally { __setMaswaliCloseClockForTests(null); }
+  try { res = await act(b); } finally { __setMaswaliCloseClockForTests(null); __liftMillioneaOpenHoldForTests(heldBefore); }
   if (res.status === 200) revalidateTag(MASWALI_PUBLIC_WEEK_QUESTIONS_TAG, { expire: 0 });
   return res;
 }

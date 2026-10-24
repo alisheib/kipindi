@@ -12,6 +12,7 @@ import { currentSession } from "@/lib/server/auth-service";
 import { canUseControl, CONTROL_DOMAIN } from "@/lib/server/control-gates";
 import { consoleWeekDetail } from "@/lib/server/maswali-console";
 import { draftSetVersion } from "@/lib/server/maswali-service";
+import { secondOfficerChecksOn } from "@/lib/server/second-officer-policy";
 import { MAIN_COUNT, slotLabel } from "@/lib/maswali-score";
 import { MASWALI_VOID_REASONS } from "@/lib/maswali-void-reason";
 import { fmtEat, fmtEatClock, fmtEatDay, fmtInZone, weekStateChip } from "@/lib/maswali-admin-format";
@@ -46,6 +47,9 @@ async function Content({ params }: Props) {
   if (!d) notFound();
   const { week, row, questions, problems, warnings, proposedVoids } = d;
   const session = await currentSession();
+  // FEE-TAX R1 · the Owner's second-officer checks, read fresh as the services read them: the correction dialog says who may
+  // correct a result under the setting in force.
+  const secondOfficer = await secondOfficerChecksOn();
   const [canAttest, canOpen, canMove, canSeal, canVoid, canCorrect, canConfirm, canDraft] = await Promise.all([
     canUseControl(session?.role, "attestMaswaliParity"), canUseControl(session?.role, "openMaswaliWeek"),
     canUseControl(session?.role, "moveMaswaliClose"), canUseControl(session?.role, "sealMaswaliQuestion"),
@@ -128,7 +132,8 @@ async function Content({ params }: Props) {
           <AdminCard title="Seal the results" sw="Muhuri wa matokeo" padding="p-0">
             <SealConsole weekId={week.id} weekCode={week.code} rows={sealRows} voidReasons={[...MASWALI_VOID_REASONS]} windowOpen={windowOpen}
               can={{ seal: canSeal, void: canVoid, correct: canCorrect, confirm: canConfirm }}
-              need={{ seal: CONTROL_DOMAIN.sealMaswaliQuestion, void: CONTROL_DOMAIN.voidMaswaliQuestion, correct: CONTROL_DOMAIN.correctMaswaliSeal, confirm: CONTROL_DOMAIN.confirmMaswaliSeal }} />
+              need={{ seal: CONTROL_DOMAIN.sealMaswaliQuestion, void: CONTROL_DOMAIN.voidMaswaliQuestion, correct: CONTROL_DOMAIN.correctMaswaliSeal, confirm: CONTROL_DOMAIN.confirmMaswaliSeal }}
+              authorCorrects={secondOfficer} />
           </AdminCard>
         ) : (
           <AdminCard title="Questions" sw="Maswali" padding="p-0">

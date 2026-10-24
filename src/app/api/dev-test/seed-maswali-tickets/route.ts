@@ -49,7 +49,7 @@ import { db } from "@/lib/server/store";
 import type { StoredUser, StoredWallet } from "@/lib/server/store";
 import { randomId } from "@/lib/server/crypto";
 import {
-  __setMaswaliCloseClockForTests, attestParity, closeWeek, createWeek, openWeek, purchaseMaswaliTickets, readDraftVersion, rolloutSells, sealQuestion,
+  __liftMillioneaOpenHoldForTests, __setMaswaliCloseClockForTests, attestParity, closeWeek, createWeek, openWeek, purchaseMaswaliTickets, readDraftVersion, rolloutSells, sealQuestion,
   sunsetMaswali, SUNSET_WORD, voidWeek, type DraftQuestionInput,
 } from "@/lib/server/maswali-service";
 import { millioneaStateNow } from "@/lib/server/millionea-switch";
@@ -374,6 +374,8 @@ export async function POST(req: Request) {
   // S7 (MB-84) · a close that is not early waits for the database's clock; the seeded weeks run on their own week clock,
   // so this request hands the close that clock as the database's — as `seed-maswali` does — and puts it back after.
   __setMaswaliCloseClockForTests((weekClockMs) => weekClockMs);
+  // FEE-TAX R1 · the S8 hold lifted for this seed's own opens, and put back in the `finally` (`seed-maswali`'s note).
+  const heldBefore = __liftMillioneaOpenHoldForTests(true);
   try {
     switch (body.step) {
       case "weeks":
@@ -428,5 +430,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: String((err as Error).message ?? err) }, { status: 500 });
   } finally {
     __setMaswaliCloseClockForTests(null);
+    __liftMillioneaOpenHoldForTests(heldBefore);
   }
 }

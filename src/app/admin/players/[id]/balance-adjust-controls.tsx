@@ -23,9 +23,13 @@ import { useMayAct, ActReadOnly } from "@/components/admin/act-gate";
 export function BalanceAdjustControls({
   userId,
   currentBalance,
+  countersign,
 }: {
   userId: string;
   currentBalance: number;
+  /** FEE-TAX R1 · the Owner's "Second-officer checks" as the page read them: ON, a large adjustment needs a second officer's
+   *  identical submission; OFF, one officer's applies it. The words follow it — the server decides again on every press. */
+  countersign: boolean;
 }) {
   // A1 — this control only ACTS, so a role holding VIEW without ACT is shown why rather
   // than being offered a button the server will refuse (and logged as a privilege
@@ -184,7 +188,7 @@ export function BalanceAdjustControls({
                 the claret tone and the weight are untouched, because the warning still has to
                 carry. The input below it keeps its own TYPE_TO_CONFIRM tracking. */}
             <span className="font-mono text-body-sm font-bold text-claret-300">
-              {`Large adjustment (≥ ${formatTzs(TWO_PERSON_THRESHOLD_TZS)}) — type ${hardWord} to confirm; a second officer must countersign`}
+              {`Large adjustment (≥ ${formatTzs(TWO_PERSON_THRESHOLD_TZS)}) — type ${hardWord} to confirm${countersign ? "; a second officer must countersign" : ""}`}
             </span>
             <input
               value={confirmWord}

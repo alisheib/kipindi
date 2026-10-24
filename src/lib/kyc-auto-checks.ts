@@ -108,7 +108,9 @@ export interface KycDecision {
 export const ROUTE_REASON_LABEL: Record<KycRouteReason, string> = {
   NIDA_UNDER_18: "NIDA number says under 18",
   OFFICER_PROVENANCE: "An officer has already ruled on this identity",
-  HIGH_RISK: "Risk score at or above the two-officer threshold",
+  // FEE-TAX R1 · "high-risk", never "two-officer": the line routes to an officer whatever the Owner's second-officer
+  // setting says, and a second officer is needed only while it is ON (`kycApprovalMakerChecker`).
+  HIGH_RISK: "Risk score at or above the high-risk threshold",
   WALLET_HOLD: "Wallet held by an officer or an identity refusal",
   SOF_REJECTED: "Source of funds was rejected",
   AML_ESCALATION: "Escalated to AML",
@@ -210,8 +212,9 @@ export function decideKyc(f: KycDecisionFacts): KycDecision {
   else if (f.samePerson.length > 0) flag("same_person", "SAME_PERSON", `${f.samePerson.length} other account${f.samePerson.length === 1 ? "" : "s"} with the same name and date of birth`);
   else pass("same_person", "No other account with the same name and date of birth");
 
-  // ── Risk: at or above the maker-checker threshold, two officers still decide.
-  if (f.riskScore >= f.riskThreshold) route("risk", "HIGH_RISK", `Risk score ${f.riskScore} (two-officer threshold ${f.riskThreshold})`);
+  // ── Risk: at or above the high-risk threshold an officer decides — two, while the Owner's second-officer checks are ON
+  //    (FEE-TAX R1, `kycApprovalMakerChecker`).
+  if (f.riskScore >= f.riskThreshold) route("risk", "HIGH_RISK", `Risk score ${f.riskScore} (high-risk threshold ${f.riskThreshold})`);
   else pass("risk", `Risk score ${f.riskScore}`);
 
   // ── Holds: an officer's freeze or an identity refusal's hold routes; the automatic path never lifts one.

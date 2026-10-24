@@ -13,6 +13,8 @@
  * a market has, by design, handed the release to a colleague. That is the whole safety property
  * and it would be a nasty surprise to discover afterwards, so it is said before the act, not in
  * the toast after it.
+ * ⭐ FEE-TAX R1 · while the Owner's "Second-officer checks" are ON. OFF (`ownRelease`), the confirm says the opposite, as
+ * plainly: the officer may rule on their own hold — unless they hold a stake in the market (`officerOwnCaseBarred`).
  */
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
@@ -38,13 +40,16 @@ const REASONS: { value: string; label: string }[] = [
 const DETAIL_MIN = 10;
 
 export function HoldButton({
-  marketId, title, pool, positions, outcome,
+  marketId, title, pool, positions, outcome, ownRelease,
 }: {
   marketId: string;
   title: string;
   pool: number;
   positions: number;
   outcome: string | null;
+  /** FEE-TAX R1 · the Owner's "Second-officer checks" are OFF, as the page read them: the officer may rule on their own
+   *  hold (unless they hold a stake in the market). The dialog says which rule it is — the ruling decides again. */
+  ownRelease: boolean;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -166,9 +171,19 @@ export function HoldButton({
                   as `</strong> — a`, the live DOM read "yourself— a different": the space was
                   eaten. Same defect as HOUSE-6 ("It is notsubtracted above"), one sentence over.
                   The explicit expression is the only form that survives. */}
-              <strong>You will not be able to release it yourself</strong>{" "}
-              — a different officer must review your case, the same rule that applies to a
-              player&rsquo;s objection.
+              {ownRelease ? (
+                <>
+                  <strong>You may rule on it yourself</strong>{" "}
+                  — second-officer checks are off, so any officer may release it, you included,
+                  unless you hold a stake in this market.
+                </>
+              ) : (
+                <>
+                  <strong>You will not be able to release it yourself</strong>{" "}
+                  — a different officer must review your case, the same rule that applies to a
+                  player&rsquo;s objection.
+                </>
+              )}
             </span>
           </p>
 

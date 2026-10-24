@@ -1883,7 +1883,7 @@ ticked, and is ✅ only when that one is too.
 | When | Who | What |
 |---|---|---|
 | **Wed (week N−1)** | Trading officer | Draft week N+1 from the template. AI candidates come from `EventCalendar` and the officer approves them. 15 questions on the criterion template, each with source and fallback, an event start in the source's zone, a void deadline (OD-09b), a probability and its source, and the OD-14 caps. Holiday review: 25 Dec 2026 and 1 Jan 2027 are Fridays |
-| **Thu–Sat** | Second reader | EN/SW/ZH parity attestation (MB-79). Banned-topic and category screen |
+| **Thu–Sat** | Second reader | EN/SW/ZH parity attestation (MB-79) — any officer, the drafter included, while the Owner's "Second-officer checks" are OFF, as they are by his ruling of 2026-10-24 (FEE-TAX R1). Banned-topic and category screen |
 | **Sun** | Trading + accounting | **Pre-open checklist:** 15/15 present; every event start ≥ Fri 18:00 + buffer; a licence basis in force (the Owner's record, or the 2026-10-23 ruling's — the console names it); guarantee ≥ requirement (Σ unsettled weeks); float OK. A week that is not ready **does not open**, never short, and the hub says so |
 | **Mon 00:00** | Scheduler | Week opens. The question-set hash is published, `rulesSnapshot` frozen, and the headline is the funded floor or real money, "plus week N−1's carry-over once final" |
 | **Mon–Fri** | Officer + watch | Sales. Fixture-drift watch daily (hourly on Friday). If an event moves earlier, move the close earlier (MR-5; OD-10 if sales already ran past it). Marketing only from approved wordings, to opted-in players |
@@ -2048,7 +2048,11 @@ differ, these win.
     market row would sit in the poll moderation lists, and stamps the rules once. The database refuses any week past
     DRAFT without both (`MaswaliCycle_market_after_draft_check`, `…_frozen_after_draft_check`).
   - *`parityAttestedBy` / `parityAttestedAt` on the week* hold MB-79's second reader. Any draft edit clears them, and
-    the open refuses without them.
+    the open refuses without them. *(2026-10-24, FEE-TAX R1: WHO may attest is now the Owner's "Second-officer checks"
+    setting — a second reader, never the drafter or an editor since the last attestation, while it is ON (a stored ON, or
+    a read that fails); any officer, the drafter included, while it is OFF — as it is with nothing stored, by Ali's ruling
+    of 2026-10-24 — and the draft's history is then not read. The step and its audit row stay either way.
+    `second-officer-policy.ts`; ruling 6 of 2026-10-24.)*
   - *The fee has one home per week:* `jackpotFeeRate` freezes into the market's `feeSnapshot` beside the levies; the
     rules snapshot does not copy it.
   - *The guarantee is committed, not owed:* the owner's book subtracts `HOUSE:MASWALI_GUARANTEE` from free cash on its
@@ -2485,7 +2489,8 @@ read this repository, so `PROMPT.txt` states the rules and the figures it may dr
    - `closesAt` is patchable only through `moveClose`.
 7. **`src/lib/server/maswali-service.ts`:**
    - `createWeek` (DRAFT, from a template) and `editDraft`.
-   - `attestParity` (a second reader confirms EN/SW/ZH; MB-79).
+   - `attestParity` (a second reader confirms EN/SW/ZH; MB-79 — since FEE-TAX R1 only while the Owner's "Second-officer
+     checks" are ON; while they are OFF any officer attests).
    - `openWeek`, which refuses unless all of these hold:
      - 10 MAIN plus 5 RESERVE;
      - every category in `MARKET_CATEGORIES`, plus the banned-topic screen over EN and SW;
@@ -3238,7 +3243,7 @@ to the shilling.
 | MB-76 | Money | L | **Legacy bonus balances.** Sign-up bonus grants still sit in `bonusBalance`. Nothing says whether a Millionea ticket accrues bonus wagering turnover (RULES §2.5). | The slip shows "Real balance X · bonus can't be used for Millionea". `bonusFunded` is always false. Turnover: OD-27. | Eng, Ali | S3, D1 |
 | MB-77 | Money | M | **Tax on winnings.** RULES §2.8 says "No withholding tax" on players. Nobody has confirmed that a single jackpot win of millions draws no gaming-winnings withholding. | Finance and TRA confirm in writing. If any applies, change §2.8, the win notice and settlement. | Finance | S0 |
 | MB-78 | Rules | H | **The product is killed mid-week.** Three different acts are conflated: pausing sales, voiding the week, and stopping the product. Nothing says what happens to the in-flight week when Ali stops it rather than the regulator. | Three named acts:<br>• **pause:** sales only; settlement continues;<br>• **week void:** refund, carry untouched;<br>• **product stop:** the sunset.<br>Semantics for each origin of the stop: OD-03. | Ali, Eng | S0, S4 |
-| MB-79 | Rules | H | **A wrong question is published.** A typo in the threshold or date, a wrong reserve order, or Swahili text that differs from English. Text freezes at open. `legal/_components.tsx` makes English binding, while most players read Swahili. | DRAFT is freely editable. A second-reader EN/SW parity attestation is required before open. After open, the only remedy is a void on a closed-list ground: "criterion materially wrong or EN/SW divergent", found before the close or upheld by an objection (OD-04). Audit and publish the case. | Ali, Eng | S2, S4 |
+| MB-79 | Rules | H | **A wrong question is published.** A typo in the threshold or date, a wrong reserve order, or Swahili text that differs from English. Text freezes at open. `legal/_components.tsx` makes English binding, while most players read Swahili. | DRAFT is freely editable. An EN/SW parity attestation is required before open — a second reader's while the Owner's "Second-officer checks" are ON, any officer's while they are OFF, as they are by his ruling (FEE-TAX R1, ruling 6 of 2026-10-24). After open, the only remedy is a void on a closed-list ground: "criterion materially wrong or EN/SW divergent", found before the close or upheld by an objection (OD-04). Audit and publish the case. | Ali, Eng | S2, S4 |
 | MB-80 | Rules | M | **The source is ambiguous at the deadline.** The primary and fallback conflict, the data is provisional, or the official result is under appeal. | The named primary authority wins. Provisional data is not final. A result under appeal stands as published at the deadline; later revisions are ignored (MB-21). Nothing final by the void deadline means VOID with a reason code. Evidence is captured (archived page or screenshot) at the seal. | Eng | S2, S4 |
 | MB-81 | Rules | M | **The same event is also a Yes/No market.** Two different officers could seal the same fact differently. | Link the question to any matching Yes/No market. Alert on a mismatch between the two seals. Neither seal is evidence for the other. Both results are published. | Eng | S4 |
 | MB-82 | Admin | L | **The two-officer flag changes mid-week.** A seal that is half done changes its completion rule. | A seal follows the flag value at the moment its first stage begins. Audit it. | Eng | S4 |

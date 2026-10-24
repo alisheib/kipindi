@@ -42,7 +42,7 @@ import { db } from "@/lib/server/store";
 import type { StoredUser, StoredWallet } from "@/lib/server/store";
 import { hasDatabase } from "@/lib/server/prisma";
 import {
-  __setMaswaliCloseClockForTests, attestParity, closeWeek, createWeek, openWeek, purchaseMaswaliTickets, readDraftVersion, rolloutSells, sealQuestion,
+  __liftMillioneaOpenHoldForTests, __setMaswaliCloseClockForTests, attestParity, closeWeek, createWeek, openWeek, purchaseMaswaliTickets, readDraftVersion, rolloutSells, sealQuestion,
   type DraftQuestionInput,
 } from "@/lib/server/maswali-service";
 import { fileMillioneaObjection } from "@/lib/server/maswali-objections";
@@ -230,6 +230,8 @@ export async function POST(req?: Request) {
   if (process.env.DATABASE_URL || hasDatabase()) return NextResponse.json({ ok: false, error: "In-memory local evidence only" }, { status: 409 });
   const body = (await req?.json().catch(() => null)) as { ownerId?: unknown } | null;
   __setMaswaliCloseClockForTests((weekClockMs) => weekClockMs);
+  // FEE-TAX R1 · the S8 hold lifted for this seed's own opens, and put back in the `finally` (`seed-maswali`'s note).
+  const heldBefore = __liftMillioneaOpenHoldForTests(true);
   try {
     if (!rolloutSells(await millioneaStateNow(0), "PUBLIC")) {
       return NextResponse.json({ ok: false, error: "Start next dev with FEATURE_MILLIONEA=ACTIVE: the ticket arm reads the real rollout." }, { status: 409 });
@@ -320,5 +322,6 @@ export async function POST(req?: Request) {
     return NextResponse.json({ ok: false, error: String((err as Error).message ?? err) }, { status: 500 });
   } finally {
     __setMaswaliCloseClockForTests(null);
+    __liftMillioneaOpenHoldForTests(heldBefore);
   }
 }

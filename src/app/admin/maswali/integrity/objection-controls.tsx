@@ -10,8 +10,9 @@
  * ⭐ The ruling carries the seal the officer reviewed (its result and its version): a result that changed since the page
  *    was drawn is refused by the service, never ruled blind (the same check a correction makes).
  * ⛔ Only a role the action accepts sees the buttons (the page asks `canUseControl`); an officer the service would refuse
- *    on this question — the one who sealed it or confirmed its seal, the objector, the one whose upheld ruling set its
- *    present result, an officer holding a ticket in the week — sees why, and that the Owner is the fallback, instead of a button that bounces.
+ *    on this question — the objector, an officer holding a ticket in the week, and while the Owner's second-officer checks
+ *    are ON (FEE-TAX R1) the one who sealed it or confirmed its seal and the one whose upheld ruling set its present result
+ *    — sees why, and that the Owner is the fallback, instead of a button that bounces.
  */
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";

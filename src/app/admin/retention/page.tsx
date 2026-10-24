@@ -20,6 +20,7 @@ import { PurgeChainCard } from "./purge-chain-card";
 import type { Route } from "next";
 import { Tabs } from "@/components/ui/tabs";
 import { getFirstSignature } from "./purge-stage1-store";
+import { secondOfficerChecksOn } from "@/lib/server/second-officer-policy";
 import { AGENT_APPROVED_DOC_HOLD_YEARS, AGENT_REJECTED_DOC_HOLD_DAYS, AGENT_REFEREE_DOC_HOLD_DAYS } from "@/lib/server/agent-application-service";
 import { currentSession } from "@/lib/server/auth-service";
 
@@ -136,6 +137,9 @@ async function AdminRetentionContent({ searchParams }: RetentionProps) {
      offer officer A a confirm the server would refuse. */
   const session = await currentSession();
   const viewer = session?.userId ?? "";
+  // FEE-TAX R1 · the Owner's "Second-officer checks", read fresh as the purge's stage 2 reads them (`purgeStage2Gate`): OFF,
+  // the officer who recorded the reason is offered step 2 themselves.
+  const secondOfficer = await secondOfficerChecksOn();
   const stage1Map: Record<string, { actorId: string; at: string } | undefined> = {};
   for (const c of archivedChains) {
     const sig = await getFirstSignature(c.id);
@@ -291,7 +295,7 @@ async function AdminRetentionContent({ searchParams }: RetentionProps) {
             whole graph into the browser bundle and the build fails on ioredis reaching for
             node:dns. This split is the reason, not a preference. */}
         <AdminCard title="Purge a chain and its history" sw="Futa msururu na historia yake">
-          <PurgeChainCard chains={archivedChains} stage1={stage1Map} viewerId={viewer} />
+          <PurgeChainCard chains={archivedChains} stage1={stage1Map} viewerId={viewer} selfComplete={!secondOfficer} />
         </AdminCard>
         </>)}
       </AdminBody>

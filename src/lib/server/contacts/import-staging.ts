@@ -19,7 +19,8 @@
  * not read is staged too, with its one sentence (X19), so a record is never lost between "read" and "shown".
  * ⛔ NO STORED COUNTER (OD26): every total is counted from the rows (`db.contactImport.totals`).
  * ⭐ OWNERSHIP (X18): a run is its creator's, and an ADMIN — read off the STORED role — may adopt any run; the view
- * carries `createdBy` so the screen can name who started it. Anyone else is refused `not_yours` and is shown nothing.
+ * carries `createdBy` so the screen can name who started it. Anyone else is refused `not_yours` and is shown nothing —
+ * while the Owner's "Second-officer checks" are ON (FEE-TAX R1, `mayDriveImport`); OFF, any officer may adopt it.
  * ⭐ THE SWEEP: a STAGING or STAGED run idle 14 days is cancelled and its unsettled rows deleted (X29); since S15-12 (the
  * review round, 2026-10-09) a COMMITTING or PAUSED run idle 14 days is ended the same way by a SECOND rule — the contacts
  * it already wrote stay in the book; and a finished run goes 90 days after `finishedAt`, its rows with it.
@@ -38,6 +39,7 @@ import { randomBytes } from "node:crypto";
 import { db, CONTACT_IMPORT_ROW_PAGE_MAX } from "@/lib/server/store";
 import type { ContactImportStatus, ContactImportTotals, StoredContactImport, StoredContactImportRow } from "@/lib/server/store";
 import { audit } from "@/lib/server/audit";
+import { secondOfficerChecksOn } from "@/lib/server/second-officer-policy";
 import { IMPORT_REFUSAL_AUDIT } from "./refusal-audit";
 import type { RefusalAuditGate } from "./refusal-audit";
 import { firstMobileIn } from "@/lib/contacts/phone-cell";
@@ -346,11 +348,16 @@ async function viewOf(run: StoredContactImport, viewerId: string): Promise<Conta
 }
 
 /** X18 · the creator, or an ADMIN adopting — read off the STORED role. ⭐ S15: exported, so the check, the start, the
- *  commit and their reads ask this SAME rule (`import-check.ts`, `import-commit.ts`), never a copy of it. */
+ *  commit and their reads ask this SAME rule (`import-check.ts`, `import-commit.ts`), never a copy of it.
+ *  ⭐ FEE-TAX R1 · the creator-only rule is the Owner's "Second-officer checks" (ruling 6 of 2026-10-24,
+ *  `second-officer-policy.ts`): while they are ON — a stored ON, or a read that fails — as above; while they are OFF (the
+ *  Owner's ruling, nothing stored, or a stored OFF) any officer
+ *  with the contacts role (the actions' own gate, unchanged) drives any run, and every act on it is still audited under
+ *  that officer's name, with `adopted` when it is not their own. */
 export async function mayDriveImport(
   createdBy: string, officerId: string, isAdmin: (userId: string) => Promise<boolean>,
 ): Promise<boolean> {
-  return createdBy === officerId || (await isAdmin(officerId));
+  return createdBy === officerId || (await isAdmin(officerId)) || !(await secondOfficerChecksOn());
 }
 
 /** X18 · the creator, or an ADMIN adopting. */

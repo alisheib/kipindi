@@ -57,15 +57,24 @@ export function bulkReasonDetail(v: {
   /** ⭐ Optional so every existing caller still typechecks; a row that does not pass it
    *  simply gets the same sentence the queue showed before. */
   stagedByMe?: boolean;
+  /** The bar's stage under the two-officer setting the verdict was computed with: `stage1` while two-officer approval of
+   *  resolutions is ON, `seal` while it is OFF (`bulkVerdictFor`). Optional, like `stagedByMe`: absent reads as ON, the
+   *  sentence the queue showed before. */
+  stage?: "seal" | "stage1";
 }): string | null {
   switch (v.reason) {
     /* ⛔ "AWAITING COUNTERSIGNATURE" DOES NOT SAY WHO IS WAITING ON WHOM, and those are
        opposite instructions: one means go and find a colleague, the other means there is
        nothing for you to do here. The verdict has computed `stagedByMe` since it was
-       written and returned it to nobody. */
+       written and returned it to nobody.
+       ⭐ FEE-TAX R1 · AND "ANOTHER OFFICER MUST COMPLETE IT" IS TRUE ONLY WHILE TWO-OFFICER APPROVAL IS ON. With the
+       resolver queue's switch OFF the officer who staged a row finishes it on the market's own card like anyone else
+       (`resolveMarket` refuses the same officer only while the switch is ON), so the sentence follows the switch. */
     case "awaiting-countersignature":
       return v.stagedByMe
-        ? "you recorded the first verdict · another officer must complete it"
+        ? v.stage === "seal"
+          ? "you recorded the first verdict · two-officer approval is off, so complete it on the market's own card"
+          : "you recorded the first verdict · another officer must complete it"
         : "another officer recorded the first verdict · complete it on the market's own card";
     case "source-different-domain":
       return `cited ${v.citedHost ?? "another site"} · approved ${v.approvedHost ?? "unset"}`;

@@ -4,6 +4,7 @@ import { AdminPageGate } from "@/components/admin/admin-section-gate";
 import { AdminPageHead, AdminCard, AdminKpi, FeedRow, AdminLoadError } from "@/components/admin/admin-shell";
 import { txnTypeLabel } from "@/components/admin/status-badge";
 import { TWO_PERSON_THRESHOLD_TZS } from "../aml/constants";
+import { secondOfficerChecksOn } from "@/lib/server/second-officer-policy";
 import { WITHDRAW_MAX_TZS } from "@/lib/server/validators";
 import { SOF_SINGLE_TXN_TZS, SOF_ROLLING_30D_TZS } from "@/lib/server/wallet-service";
 import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
@@ -73,6 +74,9 @@ async function AdminApprovalsContent({
   const sp = await searchParams;
   const now = Date.now();
   const session = await currentSession();
+  // FEE-TAX R1 · the Owner's "Second-officer checks" — the AML notice below says whether a large held withdrawal still
+  // needs two different officers (it does only while they are ON).
+  const secondOfficer = await secondOfficerChecksOn();
   // 🔴 ASKED BEFORE ANY WALLET IS READ (2026-09-13) — the gate /admin/kyc and the roster use. A viewer without
   // money rights gets the files, FIFO, and no balance, bucket or funded count.
   const canSeeMoney = session ? await canView(session.role, "accounting") : false;
@@ -461,7 +465,11 @@ async function AdminApprovalsContent({
                   "differentofficers" and "COMPLIANCEaudit" until an explicit space was added. A single-line run
                   keeps its spaces; if a sentence here ever wraps in source again, put the explicit space back. */}
               <p>Owner ruling: any withdrawal up to the <span className="whitespace-nowrap">{formatTzs(WITHDRAW_MAX_TZS)}</span> per-withdrawal cap is sent once identity is approved, and no officer reviews it first. Rows in the AML queue were held before that date, or are deposits owed back to excluded players.</p>
-              <p>On /admin/aml, Approve dispatches a held withdrawal; Reject returns it to the player&apos;s wallet. A held withdrawal of {formatTzs(TWO_PERSON_THRESHOLD_TZS)} or more still needs two different officers: the first records stage&nbsp;1, a second releases it.</p>
+              {/* FEE-TAX R1 · the two-officer release binds only while the Owner's "Second-officer checks" are ON (read fresh,
+                  as `amlReleaseStep` reads it), so the sentence follows it — the /admin/aml notice's twin. */}
+              {secondOfficer
+                ? <p>On /admin/aml, Approve dispatches a held withdrawal; Reject returns it to the player&apos;s wallet. A held withdrawal of {formatTzs(TWO_PERSON_THRESHOLD_TZS)} or more still needs two different officers: the first records stage&nbsp;1, a second releases it.</p>
+                : <p>On /admin/aml, Approve dispatches a held withdrawal; Reject returns it to the player&apos;s wallet. Second-officer checks are off, so one officer&apos;s approval releases any of them.</p>}
               <p>A deposit owed back cannot be approved, and Reject only closes its row: it sends no money, so the return is still owed. No self-review; each decision and its reason are recorded in the audit log.</p>
             </div>
           </div>

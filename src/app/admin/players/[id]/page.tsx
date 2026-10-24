@@ -19,6 +19,7 @@ import { getAuditForActor, getAuditForTarget, audit as recordAudit, type AuditCa
 import { selfExclusionStanding } from "@/lib/server/responsible-gambling";
 import { currentSession } from "@/lib/server/auth-service";
 import { canAct, canView } from "@/lib/server/rbac";
+import { secondOfficerChecksOn } from "@/lib/server/second-officer-policy";
 import { exportUserData } from "@/lib/server/user-service";
 import { houseAuditForConsole } from "@/lib/server/house-console-read";
 import { I } from "@/components/ui/glyphs";
@@ -134,6 +135,9 @@ async function AdminPlayerDetailContent({ params, searchParams }: PlayerDetailPr
   const vRole = viewer?.role;
   const capSupport = vRole ? await canAct(vRole, "support") : false;
   const capMoney = vRole ? await canAct(vRole, "accounting") : false;
+  // FEE-TAX R1 · the Owner's "Second-officer checks", read fresh as the adjustment reads them (`largeAdjustmentStep`): the
+  // money control says whether a large adjustment needs a second officer. Read only for a viewer who gets the control.
+  const countersign = capMoney ? await secondOfficerChecksOn() : true;
   const capCompliance = vRole ? await canAct(vRole, "compliance") : false;
   const canSeePII = vRole ? await canView(vRole, "compliance") : false;
   const canSeeMoney = vRole ? await canView(vRole, "accounting") : false;
@@ -511,7 +515,7 @@ async function AdminPlayerDetailContent({ params, searchParams }: PlayerDetailPr
                   cannot. Nothing is granted here that was not already granted — this adds
                   the door, not the permission. */}
               {capSupport ? <SetEmailForm userId={data.user!.id} /> : <ControlLocked what="Set player email" need="support" />}
-              {capMoney ? <BalanceAdjustControls userId={data.user!.id} currentBalance={wallet?.balance ?? 0} /> : <ControlLocked what="Adjust balance" need="accounting" />}
+              {capMoney ? <BalanceAdjustControls userId={data.user!.id} currentBalance={wallet?.balance ?? 0} countersign={countersign} /> : <ControlLocked what="Adjust balance" need="accounting" />}
               {/* ⭐ `canAct={capCompliance}` (audit session 95, 2026-09-14): the freeze acts on the COMPLIANCE domain
                   while this route is support, so the shell's route answer showed a compliance officer read-only.
                   ⛔ "Force re-verify KYC" WAS HERE until 2026-10-10. Its replacement — ask the player for corrections,

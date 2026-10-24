@@ -6,6 +6,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Chip } from "@/components/ui/chip";
 import { I } from "@/components/ui/glyphs";
 import { listSettlementQueue, getSettlementHealth } from "@/lib/server/market-service";
+import { secondOfficerChecksOn } from "@/lib/server/second-officer-policy";
 import { formatTzs, formatDateTime } from "@/lib/utils";
 import { SettleButton } from "./settle-button";
 import { HoldButton } from "./hold-button";
@@ -26,7 +27,10 @@ export default async function AdminSettlementPage(props: SettlementProps) {
 
 async function AdminSettlementContent({ searchParams }: SettlementProps) {
   const sp = await searchParams;
-  const [queue, health] = await Promise.all([listSettlementQueue(), getSettlementHealth()]);
+  // FEE-TAX R1 · the Owner's "Second-officer checks", read fresh as the ruling reads them: the hold's confirm says whether
+  // the officer who holds a payout may rule on that hold themselves (OFF) or must leave it to a colleague (ON).
+  const [queue, health, secondOfficer] = await Promise.all([listSettlementQueue(), getSettlementHealth(), secondOfficerChecksOn()]);
+  const ownRelease = !secondOfficer;
   const ready = queue.filter((r) => r.state === "READY");
   const readyTzs = ready.reduce((s, r) => s + r.pool, 0);
   const page = parsePage(sp.page, queue.length);
@@ -158,6 +162,7 @@ async function AdminSettlementContent({ searchParams }: SettlementProps) {
                               pool={r.pool}
                               positions={r.positions}
                               outcome={r.outcome}
+                              ownRelease={ownRelease}
                             />
                           </div>
                         ) : r.state === "FROZEN" ? (
@@ -183,6 +188,7 @@ async function AdminSettlementContent({ searchParams }: SettlementProps) {
                               pool={r.pool}
                               positions={r.positions}
                               outcome={r.outcome}
+                              ownRelease={ownRelease}
                             />
                           </div>
                         )}

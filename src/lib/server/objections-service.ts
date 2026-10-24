@@ -34,6 +34,7 @@ import { notifyAdminObjectionFiled, notifyObjectionDecided } from "./notificatio
 import { noteObjectionWrite } from "./reversals";
 import { MONEY_ROLES, type Role } from "./roles";
 import type { ServiceResult } from "./auth-service";
+import { secondOfficerChecksOn } from "./second-officer-policy";
 
 /** The player's case, capped so a huge paste can't be used as a storage attack. Shared with the Millionea objection door
  *  (`maswali-objections.ts`, MR-16), which files through this service's reasons and bounds. */
@@ -332,6 +333,11 @@ export async function closeObjectionsForVoidedMarket(
  * a market cannot REJECT their own hold (letting the recorded verdict pay) nor UPHOLD it (paying
  * the other side) — a second officer must. That property is inherited, not re-implemented, which
  * is why it cannot drift away from the player path's version of it.
+ * ⭐ FEE-TAX R1 · …WHILE THE OWNER'S "SECOND-OFFICER CHECKS" ARE ON (ruling 6 of 2026-10-24, `second-officer-policy.ts`;
+ * a stored ON, or a read that fails — nothing stored is the Owner's OFF). While they are OFF the officer who placed a hold
+ * may rule on it like any officer — unless
+ * they hold money in the market, which makes it a case on their OWN stake, refused whatever the setting says
+ * (`officerOwnCaseBarred`, below; ruling 6b keeps an officer's checks on their own account).
  *
  * ⛔ AND HERE IS THE LIMIT OF THAT SENTENCE, BECAUSE THE FIRST VERSION OF THIS COMMENT OVERCLAIMED
  * IT AND THE CLAIM WAS WRITTEN INTO A PRODUCTION AUDIT ROW. It said the filer "structurally cannot
@@ -342,9 +348,10 @@ export async function closeObjectionsForVoidedMarket(
  * conflict block was deliberately removed (owner decision 2026-07-24).
  *
  * ⚠️ SO THE HONEST STATEMENT IS NARROWER, AND IT IS STILL THE PROPERTY WORTH HAVING: a lone
- * officer cannot turn their own hold into a PAYOUT. Both directions that move money to a player
- * — reject (pay the recorded verdict) and uphold/REVERSE (pay the other side) — require a second
- * officer. What one officer can still do alone is VOID the market, which refunds held stakes at
+ * officer cannot turn their own hold into a PAYOUT while second-officer checks are ON. Both directions
+ * that move money to a player — reject (pay the recorded verdict) and uphold/REVERSE (pay the other
+ * side) — then require a second officer (OFF, the Owner has ruled that one officer may; the audit
+ * row's `effect` says both). What one officer can still do alone is VOID the market, which refunds held stakes at
  * zero fee and answers their own case by destroying it. That is the pre-existing kill switch, not
  * a hole this feature opened, and it is deliberately NOT closed here: leaving an objection OPEN
  * on a market that has been voided and fully refunded would strand the row and the market, which
@@ -436,10 +443,13 @@ export async function holdSettlementAsOfficer(
         // paths and false of `emergencyVoidMarket`, where the same officer can close their own
         // case by voiding the market. An audit row is the one place a claim must be exactly as
         // strong as the code — see the note on the function above.
+        // ⭐ FEE-TAX R1 · and as strong as the code AT RULING TIME, whatever the Owner's setting reads now: the rule this
+        // sentence names is read when the hold is ruled on, not when it is placed.
         effect:
-          "settlement frozen: no winner is paid until an objection ruling. Both paying outcomes " +
-          "(reject → the recorded verdict pays; uphold → the other side pays) require a DIFFERENT " +
-          "officer, because a filer cannot rule on their own case. A void, which refunds held " +
+          "settlement frozen: no winner is paid until an objection ruling. While the Owner's second-officer checks are ON, " +
+          "both paying outcomes (reject → the recorded verdict pays; uphold → the other side pays) require a DIFFERENT " +
+          "officer, because a filer cannot rule on their own case; while they are OFF the officer who placed this hold may " +
+          "rule on it too, unless they hold money in this market. A void, which refunds held " +
           "stakes while preserving earlier cash-outs, remains available to a single ADMIN/COMPLIANCE officer and would close this hold.",
       },
     });
@@ -450,6 +460,26 @@ export async function holdSettlementAsOfficer(
 
     return { ok: true, data: { objectionId: objection.id } };
   });
+}
+
+/**
+ * ⭐ FEE-TAX R1 · MAY THE OFFICER WHO FILED THIS CASE RULE ON IT? Asked by both rulings only when the case is the ruling
+ * officer's own (`o.userId === officerId`); true means refuse, exactly as before R1.
+ *   · while the Owner's "Second-officer checks" are ON (a stored ON, or a read that fails; `second-officer-policy.ts`): always —
+ *     the filer of a case never rules on it;
+ *   · while they are OFF: only when the officer holds money in the market — then it is a case on their OWN stake (a
+ *     player's objection, which only a stakeholder can file, or a hold beside a stake of their own), and a check on an
+ *     officer's own account stays whatever the setting says (ruling 6b). An officer's hold on a market they hold no money
+ *     in is the case the ruling releases: they rule on it as any officer does.
+ * ⛔ Fails closed: a position read that fails is a refusal, never "no stake".
+ */
+async function officerOwnCaseBarred(marketId: string, officerId: string): Promise<boolean> {
+  if (await secondOfficerChecksOn()) return true;
+  try {
+    return (await listPositionsForMarket(marketId)).some((p) => p.userId === officerId);
+  } catch {
+    return true;
+  }
 }
 
 /**
@@ -474,7 +504,8 @@ export async function rejectObjection(
   if (o.questionOrdinal != null) return { ok: false, error: MILLIONEA_RULED_ELSEWHERE, code: "INVALID" };
   if (o.status !== "OPEN") return { ok: false, error: "This objection has already been decided.", code: "INVALID" };
   // Separation of duties — an officer cannot rule on their own objection.
-  if (o.userId === officerId) {
+  // (FEE-TAX R1 · an officer's own payout hold only while the Owner's second-officer checks are ON — `officerOwnCaseBarred`.)
+  if (o.userId === officerId && (await officerOwnCaseBarred(o.marketId, officerId))) {
     audit({
       category: "COMPLIANCE",
       action: "objection.self_review_blocked",
@@ -578,7 +609,9 @@ export async function upholdObjection(
   if (!o) return { ok: false, error: "Objection not found.", code: "NOT_FOUND" };
   if (o.questionOrdinal != null) return { ok: false, error: MILLIONEA_RULED_ELSEWHERE, code: "INVALID" };
   if (o.status !== "OPEN") return { ok: false, error: "This objection has already been decided.", code: "INVALID" };
-  if (o.userId === officerId) {
+  // The filer never rules on their own case (FEE-TAX R1 · an officer's own payout hold only while the Owner's
+  // second-officer checks are ON — `officerOwnCaseBarred`).
+  if (o.userId === officerId && (await officerOwnCaseBarred(o.marketId, officerId))) {
     audit({
       category: "COMPLIANCE",
       action: "objection.self_review_blocked",

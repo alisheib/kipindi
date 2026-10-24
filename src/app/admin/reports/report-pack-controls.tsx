@@ -5,7 +5,8 @@
  * Renders the single action valid for the current pack state, calls the
  * guarded server action, toasts the result and refreshes. Self-approval is
  * blocked in the UI (and again server-side) — the preparer sees a disabled
- * "second officer required" note instead of an Approve button.
+ * "second officer required" note instead of an Approve button, while the Owner's
+ * second-officer checks are ON (`preparerBlocked`, decided by the card; FEE-TAX R1).
  */
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
@@ -30,11 +31,12 @@ type PackState = "draft" | "prepared" | "approved" | "submitted" | "acknowledged
 export function ReportPackControls({
   period,
   state,
-  isPreparer,
+  preparerBlocked,
 }: {
   period: string;
   state: PackState;
-  isPreparer: boolean;
+  /** This viewer prepared the pack AND the Owner's second-officer checks are ON, so the server would refuse their approval. */
+  preparerBlocked: boolean;
 }) {
   // A1 — this control only ACTS, so a role holding VIEW without ACT is shown why rather
   // than being offered a button the server will refuse (and logged as a privilege
@@ -93,7 +95,7 @@ export function ReportPackControls({
   }
 
   if (state === "prepared") {
-    if (isPreparer) {
+    if (preparerBlocked) {
       return (
         <AttestationRail tone="blocked" title={CEREMONY.secondOfficerRequired}>
           You prepared this pack — a different officer must approve it.

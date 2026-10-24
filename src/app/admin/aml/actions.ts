@@ -7,9 +7,8 @@ import { db, type StoredTxn } from "@/lib/server/store";
 import { audit } from "@/lib/server/audit";
 import { runOutsideLock, withLock } from "@/lib/server/locks";
 import { dispatchApprovedWithdrawal, refundAmlRejection } from "@/lib/server/wallet-service";
-import { getFirstSignature, setFirstSignature } from "./stage1-store";
+import { amlReleaseStep } from "./stage1-store";
 
-import { TWO_PERSON_THRESHOLD_TZS } from "./constants";
 import { formatTzs } from "@/lib/utils";
 import { requireStaff } from "@/lib/server/rbac-guard";
 import { fieldError } from "@/lib/server/field-error";
@@ -31,8 +30,9 @@ async function requireAdmin() {
  * Approve a withdrawal held in AML_REVIEW and DISPATCH the payout.
  *
  * Two-person rule (POCA Cap 423 §16 + FATF R.10): every AML-held withdrawal is
- * ≥ TWO_PERSON_THRESHOLD_TZS, so two DIFFERENT officers must approve. The first
- * officer's click records `aml.approve.stage1` (the txn stays AML_REVIEW). A second,
+ * ≥ TWO_PERSON_THRESHOLD_TZS, so two DIFFERENT officers must approve — while the Owner's
+ * "Second-officer checks" are ON (`amlReleaseStep`, FEE-TAX R1); OFF, one approval releases it.
+ * The first officer's click records `aml.approve.stage1` (the txn stays AML_REVIEW). A second,
  * different officer's click hands off to `dispatchApprovedWithdrawal`, which moves
  * AML_REVIEW → PROCESSING with a REAL provider reference, sends the payout to the
  * gateway, and lets the webhook/reconcile path settle it EXACTLY-ONCE. The hold is
@@ -89,27 +89,25 @@ export async function approveAmlAction(formData: FormData) {
 
     const gross = Math.abs(txn.amount);
 
-    // Two-person rule for amounts ≥ the threshold (every AML-held withdrawal qualifies).
-    if (gross >= TWO_PERSON_THRESHOLD_TZS) {
-      const first = await getFirstSignature(txnId);
-      if (!first) {
-        // First officer: record the stage-1 co-signature; the txn stays AML_REVIEW.
-        await setFirstSignature(txnId, { actorId: session.userId, at: new Date().toISOString() });
-        audit({ category: "COMPLIANCE", action: "aml.approve.stage1", actorId: session.userId, targetType: "Transaction", targetId: txnId, payload: { amount: gross, reason } });
-        revalidatePath("/admin/aml");
-        return { ok: true as const, stage: "stage1" as const, message: "First approval recorded. A second, different officer must approve to release the funds." };
-      }
-      if (first.actorId === session.userId) {
-        return { ok: false as const, error: "A different officer must give the second approval (two-person rule)." };
-      }
+    // Two-person rule for amounts ≥ the threshold (every AML-held withdrawal qualifies) — while the Owner's "Second-officer
+    // checks" are ON. ⭐ FEE-TAX R1 · the step is `amlReleaseStep`'s (it can be driven without a session); OFF, one
+    // officer's approval releases it, exactly as below the threshold (ruling 6 of 2026-10-24).
+    const step = await amlReleaseStep(txnId, session.userId, gross);
+    if (step.kind === "first") {
+      // First officer: the stage-1 co-signature is recorded; the txn stays AML_REVIEW.
+      audit({ category: "COMPLIANCE", action: "aml.approve.stage1", actorId: session.userId, targetType: "Transaction", targetId: txnId, payload: { amount: gross, reason } });
+      revalidatePath("/admin/aml");
+      return { ok: true as const, stage: "stage1" as const, message: "First approval recorded. A second, different officer must approve to release the funds." };
+    }
+    if (step.kind === "same") {
+      return { ok: false as const, error: "A different officer must give the second approval (two-person rule)." };
     }
 
-    // Approved (second officer for ≥ threshold; single officer otherwise). Dispatch the
+    // Approved (second officer for ≥ threshold while the checks are ON; single officer otherwise). Dispatch the
     // payout: dispatchApprovedWithdrawal moves AML_REVIEW → PROCESSING with a REAL
     // provider reference and lets the webhook/reconcile path settle it exactly-once.
     // The hold is kept until the provider confirms; a provider refusal leaves the txn
     // under review (never a silent auto-refund) so it can be retried or rejected.
-    const firstOfficer = await getFirstSignature(txnId);
     const dispatched = await dispatchApprovedWithdrawal(txnId);
     if (!dispatched.ok) {
       audit({ category: "COMPLIANCE", action: "aml.approve.dispatch_failed", actorId: session.userId, targetType: "Transaction", targetId: txnId, payload: { amount: gross, error: dispatched.error } });
@@ -121,7 +119,7 @@ export async function approveAmlAction(formData: FormData) {
       actorId: session.userId,
       targetType: "Transaction",
       targetId: txnId,
-      payload: { amount: gross, reason, firstOfficerId: firstOfficer?.actorId ?? null, secondOfficerId: session.userId, dispatchStatus: dispatched.status },
+      payload: { amount: gross, reason, firstOfficerId: step.firstOfficerId, secondOfficerId: session.userId, dispatchStatus: dispatched.status },
     });
     revalidatePath("/admin/aml");
     return { ok: true as const, stage: "complete" as const, message: dispatched.status === "CONFIRMED" ? "Payout sent." : "Payout dispatched — settling now." };

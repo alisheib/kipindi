@@ -4,7 +4,6 @@ import { revalidatePath } from "next/cache";
 import { softRequireStaff } from "@/lib/server/rbac-guard";
 import { fieldError } from "@/lib/server/field-error";
 import { CONTROL_DOMAIN } from "@/lib/server/control-gates";
-import { twoOfficerGate } from "@/lib/server/two-officer";
 import { withLock } from "@/lib/server/locks";
 import { audit } from "@/lib/server/audit";
 import { chainStore, assetStore } from "@/lib/server/updown-dal";
@@ -13,7 +12,7 @@ import {
   type PurgeCost, type PurgeJob,
 } from "@/lib/server/chain-purge";
 import {
-  getFirstSignature, setFirstSignature, clearFirstSignature, type PurgeStage1,
+  getFirstSignature, setFirstSignature, clearFirstSignature, purgeStage2Gate, type PurgeStage1,
 } from "./purge-stage1-store";
 
 /**
@@ -115,14 +114,16 @@ export async function purgeStage1Action(formData: FormData): Promise<Result<{ at
 }
 
 /**
- * STAGE 2 — a DIFFERENT officer starts the job.
+ * STAGE 2 — a DIFFERENT officer starts the job (while the Owner's second-officer checks are ON).
  *
  * ⛔ AN ABSENT FIRST SIGNATURE IS A REFUSAL, NOT A PASS. `twoOfficerGate` returns null when
  * `makerId` is missing, because for its other callers a missing maker means "no conflict". For
  * a ceremony that REQUIRES two officers, that reading is exactly backwards: no maker means the
  * ceremony never started. So the maker's presence is asserted here BEFORE the gate is
  * consulted, and the gate is then asked only the question it is good at — are these the same
- * person?
+ * person? ⭐ FEE-TAX R1 · that question is `purgeStage2Gate`'s, and it is asked only while the
+ * Owner's "Second-officer checks" are ON; OFF, the officer who recorded the reason completes the
+ * purge. The first signature stays required either way — it carries the reason and the basis.
  */
 export async function purgeStage2Action(formData: FormData): Promise<Result<PurgeJob>> {
   const gate = await softRequireStaff(CONTROL_DOMAIN.purgeChainHistory, "purgeChainHistory", REFUSAL);
@@ -143,17 +144,7 @@ export async function purgeStage2Action(formData: FormData): Promise<Result<Purg
       };
     }
 
-    const conflict = twoOfficerGate({
-      makerId: stage1.actorId,
-      checkerId: gate.userId,
-      reason: `purging ${label} needs a second officer — you recorded the reason yourself`,
-      audit: {
-        action: "updown.chain.purge.conflict_blocked",
-        targetType: "UpDownChain",
-        targetId: chainId,
-        payload: { chainLabel: label, makerId: stage1.actorId },
-      },
-    });
+    const conflict = await purgeStage2Gate(stage1, gate.userId, chainId, label);
     if (conflict) return { ok: false as const, error: conflict.error };
 
     // ⛔ The typed word is the CHAIN'S OWN LABEL, not "DELETE" — typing the specific thing is

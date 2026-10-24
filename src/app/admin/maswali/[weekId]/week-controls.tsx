@@ -189,8 +189,11 @@ export type SealRowView = {
 };
 type Can = { seal: boolean; void: boolean; correct: boolean; confirm: boolean };
 
-export function SealConsole({ weekId, weekCode, rows, voidReasons, windowOpen, can, need }: {
+export function SealConsole({ weekId, weekCode, rows, voidReasons, windowOpen, can, need, authorCorrects }: {
   weekId: string; weekCode: string; rows: SealRowView[]; voidReasons: string[]; windowOpen: boolean; can: Can; need: Record<keyof Can, string>;
+  /** FEE-TAX R1 · the Owner's second-officer checks as the page read them: ON, only the officer who set a result corrects it
+   *  (`correctSeal`); OFF, any officer does. The dialog says which — the service decides again on every press. */
+  authorCorrects: boolean;
 }) {
   const router = useRouter();
   const mayAct = useMayAct();
@@ -331,7 +334,9 @@ export function SealConsole({ weekId, weekCode, rows, voidReasons, windowOpen, c
         title={`Correct ${correctRow?.label ?? ""}?`} confirmLabel="Record the correction"
         body={
           <div className="space-y-3 text-left">
-            <p>Only the officer who sealed it may correct it, and only inside the objection window; the window starts again.{/* OD-09 */}</p>
+            <p>{authorCorrects
+              ? "Only the officer who set its present result may correct it — its sealer, or the officer whose upheld objection changed it — and only inside the objection window; the window starts again."
+              : "Any officer may correct it, inside the objection window; the window starts again."}{/* OD-09 */}</p>
             <Field label="Correct result"><Select size="md" value={correction.outcome} onChange={(v) => setCorrection((c) => ({ ...c, outcome: v }))} ariaLabel="Correct result" options={[{ value: "YES", label: "YES" }, { value: "NO", label: "NO" }, { value: "VOID", label: "VOID" }]} /></Field>
             {correction.outcome === "VOID" && <Field label="Ground" required error={correctTried && !isMaswaliVoidReason(correction.voidReason) ? "Choose a ground from the list." : undefined}><Select size="md" value={correction.voidReason} onChange={(v) => setCorrection((c) => ({ ...c, voidReason: v }))} ariaLabel="Void ground" options={[{ value: "", label: "Choose the ground" }, ...voidReasons.map((v) => ({ value: v, label: isMaswaliVoidReason(v) ? MASWALI_VOID_REASON_LABEL[v] : v }))]} /></Field>}
             <Field label="Evidence" required error={correctTried && correction.evidence.trim().length < 10 ? "Write at least 10 characters of evidence." : undefined}><Input size="md" value={correction.evidence} onChange={(e) => setCorrection((c) => ({ ...c, evidence: e.target.value }))} /></Field>

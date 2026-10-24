@@ -17,16 +17,22 @@
 
 ## §0 · RESUME AT
 
-**State (2026-10-24):** R0 — the records — is being published: the rulings entry, this tracker, the RULES.md roll-out
-row, the NEXT-PLAN row and MASWALI-PLAN's S8 hold (gate lines 8 and 9 re-opened). No code has changed. Today's law is in
-force everywhere.
+**State (2026-10-24):** R0 — the records — is written (`82c16ec20`, branch `feetax-r0`): the rulings entry, this tracker,
+the RULES.md roll-out row, the NEXT-PLAN row and MASWALI-PLAN's S8 hold (gate lines 8 and 9 re-opened). R1 is built on
+branch `feetax-r1` and not yet on `main`: the Owner setting "Second-officer checks" (`second-officer-policy.ts`; its card
+on /admin/system, Owner-only to change) over the twelve checks of §4 R1. ⭐ It goes live OFF by Ali's word (his go-live
+answers of 2026-10-24): nothing stored reads OFF — no click after the release; a read that fails reads ON; a stored
+position always wins, so the Owner can turn the checks back ON from the card (audited). And the S8 hold in code —
+`openWeek` refuses a public week that would freeze `jackpot-payout`. Today's money law is in force everywhere.
 
-**Next:** R1 — any admin can do any step: the Owner setting "Second-officer checks" over the twelve checks of §4 R1, and
-the code lock that refuses to open a public Millionea week that would freeze the old fee model. Then R2.
+**Next:** the lead runs R1's gates on GitHub's runners — `predeploy` (now with `test:second-officer-switch` and
+`test:maswali-open-lock`), `test:all`, the PostgreSQL suites (`test:maswali-engine`, `test:maswali-objections` among them)
+and `red:second-officer-switch` — re-pins `test:house-bot-disclosure` §5.1 for the dictionary, merges and pushes R1, and
+reads it back: the card on /admin/system says the checks are OFF by the Owner's ruling. Then R2.
 
 **Blocked on Ali:** nothing for R0–R4. Before the switch (§5): the desk's budgets reviewed; Finance's written TRA basis
 for the 15% (statute, base, the per-winner return, the tax of a forfeited share); the note to the Gaming Board; his yes for
-the named read-only production scripts. Straight after R1 is read back: one audited click — "Second-officer checks" OFF.
+the named read-only production scripts.
 
 **Who pushes `main`:** the session working this programme pushes its own verified releases (Ali, 2026-10-24, approving
 the plan: each release pushed live), rebased on `origin/main` immediately before, with AGENTS.md §4's release checklist.
@@ -39,7 +45,7 @@ tracker is its copy and supersedes it.
 | Release | What | Status | Note |
 |---|---|---|---|
 | R0 | The records: rulings, this tracker, the RULES row, the board row, the S8 hold | 🔨 | docs only |
-| R1 | Any admin can do any step + the Millionea open lock | ⬜ | |
+| R1 | Any admin can do any step + the Millionea open lock | 🔨 | built on branch `feetax-r1`, awaiting the runner gates and the push: the Owner setting and its /admin/system card, live OFF by Ali's word (nothing stored = OFF; a failed read = ON; a stored position wins); the twelve checks gated (check 11 frees an officer's own payout hold on a market they hold no money in — a case on their own stake stays refused, ruling 6b); the bulk-resolve staged-row words follow the two-officer switch; the S8 hold in `openWeek`; `test:second-officer-switch`, `test:maswali-open-lock`, `red:second-officer-switch` |
 | R2 | Fee engine, settlement, ledger, safe config — gated off | ⬜ | |
 | R3 | Reports and money around settlement (polls + Up & Down) | ⬜ | |
 | R4 | Millionea `ticket-share` — engine, money, records, reports, figures — gated off | ⬜ | |
@@ -112,8 +118,10 @@ most); each lane merges only after its suites, `tsc` and an adversarial read of 
 **R0 — the records (docs only).** The rulings entry; this tracker; a RULES.md roll-out row; the NEXT-PLAN row;
 MASWALI-PLAN §0's S8 hold, with §6.1 lines 8 and 9 re-opened.
 
-**R1 — any admin can do any step.** An Owner setting, "Second-officer checks" (absent = today's behaviour; the Owner
-turns it OFF as an audited act straight after R1 is read back), gates every check on another person's work:
+**R1 — any admin can do any step.** An Owner setting, "Second-officer checks" — live OFF by Ali's word with no click after
+the release (his go-live answers of 2026-10-24): nothing stored = OFF; a read that fails = ON, never weaker on an error; a
+stored position always wins, so the Owner turns the checks back ON from his card as an audited act — gates every check on
+another person's work:
 1. Millionea — the officer who drafted a week may not attest its translations (`maswali-service.ts`);
 2. Millionea — nor may an officer who edited the draft since its last attestation, with the audit-history read that
    exists only for these two checks;
@@ -188,6 +196,6 @@ the runner: `e2e:money` (a stake-share poll and round: deposit → bet → close
 
 ## §7 · Left for Ali, outside the code
 
-"Second-officer checks" OFF after R1 · Finance: the TRA basis · the Gaming Board: a note on the four changes and the
+Finance: the TRA basis · the Gaming Board: a note on the four changes and the
 technical report's separation-of-duties section · the Vodacom agency re-reads the journey's money words before S14 ·
 the desk's budgets · the parked branches `claude/maswali-s6-lint` / `claude/maswali-s6-notices` rebase after R4.

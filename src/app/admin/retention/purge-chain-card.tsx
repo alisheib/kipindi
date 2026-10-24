@@ -47,7 +47,7 @@ type ArchivedChain = { id: string; label: string; rounds: number };
  */
 const BASIS_DEFAULT = "POCA Cap 423 §16 — record retained; player-facing content redacted";
 
-export function PurgeChainCard({ chains, stage1, viewerId }: {
+export function PurgeChainCard({ chains, stage1, viewerId, selfComplete }: {
   chains: ArchivedChain[];
   /** chainId → who signed first, so officer A sees they are waiting on someone else. */
   stage1: Record<string, { actorId: string; at: string } | undefined>;
@@ -55,6 +55,10 @@ export function PurgeChainCard({ chains, stage1, viewerId }: {
    *  and it offered officer A a "Confirm as second officer" button the server would refuse —
    *  the same defect as a trading page offering a compliance control. */
   viewerId: string;
+  /** FEE-TAX R1 · the Owner's "Second-officer checks" are OFF, as the page read them: the officer who recorded the reason
+   *  may complete the purge themselves (`purgeStage2Gate`), so the card offers them step 2 instead of the blocked rail. The
+   *  server decides again on the press. */
+  selfComplete: boolean;
 }) {
   const [chainId, setChainId] = useState(chains[0]?.id ?? "");
   const [reason, setReason] = useState("");
@@ -74,10 +78,12 @@ export function PurgeChainCard({ chains, stage1, viewerId }: {
 
   const chain = chains.find((c) => c.id === chainId);
   const signed = stage1[chainId];
-  /** Officer A: a signature exists and it is mine — I am waiting on someone else. */
-  const mine = signed && signed.actorId === viewerId;
-  /** Officer B: a signature exists and it is NOT mine — I can complete the ceremony. */
-  const theirs = signed && signed.actorId !== viewerId;
+  /** Officer A: a signature exists and it is mine — I am waiting on someone else (while second-officer checks are ON). */
+  const mine = signed && signed.actorId === viewerId && !selfComplete;
+  /** Officer B: a signature exists and it is NOT mine — I can complete the ceremony. ⭐ FEE-TAX R1 · and while the Owner's
+   *  second-officer checks are OFF, the officer who signed it may complete it too (`ownStep2`). */
+  const theirs = signed && (signed.actorId !== viewerId || selfComplete);
+  const ownStep2 = !!signed && signed.actorId === viewerId && selfComplete;
   const label = chain?.label ?? "";
 
   /**
@@ -96,7 +102,7 @@ export function PurgeChainCard({ chains, stage1, viewerId }: {
     const r = await runAdminAction(() => purgeStage1Action(fd));
     if (!r.ok && r.field) focusFirstInvalid(document.body, [r.field]);
     toast(r.ok
-      ? { title: "Reason recorded — a second officer must now confirm", variant: "success" }
+      ? { title: selfComplete ? "Reason recorded — confirm step 2 to purge" : "Reason recorded — a second officer must now confirm", variant: "success" }
       : { title: "Couldn't record it", description: r.error, variant: "danger" });
   });
 
@@ -259,7 +265,7 @@ export function PurgeChainCard({ chains, stage1, viewerId }: {
         {!job && theirs && (
           <div className="flex flex-wrap gap-2">
             <Button type="button" variant="danger" disabled={!mayAct || !cost} title={actReason} onClick={() => setConfirming(true)}>
-              Confirm as second officer
+              {ownStep2 ? "Confirm the purge (step 2 of 2)" : "Confirm as second officer"}
             </Button>
             <Button
               type="button" variant="ghost" loading={pending} disabled={!mayAct} title={actReason}
@@ -305,8 +311,9 @@ export function PurgeChainCard({ chains, stage1, viewerId }: {
         body={
           <div className="space-y-2">
             <p>
-              Officer A recorded the reason. You are the second officer. This deletes the price story
-              and the player-facing content, and stamps every market as purged.
+              {ownStep2
+                ? "You recorded the reason; second-officer checks are off, so you complete it. This deletes the price story and the player-facing content, and stamps every market as purged."
+                : "Officer A recorded the reason. You are the second officer. This deletes the price story and the player-facing content, and stamps every market as purged."}
             </p>
             {cost && (
               <div className="max-h-[38vh] overflow-y-auto rounded-md border border-border bg-bg-sunken p-2">
@@ -334,7 +341,9 @@ export function PurgeChainCard({ chains, stage1, viewerId }: {
       <PendingChangesBar
         dirty={editable && stagedWork}
         label="Reason not recorded"
-        detail="Use “Record the reason (step 1 of 2)” to keep it — it is lost if you leave. Nothing is purged until a second officer confirms."
+        detail={selfComplete
+          ? "Use “Record the reason (step 1 of 2)” to keep it — it is lost if you leave. Nothing is purged until step 2 is confirmed."
+          : "Use “Record the reason (step 1 of 2)” to keep it — it is lost if you leave. Nothing is purged until a second officer confirms."}
         onDiscard={() => { setReason(""); setBasis(BASIS_DEFAULT); }}
       />
       <UnsavedChangesGuard

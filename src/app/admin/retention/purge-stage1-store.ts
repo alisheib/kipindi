@@ -1,5 +1,6 @@
 import { loadConfig, saveConfig, deleteConfig } from "@/lib/server/config-store";
 import { hasDatabase } from "@/lib/server/prisma";
+import { secondOfficerGate } from "@/lib/server/two-officer";
 
 /**
  * THE DURABLE FIRST SIGNATURE for the chain-purge ceremony.
@@ -109,4 +110,27 @@ export async function setFirstSignature(chainId: string, sig: PurgeStage1): Prom
 export async function clearFirstSignature(chainId: string): Promise<void> {
   mem.delete(chainId);
   await deleteConfig(KEY(chainId));
+}
+
+/**
+ * ⭐ STAGE 2'S DIFFERENT-OFFICER RULE (FEE-TAX R1) — the one decision `purgeStage2Action` asks once it holds a LIVE first
+ * signature, kept here (never in the "use server" file) so it can be driven without a session. While the Owner's
+ * "Second-officer checks" are ON — a stored ON, or a read that fails; nothing stored is the Owner's OFF — the officer who
+ * recorded the reason may not complete the
+ * purge, and the refused attempt is recorded as `updown.chain.purge.conflict_blocked` (`secondOfficerGate`); while they are
+ * OFF the same officer completes it, and the completion record then names that officer as both A and B.
+ * ⛔ It is never asked of an ABSENT first signature: the action refuses that first, because a missing maker passes the gate.
+ */
+export async function purgeStage2Gate(stage1: PurgeStage1, officerId: string, chainId: string, label: string): Promise<{ error: string } | null> {
+  return secondOfficerGate({
+    makerId: stage1.actorId,
+    checkerId: officerId,
+    reason: `purging ${label} needs a second officer — you recorded the reason yourself`,
+    audit: {
+      action: "updown.chain.purge.conflict_blocked",
+      targetType: "UpDownChain",
+      targetId: chainId,
+      payload: { chainLabel: label, makerId: stage1.actorId },
+    },
+  });
 }

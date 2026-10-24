@@ -36,6 +36,11 @@ import { saveMarketingSmsSettings, SETTINGS_REFUSAL_SENTENCE } from "@/lib/serve
 import { SETTINGS_FIELDS, type SettingsField } from "@/lib/marketing/sms-settings";
 import { eatLabel } from "./marketing-sms-view";
 import type { AlreadyOffRemains, AlreadyOpenReadsAs } from "./marketing-sms-words";
+// FEE-TAX R1 · the Owner's "Second-officer checks" card: the one writer, its bounds, and the Owner's own language.
+import {
+  setSecondOfficerChecks, SECOND_OFFICER_REASON_MAX, SECOND_OFFICER_REASON_MIN, type SecondOfficerRefusal,
+} from "@/lib/server/second-officer-policy";
+import { getServerT } from "@/lib/i18n-server";
 
 // RBAC: authorization is data-driven — requireStaff checks this role's canAct for the
 // domain (Owner/ADMIN bypasses), audits a blocked attempt, then enforces step-up 2FA.
@@ -527,4 +532,45 @@ export async function saveMarketingSmsSettingsAction(formData: FormData): Promis
   }
   revalidateMarketingSms();
   return { ok: true as const, changed: res.changed.length };
+}
+
+/** What the Owner's "Second-officer checks" switch answers, every sentence already in the Owner's own language. */
+export type SecondOfficerActionResult =
+  | { ok: true; changed: boolean; on: boolean; warn: boolean; note: string | null }
+  | { ok: false; error: string; field?: "reason" };
+
+/**
+ * ⭐ FEE-TAX R1 · THE OWNER TURNS "SECOND-OFFICER CHECKS" ON OR OFF (ruling 6 of 2026-10-24; `second-officer-policy.ts`).
+ *
+ * ⛔ `requireOwner` FIRST — before any other await: the Owner's account (ADMIN, on the STORED row) and its step-up, never a
+ * grant. Then the ONE writer, `setSecondOfficerChecks`, which reads the stored role again, cleans and bounds the reason,
+ * reads the setting fresh under its lock, writes, reads back and only then records the COMPLIANCE row with the setting
+ * before and after. ⛔ Only the position and the reason are read from the request: who changed it is the session's officer
+ * and when is the server's clock. Every refusal and outcome is worded in the Owner's language (`secondOfficer.*`).
+ */
+export async function setSecondOfficerChecksAction(input: { on: boolean; reason: string }): Promise<SecondOfficerActionResult> {
+  const session = await requireOwner("secondOfficerChecks");
+  const { t } = await getServerT();
+  const w = t.secondOfficer;
+  const fill = (s: string) => s.replace("{min}", String(SECOND_OFFICER_REASON_MIN)).replace("{max}", String(SECOND_OFFICER_REASON_MAX));
+  const words: Record<SecondOfficerRefusal, string> = {
+    not_understood: w.refusedOther, session: w.refusedOther, who_unknown: w.refusedOther, not_owner: w.refusedOwner,
+    reason_short: fill(w.refusedReasonShort), reason_long: fill(w.refusedReasonLong), unread: w.refusedUnread,
+    not_stored: w.refusedNotStored, outcome_unknown: w.refusedOutcomeUnknown,
+  };
+  const on = input?.on;
+  const reason = input?.reason;
+  if (typeof on !== "boolean" || typeof reason !== "string") return { ok: false, error: words.not_understood };
+  let res: Awaited<ReturnType<typeof setSecondOfficerChecks>>;
+  try {
+    res = await setSecondOfficerChecks(on, session.userId, reason);
+  } catch (err) {
+    return { ok: false, error: safeError(err, w.refusedOutcomeUnknown) };
+  }
+  if (!res.ok) return res.field ? { ok: false, error: words[res.code], field: res.field } : { ok: false, error: words[res.code] };
+  if (res.changed) {
+    // Every page that words a gated check reads the setting fresh on its next render; the card's own page is dropped here.
+    try { revalidatePath("/admin/system"); } catch { /* the setting moved; the next render reads it */ }
+  }
+  return { ok: true, changed: res.changed, on: res.on, warn: res.changed && !res.recorded, note: res.changed && !res.recorded ? w.unrecorded : null };
 }

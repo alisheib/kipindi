@@ -12,6 +12,7 @@ import { listPendingKyc, readKycCaseChecks, kycRowVersion } from "@/lib/server/k
 import { kycCaseRead, kycMoneyFacts, toBlockedCashOut, getApprovalRecommendation, KYC_MAKER_CHECKER_THRESHOLD, type BlockedCashOut } from "@/lib/server/kyc-risk";
 import { currentSession } from "@/lib/server/auth-service";
 import { canView } from "@/lib/server/rbac";
+import { secondOfficerChecksOn } from "@/lib/server/second-officer-policy";
 import { houseAuditForConsole } from "@/lib/server/house-console-read";
 import { formatDateTime } from "@/lib/utils";
 import { KycDocViewer } from "./kyc-doc-viewer";
@@ -153,7 +154,9 @@ async function KycWorkstationContent({ params }: KycWorkstationProps) {
   // `kycCaseRead` returns them beside the score, so the card costs no second `listForUser` (kyc-risk.ts header).
   const { risk, txns } = await kycCaseRead(id);
   const moneyFacts = kycMoneyFacts(txns);
-  const makerCheckerRequired = risk.score >= KYC_MAKER_CHECKER_THRESHOLD;
+  // ⛔ FEE-TAX R1 · the high-risk maker-checker holds only while the Owner's "Second-officer checks" are ON (read fresh, as
+  // the approval reads it — `kycApprovalMakerChecker`); OFF, the rail offers a plain approval at any score.
+  const makerCheckerRequired = risk.score >= KYC_MAKER_CHECKER_THRESHOLD && (await secondOfficerChecksOn());
   // ⭐ BOUND TO THIS VERSION (2026-10-10): a recommendation made before the case last changed is not found, so the rail
   // asks for a new one rather than offering a seal on details the maker never saw. (Source of funds is a checklist row
   // now — `decideKyc`'s `sof` — read with the other facts.)

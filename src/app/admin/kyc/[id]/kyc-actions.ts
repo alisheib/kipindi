@@ -6,8 +6,9 @@
  * All decisions flow through the money/compliance-tested `kyc-service.ts`. The
  * workstation adds: reason-code rejects, an escalate-to-AML audit hook, and a
  * maker-checker gate for HIGH-RISK approvals (risk ≥ threshold requires a
- * second officer — the recommender cannot also approve). Nothing is fabricated;
- * every step is gated (ADMIN/COMPLIANCE + 2FA) and audited.
+ * second officer — the recommender cannot also approve) while the Owner's
+ * second-officer checks are ON (`kycApprovalMakerChecker`, FEE-TAX R1). Nothing is
+ * fabricated; every step is gated (ADMIN/COMPLIANCE + 2FA) and audited.
  *
  * ⭐ ONE DOOR FOR IDENTITY DECISIONS (2026-10-10). Players now verify with typed details and are
  * approved automatically when the checks pass (docs/COMPLIANCE-DECISIONS.md, "2026-10-10 · Players
@@ -25,7 +26,6 @@
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/server/store";
 import { audit } from "@/lib/server/audit";
-import { twoOfficerGate } from "@/lib/server/two-officer";
 import { softRequireStaff } from "@/lib/server/rbac-guard";
 import { canView } from "@/lib/server/rbac";
 import type { Role } from "@/lib/server/roles";
@@ -39,7 +39,7 @@ import {
   CORRECTIONS_NOTE_MIN,
   DOB_CORRECTION_REASON_MIN,
 } from "@/lib/server/kyc-service";
-import { kycRiskScore, getApprovalRecommendation, KYC_MAKER_CHECKER_THRESHOLD } from "@/lib/server/kyc-risk";
+import { kycApprovalMakerChecker } from "@/lib/server/kyc-risk";
 import { parseAttestations, isKycAttestationMode, type KycAttestationMode } from "@/lib/kyc-attestations";
 import { photoSetComplete } from "@/lib/id-documents";
 
@@ -179,23 +179,14 @@ export async function approveKycWorkstationAction(formData: FormData): Promise<R
     return { ok: false, error: attest.error };
   }
 
-  const risk = await kycRiskScore(userId).catch(() => null);
-  // ⛔ A risk score that cannot be read is not a low one — the two-officer rule would silently not apply.
-  if (!risk) return { ok: false, error: "The risk score could not be read, so the two-officer rule cannot be checked. Try again." };
-  if (risk.score >= KYC_MAKER_CHECKER_THRESHOLD) {
-    const rec = await getApprovalRecommendation(userId, version);
-    if (!rec) return { ok: false, error: `High-risk (score ${risk.score}) — a second officer must first recommend approval of this version of the case.` };
-    const conflict = twoOfficerGate({
-      makerId: rec.officerId,
-      checkerId: g.userId,
-      reason: "you recommended this approval; a different officer must seal it.",
-      audit: { action: "kyc.approve.conflict_blocked", targetType: "User", targetId: userId, payload: { recommendedBy: rec.officerId } },
-    });
-    if (conflict) return { ok: false, error: conflict.error };
-  }
+  // ⭐ THE HIGH-RISK MAKER-CHECKER (and its fail-closed risk read) is `kycApprovalMakerChecker`'s, so it can be driven
+  // without a session — and it holds only while the Owner's "Second-officer checks" are ON (FEE-TAX R1; ruling 6 of
+  // 2026-10-24). OFF, any officer approves at any score; the score still rides the approval's audit row.
+  const mc = await kycApprovalMakerChecker({ userId, version, officerId: g.userId });
+  if (!mc.ok) return { ok: false, error: mc.error };
   const r = await reviewKyc({ officerId: g.userId, userId, decision: "APPROVE", version, mode, attestations: attest.attested, via: "workstation" });
   if (!r.ok) return { ok: false, error: r.error ?? "Could not approve." };
-  audit({ category: "COMPLIANCE", action: "kyc.workstation.approved", actorId: g.userId, targetType: "User", targetId: userId, payload: { riskScore: risk.score, makerChecker: risk.score >= KYC_MAKER_CHECKER_THRESHOLD, attestationSet: attest.setId, attestations: attest.attested } });
+  audit({ category: "COMPLIANCE", action: "kyc.workstation.approved", actorId: g.userId, targetType: "User", targetId: userId, payload: { riskScore: mc.riskScore, makerChecker: mc.makerChecker, attestationSet: attest.setId, attestations: attest.attested } });
   revalidateCase(userId);
   return { ok: true };
 }

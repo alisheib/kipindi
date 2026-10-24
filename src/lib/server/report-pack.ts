@@ -3,7 +3,9 @@
  *
  * The monthly Gaming Board pack moves through a mandatory maker-checker chain:
  *   Draft → Prepared → Approved → Submitted → Acknowledged
- * with two DISTINCT officers (the preparer cannot approve their own pack).
+ * with two DISTINCT officers (the preparer cannot approve their own pack) while the Owner's
+ * second-officer checks are ON — `packApprovalGate` below (FEE-TAX R1). While they are OFF the
+ * preparer may approve; both signatures stay on the trail, naming the same officer twice.
  *
  * State is DERIVED from the immutable audit trail — each transition is an
  * append-only `pack.*` ADMIN audit event on the pack's targetId. This needs no
@@ -14,6 +16,7 @@
  */
 import { getAuditForTargetsDurable } from "./audit";
 import { officerLabel } from "./actor-label";
+import { secondOfficerGate } from "./two-officer";
 // The ONE place the platform decides what a day is — see `packPeriodBounds`.
 import { EAT_OFFSET_MS } from "@/lib/eat-day";
 
@@ -147,6 +150,22 @@ export function packPeriodBounds(period: string): { start: number; end: number }
 
 export function packIdFor(period: string): string {
   return `gbt-monthly:${period}`;
+}
+
+/**
+ * ⭐ THE PACK'S MAKER-CHECKER ON APPROVAL (FEE-TAX R1) — the one decision `approveReportPack` asks once the pack reads
+ * Prepared, kept here so it can be driven without a session. While the Owner's "Second-officer checks" are ON (a stored ON,
+ * or a read that fails — nothing stored is the Owner's OFF) the officer who prepared the pack may not approve it, and the
+ * refused attempt is recorded as
+ * `pack.approve.conflict_blocked` (`secondOfficerGate` → `twoOfficerGate`); while they are OFF the preparer approves.
+ */
+export async function packApprovalGate(pack: Pick<ReportPack, "period" | "preparedBy">, checkerId: string): Promise<{ error: string } | null> {
+  return secondOfficerGate({
+    makerId: pack.preparedBy,
+    checkerId,
+    reason: "you prepared this pack and cannot approve your own work.",
+    audit: { action: "pack.approve.conflict_blocked", targetType: "ReportPack", targetId: packIdFor(pack.period) },
+  });
 }
 
 

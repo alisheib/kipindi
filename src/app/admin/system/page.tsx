@@ -37,6 +37,8 @@ import { currentSession } from "@/lib/server/auth-service";
 import { houseEngineHealthFor, type HouseEngineHealthView } from "@/lib/server/house-bot/engine-health";
 import type { EngineRefusal } from "@/lib/server/house-bot/engine";
 import { getPlatformConfig } from "@/lib/server/platform-config";
+// FEE-TAX R1 · the Owner's "Second-officer checks" card (the Platform tab).
+import { SecondOfficerCard } from "./second-officer-card";
 import { AdminBody } from "@/components/admin/admin-body";
 import { KpiGrid } from "@/components/admin/admin-body";
 
@@ -590,6 +592,11 @@ async function AdminSystemContent({ searchParams }: SystemProps) {
         </AdminCard>
 
         {tab === "platform" && (<>
+        {/* ⭐ FEE-TAX R1 · the Owner's "Second-officer checks" (ruling 6 of 2026-10-24): every officer who opens this page
+            reads the position and the twelve checks it governs; only the Owner moves it. On the landing tab, first — a
+            setting for how officers work, not an alarm, so it is not above the rail (§K rule 7d). */}
+        <SecondOfficerCard viewerId={session?.userId ?? null} />
+
         {/* Broadcast banner — site-wide player announcement (§9.3 #5) */}
         <AdminCard title="Broadcast banner" sw="Tangazo kwa wachezaji">
           <p className="text-caption text-text-secondary mb-3">

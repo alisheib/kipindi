@@ -6,16 +6,16 @@
  * Each transition is guarded and appended to the immutable audit trail
  * (category ADMIN, action `pack.*`, targetId = packId). The two-officer rule is
  * enforced server-side: `approve` requires a prior `prepare` by a DIFFERENT
- * officer, and every step requires the correct prior state. No signature is
+ * officer while the Owner's second-officer checks are ON (`packApprovalGate`,
+ * FEE-TAX R1), and every step requires the correct prior state. No signature is
  * fabricated — the actor is always the authenticated officer.
  */
 import { revalidatePath } from "next/cache";
 import { createHash } from "node:crypto";
 import { db } from "@/lib/server/store";
 import { audit } from "@/lib/server/audit";
-import { twoOfficerGate } from "@/lib/server/two-officer";
 import { softRequireStaff } from "@/lib/server/rbac-guard";
-import { readPackForTransition, packIdFor, currentPackPeriod } from "@/lib/server/report-pack";
+import { readPackForTransition, packApprovalGate, packIdFor, currentPackPeriod } from "@/lib/server/report-pack";
 import { buildGbtMonthly } from "@/lib/server/reports/catalogue";
 import { renderPdf } from "@/lib/server/reports/pdf";
 
@@ -73,7 +73,8 @@ export async function prepareReportPack(formData: FormData): Promise<ActionResul
   return { ok: true };
 }
 
-/** Approve — the checker countersigns; MUST be a different officer than the maker. */
+/** Approve — the checker countersigns; a different officer than the maker while the Owner's second-officer checks are ON
+ *  (`packApprovalGate`, FEE-TAX R1). */
 export async function approveReportPack(formData: FormData): Promise<ActionResult> {
   const gate = await requireSigningOfficer();
   if ("error" in gate) return { ok: false, error: gate.error };
@@ -83,12 +84,7 @@ export async function approveReportPack(formData: FormData): Promise<ActionResul
   if (!read.ok) return read;
   const pack = read.pack;
   if (pack.state !== "prepared") return { ok: false, error: `Pack must be Prepared before approval (currently ${pack.state}).` };
-  const conflict = twoOfficerGate({
-    makerId: pack.preparedBy,
-    checkerId: gate.userId,
-    reason: "you prepared this pack and cannot approve your own work.",
-    audit: { action: "pack.approve.conflict_blocked", targetType: "ReportPack", targetId: packIdFor(period) },
-  });
+  const conflict = await packApprovalGate(pack, gate.userId);
   if (conflict) return { ok: false, error: conflict.error };
   audit({ category: "ADMIN", action: "pack.approved", actorId: gate.userId, targetType: "ReportPack", targetId: packIdFor(period), payload: { period, preparedBy: pack.preparedBy } });
   revalidatePath("/admin/reports");
@@ -104,7 +100,7 @@ export async function submitReportPack(formData: FormData): Promise<ActionResult
   const read = await readPackForTransition(period);
   if (!read.ok) return read;
   const pack = read.pack;
-  if (pack.state !== "approved") return { ok: false, error: `Pack must be Approved by a second officer before submission (currently ${pack.state}).` };
+  if (pack.state !== "approved") return { ok: false, error: `Pack must be Approved before submission (currently ${pack.state}).` };
   audit({ category: "ADMIN", action: "pack.submitted", actorId: gate.userId, targetType: "ReportPack", targetId: packIdFor(period), payload: { period, artifactSha256: pack.artifact?.sha256 ?? null } });
   revalidatePath("/admin/reports");
   return { ok: true };

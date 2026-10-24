@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { softRequireStaff } from "@/lib/server/rbac-guard";
 import { settleMarket, getMarket, isFencedMaswali, MASWALI_FENCE_ERROR } from "@/lib/server/market-service";
 import { holdSettlementAsOfficer, OBJECTION_REASONS } from "@/lib/server/objections-service";
+import { secondOfficerChecksOn } from "@/lib/server/second-officer-policy";
 import type { ObjectionReason } from "@/lib/server/store";
 import { formatTzs } from "@/lib/utils";
 
@@ -125,7 +126,10 @@ export async function holdSettlementAction(formData: FormData): Promise<{ ok: tr
   return {
     ok: true,
     // ⛔ States the consequence the officer most needs to know and is most likely to assume
-    // otherwise: they cannot lift this themselves.
-    detail: "Payout frozen. A different officer must review and release it before this market can pay.",
+    // otherwise: they cannot lift this themselves — while the Owner's second-officer checks are ON (FEE-TAX R1; read
+    // fresh, as the ruling reads it). OFF, they may rule on their own hold, unless they hold money in this market.
+    detail: (await secondOfficerChecksOn())
+      ? "Payout frozen. A different officer must review and release it before this market can pay."
+      : "Payout frozen. It pays only once an officer rules on the hold — second-officer checks are off, so that may be you, unless you hold a stake in this market.",
   };
 }

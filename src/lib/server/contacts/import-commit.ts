@@ -90,6 +90,7 @@ import type { ContactCacheOutcome } from "@/lib/server/marketing/contact-cache";
 import { newContactRow } from "./contact-write";
 import { IMPORT_STAGING_DEPS, discardContactImport } from "./import-staging";
 import type { ImportStagingDeps } from "./import-staging";
+import { secondOfficerChecksOn } from "@/lib/server/second-officer-policy";
 import {
   IMPORT_CHECK_DEPS, auditImportRefusal, bagOf, classifyStagedRow, importRefusal, importRefusalOf, importRunView,
   isRowCursor, keysetPageRows, listCreatedOnlyFor, loadImportFacts, openImportRun, walkStagedRun,
@@ -1109,7 +1110,9 @@ export async function importListOptions(officerId: string, deps: ImportCommitDep
  * would flood the chain with nothing anyone did wrong (the lead, 2026-10-09).
  */
 export async function importOpenRuns(officerId: string, deps: ImportCommitDeps = IMPORT_COMMIT_DEPS): Promise<ImportOpenRunsResult> {
-  if (!(await deps.isAdmin(officerId))) return { ok: true, runs: [] };
+  // ⭐ FEE-TAX R1 · and to every officer while the Owner's "Second-officer checks" are OFF: then any officer with the
+  // contacts role may carry another's run on (`mayDriveImport`), so the way to it opens with the right to drive it.
+  if (!(await deps.isAdmin(officerId)) && (await secondOfficerChecksOn())) return { ok: true, runs: [] };
   const runs = await deps.openRuns({ excludeCreatedBy: officerId, limit: CONTACT_IMPORT_OPEN_RUNS_MAX });
   const views: ImportRunView[] = [];
   for (const r of runs) views.push(await importRunView(officerId, r, deps));

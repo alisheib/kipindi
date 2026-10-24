@@ -31,7 +31,9 @@ import { marketStore } from "./market-dal";
 import { db } from "./store";
 import { isSourceTrusted, seedDefaultSources } from "./source-registry";
 import { readRequireTwoOfficerResolution } from "./resolution-policy";
-import { getMaswaliConfig, readMaswaliConfigFresh, readMaswaliRulesSnapshot, snapshotMaswaliRules, unsettledFloors, type MaswaliRulesSnapshot } from "./maswali-config";
+import { secondOfficerChecksOn } from "./second-officer-policy";
+import { dict } from "@/lib/i18n-dict";
+import { getMaswaliConfig, readMaswaliConfigFresh, readMaswaliRulesSnapshot, snapshotMaswaliRules, unsettledFloors, type MaswaliConfig, type MaswaliRulesSnapshot } from "./maswali-config";
 import { readLicenceStandingFresh } from "./maswali-licence";
 import { isEventKind, questionStore, ticketStore, weekStore, type DraftQuestionFields, type EventKind, type StoredQuestion, type StoredWeek, type WeekVisibility } from "./maswali-dal";
 import { MARKET_CATEGORIES, type MarketCategory } from "@/lib/markets/categories";
@@ -41,7 +43,7 @@ import { bannedTopicHits } from "@/lib/maswali-topics";
 import { MAIN_COUNT, RESERVE_COUNT, settlementGate, slotLabel, slotOf, weekVoidCertain, type GradableQuestion, type MaswaliOutcome, type MaswaliPick } from "@/lib/maswali-score";
 import { eatInText } from "@/lib/maswali-admin-format";
 import { guaranteeRequirement } from "@/lib/maswali-money";
-import { DEFAULT_FREE_EXIT_GRACE_MINUTES } from "@/lib/payout";
+import { DEFAULT_FREE_EXIT_GRACE_MINUTES, type FeeModel } from "@/lib/payout";
 import { merkleRoot, questionSetHash, type FrozenQuestion } from "@/lib/maswali-commitment";
 import { isMaswaliVoidReason, MASWALI_VOID_REASON_LABEL, voidGroundAvailable, type MaswaliVoidReason } from "@/lib/maswali-void-reason";
 import { noteMaswaliPoolChanged } from "./maswali-pool-feed";
@@ -330,7 +332,8 @@ function utcToLocalInput(iso: string, zone: string): string {
   return `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}`;
 }
 
-/** How many of a draft week's own audit rows the second-reader check reads (newest first) before it must refuse. */
+/** How many of a draft week's own audit rows the second-reader check reads (newest first) before it must refuse — while the
+ *  Owner's second-officer checks are ON (FEE-TAX R1). */
 const DRAFT_HISTORY_LIMIT = 500;
 
 /**
@@ -339,6 +342,8 @@ const DRAFT_HISTORY_LIMIT = 500;
  * the attestation), and whether the text stored now — `current` — has a recorded author: the draft's row and each edit's
  * carry the version they left, so an edit whose row was never written leaves a text nobody is recorded as writing. ⛔ Fails
  * closed: a history that could not be read, or not far enough, is a refusal sentence — never an empty set of editors.
+ * ⛔ FEE-TAX R1 · it exists only for MB-79's two bars on who attests, so `attestParity` reads it only while the Owner's
+ *    second-officer checks are ON; while they are OFF no history is read and none can refuse.
  */
 async function draftAuthorship(week: StoredWeek, current: string, injected?: typeof getAuditForTargetDurable): Promise<{ editors: Set<string> } | string> {
   // A direct call of the audit row reader (the house-bot reports census, 0.260.1, counts calls, not references).
@@ -364,11 +369,16 @@ async function draftAuthorship(week: StoredWeek, current: string, injected?: typ
 }
 
 /**
- * MB-79: a second reader confirms the three languages say the same thing. ⛔ Never the officer who drafted the week, and
- * never one who edited it since its last attestation (`draftAuthorship`): the reader is never the text's author. ⭐ The
- * attestation is TIED TO THE TEXT READ (S5 review A4): `readVersion` is the draft's version the reader's page was drawn from
- * (`draftSetVersion`), so an edit landed since refuses it, and an attestation that stands is never overwritten. `recorded`:
- * its audit row — which carries the version attested — was written after the commit.
+ * MB-79: an officer records that the three languages say the same thing. ⭐ The attestation is TIED TO THE TEXT READ (S5
+ * review A4): `readVersion` is the draft's version the reader's page was drawn from (`draftSetVersion`), so an edit landed
+ * since refuses it, and an attestation that stands is never overwritten. `recorded`: its audit row — which carries the
+ * version attested — was written after the commit.
+ * ⛔ WHO MAY ATTEST IS THE OWNER'S "SECOND-OFFICER CHECKS" SETTING (FEE-TAX R1; ruling 6 of 2026-10-24,
+ *    `second-officer-policy.ts`). While it is ON — a stored ON, or a read that fails; nothing stored is the Owner's OFF —
+ *    MB-79's second reader holds as built: never
+ *    the officer who drafted the week, never one who edited it since its last attestation (`draftAuthorship`). While it is
+ *    OFF any officer attests, the drafter included, and the draft's history is not read at all: it is read only to name
+ *    the text's authors for those two bars. The step itself stays — no week opens unattested — and so does its row.
  */
 export async function attestParity(input: {
   weekId: string; officerId: string; readVersion: string; now?: Date;
@@ -376,17 +386,20 @@ export async function attestParity(input: {
   readHistory?: typeof getAuditForTargetDurable;
 }): Promise<Result<{ recorded: boolean }>> {
   if (typeof input.readVersion !== "string" || !input.readVersion) return refuse("Reload the week and read its questions before attesting them.");
+  // Asked before the lock, as the seal asks the two-officer setting: a read that cannot answer reads ON.
+  const secondReader = await secondOfficerChecksOn();
   const res = await withLock(MASWALI_CHAIN_LOCK, async (tx): Promise<Result<{ owed: OwedAudit[] }>> => {
     const week = await weekStore.get(input.weekId);
     if (!week) return refuse("No such week.");
     if (week.state !== "DRAFT") return refuse(`Week ${week.code} is no longer a draft.`);
-    if (week.createdBy === input.officerId) return refuse("The officer who drafted the week cannot attest its translations — a second reader must.");
+    if (secondReader && week.createdBy === input.officerId) return refuse("The officer who drafted the week cannot attest its translations — a second reader must.");
     if (week.parityAttestedBy) return refuse(`Week ${week.code}'s three languages are already attested; an edit clears the attestation.`);
     const current = draftSetVersion(await questionStore.listForWeek(week.id));
     if (current !== input.readVersion) {
       return refuse("The questions changed after your page loaded: another officer saved an edit. Reload the week and read all fifteen again before attesting.");
     }
-    const authorship = await draftAuthorship(week, current, input.readHistory);
+    // ⛔ OFF, no history is read and none can refuse: the editors' set is empty, so the bar below never fires.
+    const authorship = secondReader ? await draftAuthorship(week, current, input.readHistory) : { editors: new Set<string>() };
     if (typeof authorship === "string") return refuse(authorship);
     if (authorship.editors.has(input.officerId)) {
       return refuse("You edited this draft since its last attestation, so you cannot attest it — a second reader who did not write it must."); // MB-79
@@ -433,7 +446,9 @@ export async function guaranteeProblem(week: StoredWeek, rules: MaswaliRulesSnap
 export async function openProblems(week: StoredWeek, questions: StoredQuestion[], rules: MaswaliRulesSnapshot, nowMs: number): Promise<string[]> {
   const p: string[] = [];
   if (questions.length !== MAIN_COUNT + RESERVE_COUNT) p.push(`A week is ${MAIN_COUNT} mains and ${RESERVE_COUNT} reserves; this one has ${questions.length}.`);
-  if (!week.parityAttestedBy) p.push("A second reader has not attested that English, Swahili and Chinese agree."); // MB-79
+  // MB-79 · the step, not who takes it: WHO may attest is the Owner's second-officer setting (`attestParity`), so the line
+  // names no "second reader" (FEE-TAX R1).
+  if (!week.parityAttestedBy) p.push("The translations have not been attested: no officer has recorded that English, Swahili and Chinese agree.");
   const closeMs = Date.parse(week.closesAt);
   if (!(closeMs > nowMs)) p.push("The sales close has already passed.");
   const earliest = Math.min(...questions.map((q) => Date.parse(q.eventStartsAt)));
@@ -498,15 +513,63 @@ export function deadlinesUnderRules(week: StoredWeek, questions: StoredQuestion[
 }
 
 /**
+ * ⭐ THE FEES AN OPEN FREEZES INTO ITS WEEK'S MARKET (MB-50), named in ONE place: the open's `rateOverrides` and the S8 hold
+ * below read this same answer. The week freezes the jackpot model and its rate beside the global levies, and NO paid exit.
+ * R4 of the fee programme (`docs/FEE-TAX-PLAN.md` §4) makes it freeze the ticket-share model, and the hold then stops
+ * matching by itself — it is keyed on what the open would freeze, never on a date or a flag.
+ */
+function openFeeFreeze(config: MaswaliConfig): { feeModel: FeeModel; jackpotFeeRate: number; paidExitWindowMinutes: number } {
+  return { feeModel: "jackpot-payout", jackpotFeeRate: config.jackpotFeeRate, paidExitWindowMinutes: 0 };
+}
+
+/** The S8 hold's refusal, in the officer's words — the dictionary's English, as the console reads; its Swahili and Chinese
+ *  are kept beside it (`feeChange.millioneaOpenHeld`). */
+export const OLD_FEE_MODEL_HOLD = dict.en.feeChange.millioneaOpenHeld;
+
+/** ⚠️ TEST SEAM ONLY (the S8 hold, below) · lifted by the suites' worlds and the dev seeds, which still build weeks under the
+ *  model they test. On globalThis, as the audit writer's seam is: a dev route and the console's actions are bundled apart. */
+const openHoldSeam = globalThis as typeof globalThis & { __50PICK_MLN_OPEN_HOLD_LIFTED?: boolean };
+/** Lift (true) or restore (false) the S8 hold for a test or a dev seed; answers the position it replaced, so a caller can
+ *  put it back. ⛔ Lifting refuses in production. */
+export function __liftMillioneaOpenHoldForTests(lifted: boolean): boolean {
+  if (lifted && process.env.NODE_ENV === "production") throw new Error("__liftMillioneaOpenHoldForTests is a test seam and refuses to run in production.");
+  const before = openHoldSeam.__50PICK_MLN_OPEN_HOLD_LIFTED === true;
+  openHoldSeam.__50PICK_MLN_OPEN_HOLD_LIFTED = lifted;
+  return before;
+}
+
+/**
+ * ⛔ THE MILLIONEA S8 HOLD, IN CODE (FEE-TAX R1; `docs/COMPLIANCE-DECISIONS.md` § "2026-10-24 · The fee becomes 13% of every
+ * stake, …", "The Millionea S8 hold"). A week freezes its fee model when it opens, and Ali's ruling moves Millionea's fee
+ * from the payout to the ticket — so no PUBLIC week may open on the old model, or its buyers would hold tickets priced
+ * under a fee that is about to stop being the law. This answers the refusal for a week whose open would freeze
+ * `jackpot-payout`, or null. A DRIVE week — the private drive line (OD-21) — is not held: the records hold public weeks.
+ * ⭐ The open and the builder's checklist (`consoleWeekDetail`) ask this same question, so the page never says every check
+ * passes while the open refuses.
+ */
+export function oldFeeModelHold(week: Pick<StoredWeek, "visibility">, config: MaswaliConfig): string | null {
+  if (week.visibility !== "PUBLIC") return null;
+  if (openFeeFreeze(config).feeModel !== "jackpot-payout") return null;
+  if (openHoldSeam.__50PICK_MLN_OPEN_HOLD_LIFTED === true) return null;
+  return OLD_FEE_MODEL_HOLD;
+}
+
+/**
  * ⭐ OPEN A WEEK. Fresh reads, every check, then ONE claim: the market is created and the rules, the question-set hash and
  * the market are stamped WHERE the week is still DRAFT, and the state becomes OPEN. All of it runs inside the chain lock,
  * so no second open can race it. A ticket can only be bought against an OPEN week's own market (S3), so even a lost claim
  * could leave nothing on sale. The week's deadlines are re-frozen from its rules first (`deadlinesUnderRules`).
+ * ⛔ FEE-TAX R1 · the S8 hold (`oldFeeModelHold`) is asked FIRST after the rules are read — before the licence, the source
+ *    registry's seeding and the chain lock — so a held week leaves nothing written and nothing frozen.
  */
 export async function openWeek(input: { weekId: string; officerId: string; guarantee: GuaranteeReader; now?: Date }): Promise<Result<{ week: StoredWeek; recorded: boolean }>> {
   const nowMs = (input.now ?? new Date()).getTime();
   const [fresh, licence] = await Promise.all([readMaswaliConfigFresh(), readLicenceStandingFresh()]);
   if (!fresh.ok) return refuse(`The Millionea rules could not be read, so nothing was opened: ${fresh.error}`);
+  // A week's line is set when it is drafted and never changes, so this read outside the chain lock is the lock's own answer.
+  const target = await weekStore.get(input.weekId);
+  const held = target ? oldFeeModelHold(target, fresh.config) : null;
+  if (held) return refuse(held);
   if (!licence.ok) return refuse("The licence record could not be read, so nothing was opened.");
   // OD-01 · the basis in force: the Owner's record (a recorded None included), else the ruling of 2026-10-23 on the
   // platform's licence number. It refuses in the console's own words, and the open's audit row says which basis it sold under.
@@ -583,8 +646,9 @@ export async function openWeek(input: { weekId: string; officerId: string; guara
       selectionClosedAt: week.closesAt,
       proposedBy: input.officerId,
       productLine: "MASWALI",
-      // The week freezes the jackpot model and its rate beside the global levies, and NO paid exit (MB-50).
-      rateOverrides: { feeModel: "jackpot-payout", jackpotFeeRate: fresh.config.jackpotFeeRate, paidExitWindowMinutes: 0 },
+      // The week freezes the jackpot model and its rate beside the global levies, and NO paid exit (MB-50) — one answer,
+      // which the S8 hold above reads too (`openFeeFreeze`).
+      rateOverrides: openFeeFreeze(fresh.config),
     }, lockTx ?? undefined, (row) => owed.push(row));
     // S7 · the claim stamps the final deadline the week runs on (`due`) with the rules it froze.
     const won = await weekStore.stampOpen(week.id, { marketId: market.id, rulesSnapshot: rules, questionSetHash: qHash, finalDeadlineAt: due.finalDeadlineAt, opensAt: new Date(nowMs).toISOString() }, lockTx ?? undefined);
@@ -1062,10 +1126,13 @@ export async function confirmSeal(input: { weekId: string; slot: number; officer
 }
 
 /**
- * OD-09 · the officer who set a question's present result corrects it — the sealer their OWN seal; for a result an upheld
- * objection set, the officer who ruled it, never the sealer (`presentResultAuthor`; the lead's ruling, 2026-10-23) — before
- * payout, inside the objection window, which restarts once the graded set is final again. ⛔ Never after SETTLED: a paid
- * week is never clawed back. The corrected result, the restarted window
+ * OD-09 · a question's present result is corrected before payout, inside the objection window, which restarts once the graded
+ * set is final again. ⛔ WHO MAY CORRECT IS THE OWNER'S "SECOND-OFFICER CHECKS" SETTING (FEE-TAX R1; ruling 6 of 2026-10-24,
+ * `second-officer-policy.ts`): while it is ON — a stored ON, or a read that fails; nothing stored is the Owner's OFF — only
+ * the officer who set the present result,
+ * the sealer their OWN seal, and for a result an upheld objection set the officer who ruled it, never the sealer
+ * (`presentResultAuthor`; the lead's ruling, 2026-10-23); while it is OFF any officer corrects it, and the present record's
+ * author is not read. ⛔ Never after SETTLED: a paid week is never clawed back. The corrected result, the restarted window
  * and the recompute commit together or not at all (S5-FIX-SRV 2): never a corrected result whose window did not restart.
  * ⛔ S7 · A CORRECTION IS A SEAL, AND MEETS A SEAL'S RULES (MR-14, MR-15): it records its evidence, and it voids only on a
  *    ground available now. Without them an officer could seal YES and correct it to "not played" inside the very deadline
@@ -1084,6 +1151,8 @@ export async function correctSeal(input: {
   if ((input.expectedOutcome !== "YES" && input.expectedOutcome !== "NO" && input.expectedOutcome !== "VOID") || !input.expectedSealedAt) {
     return refuse("Reload the week and review the sealed result before correcting it.");
   }
+  // Asked before the lock, as the seal asks the two-officer setting: a read that cannot answer reads ON.
+  const authorOnly = await secondOfficerChecksOn();
   const res = await withLock(MASWALI_CHAIN_LOCK, async (tx): Promise<Result<{ code: string; from: MaswaliOutcome; owed: OwedAudit[] }>> => {
     const week = await weekStore.get(input.weekId);
     if (!week) return refuse("No such week.");
@@ -1094,13 +1163,15 @@ export async function correctSeal(input: {
     // ⭐ (the lead's ruling, 2026-10-23) · "the officer who set a result may correct it" (the rules, §6): the officer who wrote
     //    its PRESENT record — the sealer for a sealed result, the officer who ruled for a result an upheld objection set (and
     //    for their own correction of it). The sealer never corrects a ruled result back: they object through another officer,
-    //    as anyone else does.
-    const author = await presentResultAuthor(q, week.marketId);
-    if (author === null) return refuse(`${slotLabel(q.slot)}'s present record cannot be read, so who set its result is not known. Try again in a moment.`);
-    if (author !== input.officerId) {
-      return refuse(author === q.sealedBy
-        ? "Only the officer who sealed a question may correct it; anyone else files an objection."
-        : `${slotLabel(q.slot)}'s present result was set on an objection: only the officer who ruled it may correct it; anyone else files an objection.`);
+    //    as anyone else does. ⛔ FEE-TAX R1 · only while the Owner's second-officer checks are ON; OFF, any officer corrects.
+    if (authorOnly) {
+      const author = await presentResultAuthor(q, week.marketId);
+      if (author === null) return refuse(`${slotLabel(q.slot)}'s present record cannot be read, so who set its result is not known. Try again in a moment.`);
+      if (author !== input.officerId) {
+        return refuse(author === q.sealedBy
+          ? "Only the officer who sealed a question may correct it; anyone else files an objection."
+          : `${slotLabel(q.slot)}'s present result was set on an objection: only the officer who ruled it may correct it; anyone else files an objection.`);
+      }
     }
     if (q.outcome !== input.expectedOutcome || q.sealedAt !== input.expectedSealedAt) {
       return refuse("The seal changed; reload the week and review it again before correcting it.");

@@ -5,6 +5,7 @@ import { Chip } from "@/components/ui/chip";
 import { EmptyState } from "@/components/ui/empty-state";
 import { CONTROL_DOMAIN } from "@/lib/server/control-gates";
 import { millioneaObjectionQueue, type MillioneaQueueWeek } from "@/lib/server/maswali-objections";
+import { secondOfficerChecksOn } from "@/lib/server/second-officer-policy";
 import { isMaswaliVoidReason, MASWALI_VOID_REASON_LABEL } from "@/lib/maswali-void-reason";
 import { fmtEat } from "@/lib/maswali-admin-format";
 import { MillioneaRulingControl } from "./objection-controls";
@@ -19,8 +20,9 @@ import { StandingAuditWarning } from "../audit-warning";
  * ⭐ An OPEN objection holds its week's settlement and its week void (OB.1–OB.5), so the queue says, per week, where the
  *    objection window stands and what is still to rule.
  * ⛔ The page asks the service's own questions before it offers a ruling: the role (`ruleMaswaliObjection`, compliance;
- *    the Owner bypasses), and for this officer on this question — the seal's officers, the objector, the officer whose
- *    upheld ruling set the present result, a ticket holder in the week — the refusal in words, never a button that bounces.
+ *    the Owner bypasses), and for this officer on this question — the objector, a ticket holder in the week, and, while the
+ *    Owner's "Second-officer checks" are ON (FEE-TAX R1, read fresh here as the service reads it), the seal's officers and
+ *    the officer whose upheld ruling set the present result — the refusal in words, never a button that bounces.
  * ⛔ The filer is shown as the console shows a player (`displayLabel`), never a phone number, and nothing of any ticket.
  */
 /** An instant as the console prints it (`fmtEat`), kept on one line: a date is never split across two. */
@@ -37,7 +39,7 @@ function WindowLine({ w }: { w: MillioneaQueueWeek }) {
 }
 
 export async function MillioneaObjectionQueue({ viewerId, viewerIsOwner, canRule }: { viewerId: string | null; viewerIsOwner: boolean; canRule: boolean }) {
-  const queue = await millioneaObjectionQueue(viewerId).catch(() => null);
+  const [queue, secondOfficer] = await Promise.all([millioneaObjectionQueue(viewerId).catch(() => null), secondOfficerChecksOn()]);
   const fallback = viewerIsOwner ? "" : " — the Owner, if no other compliance officer can";
   return (
     <AdminCard title="Objections" sw="Pingamizi" padding="p-0">
@@ -46,7 +48,7 @@ export async function MillioneaObjectionQueue({ viewerId, viewerIsOwner, canRule
         : queue.length === 0 ? (
           <div className="px-4 py-6">
             <EmptyState fill kind="admin" title="No objection to rule"
-              body="A ticket holder may object to one question while its week's objection window is open. Each objection waits here, and holds its week's settlement, until an officer other than the question's sealer rules on it." />
+              body={`A ticket holder may object to one question while its week's objection window is open. Each objection waits here, and holds its week's settlement, until ${secondOfficer ? "an officer other than the question's sealer" : "an officer"} rules on it.`} />
           </div>
         ) : (
           <div className="divide-y divide-border-subtle">
@@ -79,11 +81,12 @@ export async function MillioneaObjectionQueue({ viewerId, viewerIsOwner, canRule
                     {q.evidence && <p className="text-body-sm text-text-tertiary break-words">{q.evidence}</p>}
                     <ul className="space-y-2">
                       {q.objections.map((o) => {
-                        // The service's own refusals, in its order (`decideMillioneaObjection`), said before any button.
+                        // The service's own refusals, in its order (`decideMillioneaObjection`), said before any button — the seal's
+                        // officers and the result's author only while the Owner's second-officer checks are ON (FEE-TAX R1).
                         const blocked = o.userId === viewerId ? "This is your own objection: another officer rules on it."
-                          : viewerId && (q.sealedBy === viewerId || q.stage2By === viewerId)
+                          : secondOfficer && viewerId && (q.sealedBy === viewerId || q.stage2By === viewerId)
                             ? `You ${q.sealedBy === viewerId ? "sealed" : "confirmed the seal of"} ${q.label}, so another officer rules on its objections${fallback}.`
-                            : viewerId && q.authorId === viewerId
+                            : secondOfficer && viewerId && q.authorId === viewerId
                               ? `You set ${q.label}'s present result on an earlier objection, so another officer rules on its objections${fallback}.`
                               : w.viewerHoldsTicket ? `You hold a ticket in ${w.code}, so another officer rules on its objections${fallback}.` : null;
                         return (
