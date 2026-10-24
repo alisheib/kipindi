@@ -177,6 +177,62 @@ async function run(impl: Impl, log: (l: string) => void): Promise<string[]> {
   const market = impl.estimateFor({ ...DODOMA, side: "YES", stake: 0, rates: LS13, bettable: true, productLine: "MARKET" });
   ok("h.updown · an UPDOWN round gets null; a long-form market gets its estimate", ud === null && market?.multText === "2.8", j({ ud, market }));
 
+
+  /* ── (i) stake-share (FEE-TAX-2026-10, R2c) ──────────────────────────── */
+  log("\n(i) STAKE-SHARE — the card is (1 − f) + (1 − f)(1 − t)·opp/own, exactly; the sheet is payoutFor's; under 1× is `below`");
+  // The decided law (not in force until R5): 3% + 10% of EVERY stake, a 15% winnings tax. `commissionRate` is a DIFFERENT
+  // figure on purpose — a {pct} that read it would say 25.
+  const howFor = (rates: Parameters<typeof ENGINE.howToExampleFor>[0]) => { try { return impl.estimateFor({ ...ENGINE.howToExampleFor(rates), bettable: true }); } catch { return null; } };
+  const SS13 = { feeModel: "stake-share" as const, platformFeeRate: 0.03, operatorFeeRate: 0.10, winningsTaxRate: 0.15, commissionRate: 0.25, feeCeilingRate: 1 / 3, showEstimatedWinnings: true };
+  /** The card's tenths, exactly, in whole basis points: 10·((S − f)·S·own + (S − f)(S − t)·opp) / (S²·own), half-up. */
+  const ssTenths = (own: number, opp: number, fBp = 1_300, tBp = 1_500) => {
+    const S = 10_000n, f = BigInt(fBp), t = BigInt(tBp);
+    const num = (S - f) * S * BigInt(own) + (S - f) * (S - t) * BigInt(opp);
+    const den = S * S * BigInt(own);
+    return Number((20n * num + den) / (2n * den));
+  };
+  const sy = est(DODOMA, "YES", 0, SS13), sn = est(DODOMA, "NO", 0, SS13);
+  ok("i.card · Dodoma under stake-share reads ≈2.4× on YES and ≈1.2× on NO — the law's own card arithmetic, never loser-share's ≈2.8× / ≈1.4×",
+    sy?.state === "priced" && sy.multTenths === ssTenths(24_825, 50_462) && sy.multText === "2.4" && sy.payout === null
+      && sn?.multTenths === ssTenths(50_462, 24_825) && sn.multText === "1.2", j({ sy, sn }));
+  const s1 = est(DODOMA, "YES", 1_000, SS13);
+  const s1Want = payoutFor({ ...DODOMA, side: "YES", stake: 1_000 }, SS13).payout;
+  ok("i.sheet · the sheet at TZS 1,000 is payoutFor's own figure under stake-share, its multiple that figure's half-up tenths",
+    s1?.state === "priced" && s1.payout === s1Want && s1.multTenths === Math.floor((10 * s1Want) / 1_000 + 0.5), j({ s1, s1Want }));
+  const srnd = prng(20261024);
+  let ssMiss: string | null = null, ssN = 0;
+  for (let i = 0; i < 1_500 && !ssMiss; i++) {
+    const yesPool = 1 + Math.floor(srnd() * 5_000_000), noPool = 1 + Math.floor(srnd() * 5_000_000);
+    const side: Side = srnd() < 0.5 ? "YES" : "NO";
+    const stake = 1_000 + Math.floor(srnd() * 200_000);
+    const s = est({ yesPool, noPool }, side, stake, SS13);
+    const want = payoutFor({ yesPool, noPool, side, stake }, SS13).payout;
+    if (s?.payout !== want) ssMiss = j({ yesPool, noPool, side, stake, got: s, want });
+    else ssN++;
+  }
+  ok("i.parity · over 1,500 seeded books the stake-share sheet figure is payoutFor's exactly", !ssMiss, ssMiss ?? `${ssN} cases`);
+  ok("i.pct · {pct} is the fee on EVERY stake (13, never the 25 in commissionRate) and {tax} the frozen 15; loser-share has no {tax}",
+    sy?.feePct === 13 && sy.taxPct === 15 && est(DODOMA, "YES", 0)?.taxPct === null && pCap?.taxPct === null, j({ fee: sy?.feePct, tax: sy?.taxPct }));
+  const lopCard = est({ yesPool: 1_000_000, noPool: 5_000 }, "YES", 0, SS13);
+  const lopSheet = est({ yesPool: 1_000_000, noPool: 5_000 }, "YES", 10_000, SS13);
+  ok("i.below · ★ on a lopsided book the big side's multiple is under 1× and leans `below` — the card and the sheet (ruling 1)",
+    lopCard?.lean === "below" && (lopCard.multTenths ?? 99) < 10 && lopSheet?.lean === "below" && (lopSheet.payout ?? 1e9) < 10_000, j({ lopCard, lopSheet }));
+  ok("i.below-control · …the loser-share law never leans `below` on the same book (a winner keeps at least the stake there)",
+    est({ yesPool: 1_000_000, noPool: 5_000 }, "YES", 10_000)?.lean !== "below");
+  const noTax = est(DODOMA, "YES", 1_000, { ...SS13, winningsTaxRate: undefined });
+  const off = est(DODOMA, "YES", 1_000, { ...SS13, showEstimatedWinnings: false });
+  const bad = est(DODOMA, "YES", 1_000, { ...SS13, platformFeeRate: 0.5 });
+  ok("i.hidden · a stake-share set with no frozen tax, the display switch off, and a rate the engine refuses print NO figure — and never throw",
+    noFig(noTax) && noFig(off) && noFig(bad) && noTax?.feePct === 13 && bad?.feePct === null, j({ noTax, off, bad }));
+  const ssHow = howFor(SS13);
+  const ssHowWant = payoutFor({ yesPool: 24_825, noPool: 50_462, side: "YES", stake: 1_000 }, SS13).payout;
+  ok("i.how-to · the How to Play example priced at stake-share rates is that law's figure (payoutFor), and the cold-start example is untouched",
+    ssHow?.payout === ssHowWant && ssHow.feePct === 13 && ssHow.taxPct === 15 && how?.payout === 2_700, j({ ssHow, ssHowWant }));
+  const ssOne = est({ yesPool: 30_000, noPool: 0 }, "YES", 2_000, SS13), ssFirst = est({ yesPool: 30_000, noPool: 0 }, "NO", 2_000, SS13);
+  ok("i.states · the states are the law-neutral ones: the other side empty refunds (no figure), the empty side filled is priced",
+    ssOne?.state === "oneSidedRefund" && ssOne.payout === null && ssFirst?.state === "fillsEmptySide"
+      && ssFirst.payout === payoutFor({ yesPool: 30_000, noPool: 0, side: "NO", stake: 2_000 }, SS13).payout, j({ ssOne, ssFirst }));
+
   return failed;
 }
 
@@ -255,6 +311,10 @@ if (!PROVE_RED) {
       } } },
     { name: "an Up & Down round gets an estimate",
       expect: /^h\.updown /, impl: { ...REAL, estimateFor: (i) => real({ ...i, productLine: null }) } },
+    { name: "a stake-share market priced by the loser-share card arithmetic (the law it does not charge)",
+      expect: /^i\.card /, impl: { ...REAL, estimateFor: (i) => real({ ...i, rates: i.rates && i.rates.feeModel === "stake-share" ? { ...i.rates, feeModel: "loser-share" } : i.rates }) } },
+    { name: "a stake-share multiple under 1× not called `below` (the warning's trigger lost)",
+      expect: /^i\.below /, impl: { ...REAL, estimateFor: (i) => { const r = real(i); return r && r.lean === "below" ? { ...r, lean: "thin" } : r; } } },
     { name: "the How to Play example drifts (TZS 2,000)",
       expect: /^a\.how-to /, impl: { ...REAL, HOW: { ...REAL.HOW, stake: 2_000 } } },
   ];

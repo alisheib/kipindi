@@ -368,5 +368,52 @@ console.log("\n§6 · a one-sided round quotes the refund it pays (U43)");
   }
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// 7 · FEE-TAX-2026-10 (R2c) · A ROUND THE ENGINE REFUSES TO PRICE IS "NO FIGURE", NEVER A DARK BOARD
+// ═══════════════════════════════════════════════════════════════════════════
+// 🔴 `heldPayout` runs inside `toBoardRound`, which the board and the round page build under `Promise.all` — so ONE round
+// whose quote the engine refuses (a stake-share snapshot with no frozen tax, a corrupt row) used to reject the WHOLE board
+// for that viewer. It answers null now: the locked card states no figure, and every other round still renders.
+// ⛔ The refusal is planted on the row itself, as a corrupt snapshot would sit there; `ratesFor` passes it through (it never
+// throws — display readers call it for every market) and pricing refuses it, which is the case this guards.
+console.log("\n§7 · a round the engine refuses to price is no figure, never a rejected board (R2c)");
+{
+  const holder = await funded("hq_refused", 100_000);
+  const ch = await createChain({ assetId: asset.data.id, durationMinutes: 30 }, "off");
+  if (!ch.ok) throw new Error(ch.error);
+  await setChainState(ch.data.id, "RUNNING", "off");
+  const chain30 = (await chainStore.get(ch.data.id))!;
+  const open3 = new Date(Date.now() - 4 * 60_000).toISOString();
+  const o3 = await observationStore.ensure(asset.data.id, open3);
+  await observationStore.confirm(o3.id, { price: 2400, sourceUrl: asset.data.priceSourceUrl, sourceQuotedAt: open3, evidence: "q", confidence: 95, model: "t", rawHash: "h7o" });
+  const r3 = await openRound(chain30, open3, o3.id, 2400);
+  if (!r3.ok) throw new Error(r3.error);
+  for (const [uid, side, stake] of [[holder, "YES", 2_000], [opponent, "NO", 3_000]] as Array<[string, "YES" | "NO", number]>) {
+    const b = await buyPosition(uid, { marketId: r3.data.marketId, side, stake, idempotencyKey: `hq7-${uid}-${side}` });
+    if (!b.ok) throw new Error(`fixture bet failed: ${(b as { error: string }).error}`);
+  }
+  const m3 = (await marketStore.get(r3.data.marketId))!;
+  await marketStore.stamp(r3.data.marketId, {
+    feeSnapshot: { ...(m3.feeSnapshot as object), feeModel: "stake-share", platformFeeRate: 0.03, operatorFeeRate: 0.10, winningsTaxRate: undefined, v: 3 } as never,
+    selectionClosedAt: new Date(Date.now() - 1_000).toISOString(),
+  });
+  let refused: unknown = "not reached";
+  try { await projectedPayout({ ...(await marketStore.get(r3.data.marketId))!, yesPool: 0 }, "YES", 2_000); } catch (e) { refused = e; }
+  ok("7.0 · fixture · the engine really refuses to price this round", refused instanceof Error, String(refused));
+
+  let detailErr: unknown = null;
+  let q3: Awaited<ReturnType<typeof getRoundDetail>> = null;
+  try { q3 = await getRoundDetail(r3.data.id, holder); } catch (e) { detailErr = e; }
+  ok("7.1 · ★ the round page still answers — the refusal no longer rejects the read", detailErr === null && q3 !== null, String(detailErr));
+  ok("7.2 · …the locked round quotes NO figure for the holder, rather than a guessed one",
+     q3?.round.state === "locked" && q3.round.myPayoutIfUp === null && q3.round.myExactPayout === null,
+     JSON.stringify({ state: q3?.round.state, up: q3?.round.myPayoutIfUp, exact: q3?.round.myExactPayout }));
+  let boardErr: unknown = null;
+  let b3: Awaited<ReturnType<typeof getBoard>> | null = null;
+  try { b3 = await getBoard({ assetKey: "HQBTC", durationMinutes: 30, userId: holder }); } catch (e) { boardErr = e; }
+  ok("7.3 · ★ and the BOARD still answers for that viewer — one round the engine refuses never takes it down",
+     boardErr === null && b3 !== null, String(boardErr));
+}
+
 console.log(`\n${fail === 0 ? "ALL PASS" : "FAILURES"} — ${pass} passed, ${fail} failed`);
 process.exit(fail === 0 ? 0 : 1);

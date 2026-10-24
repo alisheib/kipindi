@@ -294,5 +294,28 @@ console.log("\n§4 · docs/RULES.md §7");
      !/is \*\*workstream F5 and is not yet written\*\*/.test(rules), "");
 }
 
+// ── §5 · FEE-TAX-2026-10 (R2c) · the stake-share copy reads its rates ───────
+// Every new sentence a stake-share bet screen draws states the fee on every stake and the winnings tax through a
+// placeholder the screen fills from THAT market's frozen rates — never "13%" or "15%" typed into a language. §1 already
+// fails any literal; this names the keys, so a key that dropped its placeholder for a typed figure is caught by name.
+console.log("\n§5 · the stake-share sentences interpolate their rates (R2c)");
+{
+  const NEEDS: Array<[section: "market" | "journey", key: string, placeholders: string[]]> = [
+    ["market", "ssOurFee", ["{pct}"]], ["market", "ssTaxWithheld", ["{pct}"]], ["market", "ssFeeLine", ["{pct}", "{fee}", "{net}"]],
+    ["market", "ssFeeNote", ["{fee}", "{tax}"]], ["market", "ssHowItWorks", ["{fee}", "{tax}"]],
+    ["journey", "ssEstimateNote", ["{fee}", "{tax}"]], ["journey", "ssEstimateNoteCompact", ["{fee}", "{tax}"]],
+  ];
+  for (const loc of ["en", "sw", "zh"] as const) {
+    const missing: string[] = [];
+    for (const [sec, key, ph] of NEEDS) {
+      const s = (dict[loc][sec] as unknown as Record<string, string>)[key];
+      if (typeof s !== "string" || !ph.every((p) => s.includes(p)) || RATE_PATTERNS.some(({ re }) => new RegExp(re.source, re.flags).test(s))) missing.push(`${sec}.${key}`);
+    }
+    ok(`5.1.${loc} · ★ each stake-share sentence carries its placeholders and no typed rate`, missing.length === 0, missing.join(", "));
+  }
+  ok("5.2 · ★ CONTROL · the same reader catches a typed rate in a stake-share sentence",
+     RATE_PATTERNS.some(({ re }) => new RegExp(re.source, re.flags).test("Our 13% fee on this stake is TZS 130")));
+}
+
 console.log(`\nrate-copy: ${pass} passed, ${fail} failed`);
 process.exit(fail > 0 ? 1 : 0);

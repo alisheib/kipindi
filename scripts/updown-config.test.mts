@@ -847,6 +847,77 @@ let goldId = "";
   } finally {
     UCm.__setUpDownConfigStoreForTest(null);
   }
+
+// ── §12 · FEE-TAX-2026-10 (R2c) — the Fees & taxes card's Up & Down path: the profile it sends, the counts it shows ──
+// `/admin/config`'s card builds the profile from the officer's model and two rates over the product's CURRENT default
+// (`feeProfileFromForm`), shows every chain counted by model and state (`chainFeeCensus`), and acts through
+// `applyFeeProfileToEveryChain` — refused while the new law is not in force, dry run included; with the gate opened in
+// THIS process its dry run's counts are the census's.
+{
+  const { applyFeeProfileToEveryChain, rateProfileOf } = await import("../src/lib/server/updown-config.ts");
+  const { feeProfileFromForm, chainFeeCensus, rateFromPercent, APPLY_MODELS, CHAIN_STATES_IN_ORDER } = await import("../src/lib/updown-fee-profile.ts");
+  const { resolveFeeModel } = await import("../src/lib/payout.ts");
+  const gate = await import("../src/lib/fee-law-gate.ts");
+  const current = { ...(await getUpDownConfig()).defaultRateProfile, winningsTaxRate: 0.15, jackpotFeeRate: 0.13 } as Record<string, unknown>;
+
+  ok("12.1 · a form's percent is a rate; blank is none, never a default; a word is NaN (refused)",
+     rateFromPercent("3") === 0.03 && rateFromPercent(" 10.5 ") === 0.105 && rateFromPercent("") === null && rateFromPercent(null) === null && Number.isNaN(rateFromPercent("abc")));
+  const ls = feeProfileFromForm({ feeModel: "loser-share", platformFeeRate: "3", operatorFeeRate: "10" }, current);
+  ok("12.2 · ★ the profile is the officer's model and two rates over the CURRENT default — its ceiling kept, and never a winnings tax or a jackpot share",
+     ls.ok && ls.profile.feeModel === "loser-share" && ls.profile.platformFeeRate === 0.03 && ls.profile.operatorFeeRate === 0.1
+       && ls.profile.feeCeilingRate === current.feeCeilingRate && !("winningsTaxRate" in ls.profile) && !("jackpotFeeRate" in ls.profile),
+     JSON.stringify(ls));
+  const half = feeProfileFromForm({ feeModel: "stake-share", platformFeeRate: "3", operatorFeeRate: "" }, current);
+  const word = feeProfileFromForm({ feeModel: "stake-share", platformFeeRate: "3", operatorFeeRate: "ten" }, current);
+  ok("12.3 · a pool model needs BOTH rates, as numbers — a blank one is refused, never filled in", !half.ok && !word.ok, JSON.stringify({ half, word }));
+  const capped = feeProfileFromForm({ feeModel: "capped-commission", platformFeeRate: "", operatorFeeRate: "" }, current);
+  ok("12.4 · capped commission reads no rate and keeps the default's own commission and ceiling",
+     capped.ok && capped.profile.feeModel === "capped-commission" && capped.profile.commissionRate === current.commissionRate && capped.profile.feeCeilingRate === current.feeCeilingRate,
+     JSON.stringify(capped));
+  const jackpot = feeProfileFromForm({ feeModel: "jackpot-payout", platformFeeRate: "3", operatorFeeRate: "10" }, current);
+  ok("12.5 · ⛔ only the three pool laws can be applied — never Millionea's jackpot model", !jackpot.ok && JSON.stringify(APPLY_MODELS) === JSON.stringify(["loser-share", "stake-share", "capped-commission"]), JSON.stringify(jackpot));
+
+  const census = chainFeeCensus([
+    { state: "RUNNING", model: "loser-share" }, { state: "RUNNING", model: "capped-commission" },
+    { state: "PAUSED", model: "loser-share" }, { state: "ARCHIVED", model: "unreadable" },
+  ]);
+  ok("12.6 · ★ the census counts every chain by model, and per state by model — archived and unreadable ones included",
+     census.total === 4 && census.byModel["loser-share"] === 2 && census.byModel["capped-commission"] === 1 && census.byModel.unreadable === 1
+       && census.byState.RUNNING.total === 2 && census.byState.PAUSED.byModel["loser-share"] === 1 && census.byState.STOPPED.total === 0
+       && census.byState.ARCHIVED.byModel.unreadable === 1 && JSON.stringify(CHAIN_STATES_IN_ORDER) === JSON.stringify(["RUNNING", "PAUSED", "STOPPED", "ARCHIVED"]),
+     JSON.stringify(census));
+
+  const ssForm = feeProfileFromForm({ feeModel: "stake-share", platformFeeRate: "3", operatorFeeRate: "10" }, current);
+  // The integration (the lead): the R2a review made the DRY RUN read-only and ungated — it answers while the law is
+  // shut and names, in `refusal`, why the real act would be refused, so the card draws the button disabled from it.
+  const shutAct = ssForm.ok ? await applyFeeProfileToEveryChain(ssForm.profile as never, OFFICER, "Moving every chain to the decided law.") : null;
+  const shutDry = ssForm.ok ? await applyFeeProfileToEveryChain(ssForm.profile as never, OFFICER, "Moving every chain to the decided law.", { dryRun: true }) : null;
+  ok("12.7 · ★ while the law is not in force the ACT is refused, and the read-only dry run answers with the refusal the card shows",
+     ssForm.ok && !!shutAct && !shutAct.ok && !!shutDry && shutDry.ok
+       && typeof (shutDry as { data?: { refusal?: string | null } }).data?.refusal === "string",
+     JSON.stringify({ shutAct, shutDry }));
+
+  gate.__setFeeLawLiveForTest(true);
+  try {
+    const chains = await listChains();
+    const cfgNow = await getUpDownConfig();
+    const modelOf = (p: Parameters<typeof resolveFeeModel>[0]) => { try { return resolveFeeModel(p); } catch { return "unreadable" as const; } };
+    const live = chainFeeCensus(chains.map((c) => ({ state: c.state, model: modelOf(rateProfileOf(c, cfgNow)) })));
+    const dry = ssForm.ok ? await applyFeeProfileToEveryChain(ssForm.profile as never, OFFICER, "Moving every chain to the decided law.", { dryRun: true }) : null;
+    const counts = dry && dry.ok ? dry.data : null;
+    ok("12.8 · ★ with the law in force the DRY RUN answers, writes nothing, and its counts are the card's census: every chain, and per state those not yet on the model",
+       !!counts && counts.dryRun === true && counts.model === "stake-share" && counts.total === live.total && live.total === chains.length
+         && CHAIN_STATES_IN_ORDER.every((s) => counts.byState[s as keyof typeof counts.byState].total === live.byState[s].total
+           && counts.byState[s as keyof typeof counts.byState].moved === live.byState[s].total - (live.byState[s].byModel["stake-share"] ?? 0)),
+       JSON.stringify({ counts, live }));
+    const after = await listChains();
+    ok("12.9 · …and nothing moved: every chain keeps its profile after the dry run", JSON.stringify(after.map((c) => c.rateProfile)) === JSON.stringify(chains.map((c) => c.rateProfile)));
+    const terse = ssForm.ok ? await applyFeeProfileToEveryChain(ssForm.profile as never, OFFICER, "short") : null;
+    ok("12.10 · the ACT requires a reason in a sentence — the card's Reason field (the dry run needs none)", !!terse && !terse.ok && /reason/i.test((terse as { error: string }).error), JSON.stringify(terse));
+  } finally {
+    gate.__setFeeLawLiveForTest(null);
+  }
+  ok("12.11 · the gate is shut again after the suite's own opening", gate.feeLawLive() === false);
 }
 
 // ── Result ──────────────────────────────────────────────────────────────────

@@ -45,11 +45,13 @@ import { usePlacePulse, type useUpDownQuickBet } from "@/components/updown/use-q
 import { GLYPH_NO_SHRINK } from "@/components/updown/updown-stake-controls";
 import { UpDownBetBlockedModal } from "@/components/updown/updown-bet-blocked-modal";
 import { UpDownBetReceiptModal } from "@/components/updown/updown-bet-receipt-modal";
+import { HouseLeanWarning } from "@/components/markets/house-lean-warning";
 import { attributionFrom, PENDING_BET_KEY, readMarker, writeMarker, stakeFromUrl, parseBetParam } from "@/lib/journey/pending-bet";
 import { quarantineLegacySheet, saveSheetSelection } from "@/lib/journey/sheet-owned-storage";
 import { pendingBand, type SheetLine } from "@/lib/journey/sheet-state";
 import {
-  JUD_TAB_MARKER, judBet, judCommitReady, judDepositHref, judEmptySide, judFrame, judNextRoundHref, judProjection, judSpentSince, judViewerAfterSpend,
+  JUD_TAB_MARKER, judBet, judCommitReady, judDepositHref, judEmptySide, judFrame, judNextRoundHref, judNotice, judNoticeEitherSide, judProjection,
+  judSpentSince, judViewerAfterSpend,
   type JudClosedNotice, type JudRound, type JudSide, type JudViewer,
 } from "@/lib/journey/updown-arm";
 import type { UpDownReceiptInfo } from "@/lib/updown-receipt";
@@ -163,6 +165,12 @@ function EmptySideNote({ t, side }: { t: ReturnType<typeof useT>["t"]; side: "UP
   return <p className="kp-jud__note"><I.info s={11} className="mt-[2px] shrink-0" /><span>{noticeBody(copy)}</span></p>;
 }
 
+/** FEE-TAX-2026-10 · a stake-share round's standing line, in the empty side's ⓘ register: a winning bet can return less than its stake. */
+function StandingNote({ t, shown }: { t: ReturnType<typeof useT>["t"]; shown: boolean }) {
+  if (!shown) return null;
+  return <p className="kp-jud__note" data-ss-standing=""><I.info s={11} className="mt-[2px] shrink-0" /><span>{noticeBody(t.market.ssStanding)}</span></p>;
+}
+
 function YoureIn({ t, bet }: { t: ReturnType<typeof useT>["t"]; bet: Bet }) {
   if (bet.shownUp <= 0 && bet.shownDown <= 0) return null;
   return <div className="kp-jud__in">
@@ -188,6 +196,9 @@ export function JudTwoWay({ bet, round, viewer, assetName, receipt, onWatchRound
   const flash = usePlacePulse(bet.justPlaced?.nonce);
   const ready = judCommitReady(frame, bet);
   const instead = frame.low?.betInstead ?? frame.pending?.betInstead ?? null;
+  // FEE-TAX-2026-10 · the notice for a control that offers both sides: the warning names the side whose win would pay
+  // back less than this stake, and states NO figure (the two-way control quotes nothing, the owner's ruling of 2026-10-14).
+  const notice = judNoticeEitherSide(round.pricing, frame.breaks === null ? frame.stake : null);
   const prompt = bet.pending
     ? bet.pendingSlow ? <><span className="live-dot" /> {t.market.udStillPlacing}</> : <><span className="live-dot" /> <span><span className="amount">{formatTzs(bet.stake)}</span> · {t.market.udStreaming}</span></>
     : bet.locallyLocked ? <>{t.market.udErrSelectionClosed}</>
@@ -208,8 +219,11 @@ export function JudTwoWay({ bet, round, viewer, assetName, receipt, onWatchRound
         onClick={() => setText(String(instead.stake))}><span>{fillNodes(t.journey.udUseInstead, { amount: <span className="amount">{formatTzs(instead.stake)}</span> })}</span></Button>} />
     <Lines t={t} locale={locale} nowMs={nowMs} frame={frame} id={id} />
     {prompt && <p className="kp-jud__prompt">{prompt}</p>}
+    {/* The below-stake warning stands above the two buttons, because a tap on one of them places. */}
+    {notice?.belowSide && <HouseLeanWarning level="below" stakeShare below={{ side: sideWord(t, notice.belowSide, "UPDOWN") }} className="mb-2" />}
     <div className="kp-jud__sides">{sideButton("UP")}{sideButton("DOWN")}</div>
     {size === "detail" && <EmptySideNote t={t} side={judEmptySide(round.pricing, null)} />}
+    <StandingNote t={t} shown={notice !== null} />
     <span aria-live="polite" className="sr-only">{bet.liveMessage}</span>
     <UpDownBetBlockedModal blocked={bet.blocked} onClose={bet.clearBlocked} />
     {receipt && <UpDownBetReceiptModal key={bet.placedReceipt?.nonce ?? 0} placed={bet.placedReceipt} info={receipt} pricing={round.pricing}
@@ -232,6 +246,9 @@ export function JudConfirm({ bet, round, viewer, assetName, receipt, side }: Arm
   const pulse = usePlacePulse(bet.justPlaced?.nonce);
   const ready = judCommitReady(frame, bet) && !bet.pending;
   const projected = judProjection(round.pricing, side, frame.breaks === null ? frame.stake : null);
+  // FEE-TAX-2026-10 · the notice at the commit (a side chosen): the warning with the projection's own figures above the
+  // commit, the fee note and the standing line under it. Null on every older round.
+  const notice = judNotice(round.pricing, side, frame.breaks === null ? frame.stake : null);
   const instead = frame.low?.betInstead ?? frame.pending?.betInstead ?? null;
   const word = sideWord(t, side, "UPDOWN");
   const describedBy = frame.low || frame.pending || frame.lossRoom || frame.block ? `${id}-callout` : frame.lines.length ? `${id}-line` : frame.breaks && frame.breaks !== "empty" ? `${id}-bounds` : undefined;
@@ -248,6 +265,7 @@ export function JudConfirm({ bet, round, viewer, assetName, receipt, side }: Arm
         onClick={() => setText(String(instead.stake))}><span>{fillNodes(t.journey.udUseInstead, { amount: <span className="amount">{formatTzs(instead.stake)}</span> })}</span></Button>} />
     <Lines t={t} locale={locale} nowMs={nowMs} frame={frame} id={id} />
     {bet.locallyLocked && <p className="kp-jud__prompt">{t.market.udErrSelectionClosed}</p>}
+    {notice?.below && <HouseLeanWarning level="below" stakeShare below={{ side: word, ...notice.below }} className="mb-2" />}
     <Button type="button" variant="gold" size="xl" fullWidth className="kp-bsheet__commit" data-testid="jud-place" disabled={!ready}
       aria-busy={bet.pending || undefined} aria-describedby={describedBy} onClick={() => { if (ready) bet.place(side); }}>
       {bet.pending ? <><Spinner size={14} /><span>{t.market.udPlacing}</span></>
@@ -255,6 +273,17 @@ export function JudConfirm({ bet, round, viewer, assetName, receipt, side }: Arm
     </Button>
     <EmptySideNote t={t} side={judEmptySide(round.pricing, side)} />
     {projected !== null && <p className="kp-jud__note"><I.info s={11} className="mt-[2px] shrink-0" /><span>{noticeBody(t.market.udEstimateNote)}</span></p>}
+    {projected !== null && notice?.quote && notice.feePct !== null && !notice.noTaker && (
+      <p className="kp-jud__note" data-ss-fee=""><I.info s={11} className="mt-[2px] shrink-0" /><span>{fillNodes(t.market.ssFeeLine, {
+        pct: notice.feePct,
+        fee: <span className="amount">{formatTzs(notice.quote.fee)}</span>,
+        net: <span className="amount">{formatTzs(notice.quote.net)}</span>,
+      })}</span></p>
+    )}
+    {projected !== null && notice?.quote && notice.feePct !== null && notice.taxPct !== null && !notice.noTaker && (
+      <p className="kp-jud__note"><I.info s={11} className="mt-[2px] shrink-0" /><span>{noticeBody(fill(t.market.ssFeeNote, { fee: notice.feePct, tax: notice.taxPct }))}</span></p>
+    )}
+    <StandingNote t={t} shown={notice !== null} />
     <span aria-live="polite" className="sr-only">{bet.liveMessage}</span>
     <UpDownBetBlockedModal blocked={bet.blocked} onClose={bet.clearBlocked} />
     {receipt && <UpDownBetReceiptModal key={bet.placedReceipt?.nonce ?? 0} placed={bet.placedReceipt} info={receipt} pricing={round.pricing}

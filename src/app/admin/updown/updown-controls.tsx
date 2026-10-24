@@ -1240,11 +1240,20 @@ export function ReadingMethodForm({
 
 // ── Thresholds ───────────────────────────────────────────────────────────────
 
+/**
+ * `baseline` — the six settings as STORED when the page read them fresh (FEE-TAX-2026-10, R2c; the independent review of
+ * R2a): posted beside the fields, so the writer applies only what the officer changed and refuses a field another officer
+ * moved since this page was opened — a stale container can no longer save its old values back.
+ */
 export function ThresholdsForm({
-  maxStalenessSeconds, confidenceThreshold, maxObservationAttempts, defaultMinStake, defaultMaxStake, defaultMarginBps,
+  maxStalenessSeconds, confidenceThreshold, maxObservationAttempts, defaultMinStake, defaultMaxStake, defaultMarginBps, baseline,
 }: {
   maxStalenessSeconds: number; confidenceThreshold: number; maxObservationAttempts: number;
   defaultMinStake: number; defaultMaxStake: number; defaultMarginBps: number;
+  baseline: {
+    maxStalenessSeconds: number; confidenceThreshold: number; maxObservationAttempts: number;
+    defaultMinStake: number; defaultMaxStake: number; defaultMarginBps: number;
+  };
 }) {
   const [pending, start] = useTransition();
   const router = useRouter();
@@ -1253,6 +1262,7 @@ export function ThresholdsForm({
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
+    fd.set("baseline", JSON.stringify(baseline));
     start(async () => {
       const r = await updateThresholdsAction(fd);
       if (!r.ok) {

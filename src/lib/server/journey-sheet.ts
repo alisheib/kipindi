@@ -40,9 +40,8 @@ import { getKillSwitches } from "./payment-ops";
 import { getBonusSummary } from "./bonus-service";
 import { MOBILE_MONEY_METHODS } from "@/lib/payment-providers";
 import { shortfallPlan, type ShortfallInput } from "@/lib/journey/shortfall";
-import { cardEstimate, pickEstimateRates, type Estimate, type EstimateRates } from "@/lib/markets/estimate";
+import { cardEstimate, feePctFor, pickEstimateRates, taxPctFor, type Estimate, type EstimateRates } from "@/lib/markets/estimate";
 import { cardClosesAtMs } from "@/lib/markets/card-close-label";
-import { loserSharePct } from "@/lib/payout";
 import { breakStateOf, type BreakState } from "@/lib/break-end";
 import { cardTitle } from "@/lib/markets/short-title";
 import type { Locale } from "@/lib/i18n-dict";
@@ -55,8 +54,11 @@ export type SheetPublic = {
   noPool: number;
   /** The frozen rates the estimate reads — nothing more (`EstimateRates`). */
   rates: EstimateRates | null;
-  /** `{pct}` — the frozen loser-share total; null under capped-commission. */
+  /** `{pct}` — the frozen fee per the market's model (`feePctFor`): the loser-share total, or under `stake-share` the fee
+   *  on every stake; null under capped-commission. */
   feePct: number | null;
+  /** `{tax}` — a stake-share market's frozen winnings tax (FEE-TAX-2026-10); null under every other model. */
+  taxPct: number | null;
   min: number;
   max: number;
   /** When betting closes (`selectionClosedAt ?? resolutionAt`), ISO; null when the market carries neither. */
@@ -160,7 +162,9 @@ export function sheetPublicFrom(m: StoredMarket, bounds: { min: number; max: num
     yesPool: m.yesPool,
     noPool: m.noPool,
     rates,
-    feePct: rates ? loserSharePct(rates) : null,
+    // Per the market's frozen model, through the same reads the estimate makes — never a default, never `commissionRate`.
+    feePct: feePctFor(rates),
+    taxPct: taxPctFor(rates),
     min: bounds.min,
     max: bounds.max,
     closesAt: closes === null ? null : new Date(closes).toISOString(),

@@ -15,6 +15,8 @@ import { formatBreakEnd } from "@/lib/break-end";
 import { fill, formatTzs } from "@/lib/utils";
 import { sideWord } from "@/lib/side-label";
 import { positionPermalinkHref } from "@/lib/position-permalink";
+import { stakeShareNotice } from "@/lib/stake-share-notice";
+import { HouseLeanWarning } from "@/components/markets/house-lean-warning";
 import type { Dict, Locale } from "@/lib/i18n";
 import type { SheetFrame, SheetLine, SheetSeed, SheetSide } from "@/lib/journey/sheet-state";
 
@@ -133,15 +135,42 @@ export function EstimateBox({ t, seed, side, frame, compact = false, keyboard = 
   const estimate = frame.estimate;
   if (!estimate) return null;
   const emptySide = estimate.emptySide === "YES" || estimate.emptySide === "NO" ? estimate.emptySide : side === "YES" ? "NO" : "YES";
-  const note = seed.feePct === null ? null : fillNodes(compact ? t.journey.estimateNoteCompact : t.journey.estimateNote, { pct: <span className="amount">{seed.feePct}</span> });
+  // ⭐ FEE-TAX-2026-10 · a stake-share market's notice (`stake-share-notice.ts`, the one view model every bet screen draws):
+  // its own note (the fee on every stake and the winnings tax, both the market's frozen figures), the standing line, and
+  // the AMBER below-stake warning — independent of the display switch, because a warning is not an estimate. Null on
+  // every older model, so nothing below changes for one of those.
+  const ss = stakeShareNotice({ yesPool: seed.yesPool, noPool: seed.noPool, side, stake: frame.breaks === null ? frame.stake : null, rates: seed.rates });
+  const note = ss
+    ? (ss.feePct !== null && ss.taxPct !== null
+      ? fillNodes(compact ? t.journey.ssEstimateNoteCompact : t.journey.ssEstimateNote, { fee: <span className="amount">{ss.feePct}</span>, tax: <span className="amount">{ss.taxPct}</span> })
+      : null)
+    : seed.feePct === null ? null : fillNodes(compact ? t.journey.estimateNoteCompact : t.journey.estimateNote, { pct: <span className="amount">{seed.feePct}</span> });
+  // The warning with its figures in the full box; in the compact one (the low frames, the keyboard up) its title alone,
+  // so the line that must be read before the bet survives where the note does not.
+  const warning = ss?.below ? <HouseLeanWarning level="below" stakeShare below={compact ? null : { side: sideWord(t, side, "MARKET"), ...ss.below }} /> : null;
+  // The standing line (a winning bet can return less than its stake), on every stake-share box — the compact one too, but
+  // for the keyboard's frame, which drops every note (the full box drew it before the keyboard rose).
+  const standing = ss && !keyboard ? <p className="kp-bsheet__note" data-ss-standing="">{t.market.ssStanding}</p> : null;
+  // This stake's own fee and what enters the pool, beside a priced figure (never on a book with no taker: it refunds).
+  const feeLine = ss?.quote && ss.feePct !== null && !ss.noTaker
+    ? <p className="kp-bsheet__note" data-ss-fee="">{fillNodes(t.market.ssFeeLine, {
+        pct: ss.feePct,
+        fee: <span className="amount">{formatTzs(ss.quote.fee)}</span>,
+        net: <span className="amount">{formatTzs(ss.quote.net)}</span>,
+      })}</p>
+    : null;
   const priced = estimate.payout !== null;
   // ⭐ COMPACT PRINTS A FIGURE OR NOTHING (A22 item 1's "or nothing", taken in A25): the low frames and the keyboard's frame
   // drew the whole unpriced box here — the sliver under the stake with the keyboard up (tiles 002–022) and the height that
   // pushed the low frame's second option under its footer (034–041). With the keyboard up the line drops its note too.
-  if (compact && !priced) return null;
+  // (A below-stake warning is the one thing it still draws without a figure: never a bet placed past it unsaid — and, on a
+  // stake-share market, the standing line beside it.)
+  if (compact && !priced) return ss ? <>{warning}{standing}</> : warning;
   if (compact) return <div className="kp-bsheet__compact" data-testid="journey-sheet-estimate-compact">
     <p>{fillNodes(t.journey.estimateCompact, { amount: <span className="amount">{formatTzs(estimate.payout!)}</span> })}<span className="kp-bsheet__compact-mult amount">{fill(t.journey.multOnly, { mult: estimate.multText ?? "—" })}</span></p>
     {note && !keyboard && <p className="kp-bsheet__note">{note}</p>}
+    {warning}
+    {standing}
   </div>;
   return <div className="kp-bsheet__estimate" data-estimate-state={estimate.state}>
     {estimate.state === "emptyPool" ? <>
@@ -157,8 +186,12 @@ export function EstimateBox({ t, seed, side, frame, compact = false, keyboard = 
       {(priced || estimate.overCap) && <p className="kp-bsheet__mult">{fillNodes(estimate.overCap ? t.journey.estimatePillOver : t.journey.estimatePill, { mult: <span className="amount">{estimate.multText ?? "—"}</span>, cap: <span className="amount">{estimate.multText ?? "—"}</span> })}</p>}
       {estimate.state === "fillsEmptySide" && <p className="kp-bsheet__note">{fill(t.journey.sheetFirstOnSide, { side: sideWord(t, side, "MARKET") })}</p>}
       {estimate.lean === "thin" && <p className="kp-bsheet__note">{t.market.crowdedWarning}</p>}
+      {priced && feeLine}
       {note && <p className="kp-bsheet__note">{note}</p>}
     </>}
+    {warning}
+    {/* The standing line, on every state of a stake-share market's box: a winning bet can return less than its stake. */}
+    {standing}
   </div>;
 }
 

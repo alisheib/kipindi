@@ -34,8 +34,9 @@
 import { readFileSync } from "node:fs";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { FeeSimulator } from "../src/app/admin/config/fee-simulator.tsx";
-import { poolFee, describeFeeModel, resolveFeeModel, MAX_LOSER_SHARE_RATE, FEE_CAPTION_MAX_CHARS } from "../src/lib/payout.ts";
+import { FeeSimulator, SIM_PRESETS, simulateStakeShare } from "../src/app/admin/config/fee-simulator.tsx";
+import { formatTzs } from "../src/lib/utils.ts";
+import { poolFee, describeFeeModel, resolveFeeModel, settledPayoutFor, worstCaseWinnerRatio, MAX_LOSER_SHARE_RATE, FEE_CAPTION_MAX_CHARS } from "../src/lib/payout.ts";
 import { rateProfileOf, boardFeeSummary, DEFAULT_UPDOWN_CONFIG } from "../src/lib/server/updown-config.ts";
 import type { UpDownConfig } from "../src/lib/server/updown-config.ts";
 
@@ -421,22 +422,98 @@ console.log("\n§7 · the simulator an officer reads before saving a rate");
      otherHtml.includes(`${Number(((g.fee / 10_500) * 100).toFixed(2))}% of the losing pool`) && !otherHtml.includes("13% of the losing pool"),
      `expected ${Number(((g.fee / 10_500) * 100).toFixed(2))}%`);
 
-  // ── FEE-TAX-2026-10 · the simulator under stake-share speaks NEITHER older law ──────────────────────────────────────
-  // Its grids are written for the two older models; under stake-share the screen says what the law is and prices nothing
-  // it cannot price (R2c brings the stake-share simulator). The defect this guards is the 2026-09-08 one, one model on:
-  // a correct-looking grid of capped (or loser-share) sentences beside a law that charges neither.
+  // ── FEE-TAX-2026-10 (R2c) · the simulator under stake-share prices the law, and speaks NEITHER older law ─────────────
+  // Its own arm (`simulateStakeShare`, every figure a call into the engine): F, P, T, TRA, GBT, what we keep, the winners'
+  // multiple, this stake's payout, the worst case over every split and the break-even lean — the below-stake winner a
+  // WARNING, never a refusal. The defect this still guards is the 2026-09-08 one, one model on: a correct-looking grid of
+  // capped (or loser-share) sentences beside a law that charges neither.
   const SS_CFG = {
     feeModel: "stake-share", platformFeeRate: 0.03, operatorFeeRate: 0.10, winningsTaxRate: 0.15, commissionRate: 0.13,
     feeCeilingRate: 1 / 3, traTaxOnCommissionRate: 0.10, gbtLevyOnCommissionRate: 0.05,
   } as unknown as Parameters<typeof FeeSimulator>[0]["config"];
+  const SS_RATES = { feeModel: "stake-share" as const, platformFeeRate: 0.03, operatorFeeRate: 0.10, winningsTaxRate: 0.15, commissionRate: 0.13, feeCeilingRate: 1 / 3 };
+  const LEVIES = { traTaxOnCommissionRate: 0.10, gbtLevyOnCommissionRate: 0.05 };
   let ssHtml = "";
   try { ssHtml = renderToStaticMarkup(createElement(FeeSimulator, { config: SS_CFG })); }
   catch (err) { ok("7.8 · the simulator renders under stake-share", false, String((err as Error)?.message ?? err)); }
-  ok("7.8 · ★ under stake-share it states the law — 13% of every stake, 15% winnings tax — and says it simulates nothing here",
-     ssHtml.includes("not simulated on this screen yet") && ssHtml.includes("13% of every stake") && ssHtml.includes("15%"), ssHtml.slice(0, 160));
+  // Its own defaults are the reported poll: YES 300,000 / NO 10,500, a 100,000 stake on YES.
+  const def = simulateStakeShare({ yesPool: 300_000, noPool: 10_500, stake: 100_000, side: "YES", rates: SS_RATES, levies: LEVIES });
+  ok("7.8 · ★ under stake-share it PRICES its own defaults — F, P, T, TRA, GBT, what we keep and the payout, each the engine's",
+     def.ok && ssHtml.length > 500 && [def.fee, def.prizeFund, def.tax ?? -1, def.tra, def.gbt, def.netGgr, def.payout ?? -1].every((n) => ssHtml.includes(formatTzs(n))),
+     def.ok ? JSON.stringify({ fee: def.fee, P: def.prizeFund, T: def.tax, tra: def.tra, gbt: def.gbt, ggr: def.netGgr, payout: def.payout }) : JSON.stringify(def));
   ok("7.9 · ★ …with NONE of the older laws' vocabulary: no min(), no ceiling, no 33.3%, no \"of the losing pool\"",
      CAPPED_ONLY.every((p) => !ssHtml.includes(p)) && !ssHtml.includes("33.3%") && !ssHtml.includes("of the losing pool"),
      CAPPED_ONLY.filter((p) => ssHtml.includes(p)).join(" · "));
+  ok("7.10 · ★ the reported poll's winner is paid back less than they staked — said as a WARNING (the law), never the capped arm's \"must be impossible\"",
+     def.ok && (def.ratio ?? 2) < 1 && ssHtml.includes("paid back less than they staked") && !ssHtml.includes("This must be impossible"),
+     def.ok ? `ratio ${def.ratio}` : "");
+  const be = 0.13 / (0.13 + 0.87 * 0.85);
+  ok("7.11 · ★ the break-even lean (~14.95% of the pool on the small side) and the worst case are the engine's, and printed",
+     def.ok && def.breakEven !== null && Math.abs(def.breakEven - be) < 1e-9 && ssHtml.includes(`${Number((be * 100).toFixed(2))}%`)
+       && def.worst !== null && def.worst === worstCaseWinnerRatio(SS_RATES).ratio && def.worst < 1 && ssHtml.includes(`${def.worst.toFixed(3)}×`),
+     def.ok ? JSON.stringify({ be: def.breakEven, worst: def.worst }) : "");
+
+  // The document's own example (FEE-TAX-PLAN §3): YES 1,000 + 3,000 + 5,000 against NO 10,000 + 20,000 + 5,000, YES wins.
+  const doc = simulateStakeShare({ yesPool: 9_000, noPool: 35_000, stake: 1_000, side: "YES", rates: SS_RATES, levies: LEVIES });
+  ok("7.12 · ★★ the document's example: fee 5,720 · tax 4,568 · TRA 572 · GBT 286 · net GGR 4,862, and the prize 30,450",
+     doc.ok && doc.fee === 5_720 && doc.tax === 4_568 && doc.tra === 572 && doc.gbt === 286 && doc.netGgr === 4_862 && doc.prizeFund === 30_450, JSON.stringify(doc));
+  ok("7.13 · ★ …its first YES player's 1,000 is paid what the engine pays it (3,746 in the document's table), above the stake",
+     doc.ok && doc.payout === settledPayoutFor({ yesPool: 9_000, noPool: 35_000, side: "YES", stake: 1_000 }, SS_RATES).payout && doc.payout === 3_746 && (doc.ratio ?? 0) > 1,
+     doc.ok ? String(doc.payout) : "");
+  const lop = simulateStakeShare({ yesPool: 100_000, noPool: 10_000, stake: 100_000, side: "YES", rates: SS_RATES, levies: LEVIES });
+  ok("7.14 · ★ the lopsided preset (100,000 vs 10,000) pays the whole YES side 94,395 — below its stake (FEE-TAX-PLAN §3)",
+     lop.ok && lop.payout === 94_395 && (lop.ratio ?? 2) < 1 && lop.winnersGet === 94_395, JSON.stringify(lop));
+  ok("7.15 · the presets ARE those books (the screen's buttons set them)",
+     JSON.stringify(SIM_PRESETS.map((p) => [p.yes, p.no, p.stake, p.side])) === JSON.stringify([[300_000, 10_500, 100_000, "YES"], [9_000, 35_000, 1_000, "YES"], [100_000, 10_000, 100_000, "YES"]]));
+  const oneSided = simulateStakeShare({ yesPool: 50_000, noPool: 0, stake: 1_000, side: "YES", rates: SS_RATES, levies: LEVIES });
+  ok("7.16 · a one-sided book under stake-share refunds: no fee, no tax, the stake back",
+     oneSided.ok && oneSided.oneSided && oneSided.fee === 0 && oneSided.tax === 0 && oneSided.payout === 1_000, JSON.stringify(oneSided));
+  // ⛔ No winning tax is invented: without one, the figures it decides are absent, and the fee alone is priced.
+  const noTax = simulateStakeShare({ yesPool: 9_000, noPool: 35_000, stake: 1_000, side: "YES", rates: { ...SS_RATES, winningsTaxRate: undefined }, levies: LEVIES });
+  ok("7.17 · ★ with no winning tax set it prices F and P, and leaves T, the payout and the worst case EMPTY (no default tax)",
+     noTax.ok && noTax.fee === 5_720 && noTax.prizeFund === 30_450 && noTax.tax === null && noTax.payout === null && noTax.worst === null && noTax.breakEven === null, JSON.stringify(noTax));
+  // ⛔ Never throws — the brief's line: the simulator must not fall over on its own defaults, or on anything typed.
+  const odd = [
+    simulateStakeShare({ yesPool: 300_000.7, noPool: 10_500.2, stake: 100_000.9, side: "YES", rates: SS_RATES, levies: LEVIES }),
+    simulateStakeShare({ yesPool: 0, noPool: 0, stake: 0, side: "NO", rates: SS_RATES, levies: LEVIES }),
+    simulateStakeShare({ yesPool: 1_000, noPool: 1_000, stake: 1_000, side: "YES", rates: { ...SS_RATES, platformFeeRate: 0.6, operatorFeeRate: 0.6 }, levies: LEVIES }),
+    simulateStakeShare({ yesPool: 1_000, noPool: 1_000, stake: 1_000, side: "YES", rates: LOSER_SHARE, levies: LEVIES }),
+  ];
+  ok("7.18 · ★ typed decimals are taken to the shilling, an empty book prices zero, and rates the engine refuses come back REFUSED — nothing throws",
+     odd[0].ok && odd[0].yesPool === 300_000 && odd[1].ok && odd[1].fee === 0 && !odd[2].ok && !odd[3].ok, JSON.stringify(odd));
+  const noTaxCfg = { ...(SS_CFG as object), winningsTaxRate: undefined } as unknown as Parameters<typeof FeeSimulator>[0]["config"];
+  let noTaxHtml = "";
+  try { noTaxHtml = renderToStaticMarkup(createElement(FeeSimulator, { config: noTaxCfg })); }
+  catch (err) { noTaxHtml = `THREW ${String((err as Error)?.message ?? err)}`; }
+  ok("7.19 · ★ a stake-share config with NO tax saved renders (never throws) and says the payout needs one — inventing none",
+     !noTaxHtml.startsWith("THREW") && noTaxHtml.includes("The payout needs a winning tax") && !noTaxHtml.includes("15%"), noTaxHtml.slice(0, 160));
+  // Every law renders from the same screen, and a law other than the saved one is said to be a what-if.
+  ok("7.20 · the simulator names the law it prices — the saved one — under each of the three models",
+     loser.includes("Loser-share — % of the losing pool") && capped.includes("Capped commission — % of the pool, capped") && ssHtml.includes("Stake-share — % of every stake")
+       && [loser, capped, ssHtml].every((h) => h.includes("The saved model.")));
+}
+
+// ── §8 · THE CAPTIONS ON THE CONFIG SCREENS — derived through describeFeeModel ───────────────────────────────
+console.log("\n§8 · every fee caption on the config screens is describeFeeModel's");
+{
+  const src = (p: string) => readFileSync(new URL(`../${p}`, import.meta.url), "utf8").replace(/\r\n/g, "\n");
+  const cfg = src("src/app/admin/config/page.tsx");
+  ok("8.1 · /admin/config's chip and fee-model KPI read ONE caption, from describeFeeModel — no model typed in either",
+     /const feeCaption = \(\(\) => \{ try \{ return describeFeeModel\(config\)\.caption;/.test(cfg) && cfg.includes("Pari-mutuel · {feeCaption}") && /delta=\{feeCaption\}/.test(cfg)
+       && !cfg.includes('"Pari-mutuel · loser-share"') && !cfg.includes('"Pari-mutuel · capped fee"'));
+  const neu = src("src/app/admin/markets/new/page.tsx"), wiz = src("src/app/admin/markets/new/wizard.tsx");
+  ok("8.2 · the new-market page hands the wizard describeFeeModel's caption for every model, and the wizard draws it",
+     /describeFeeModel\(config\)\.caption/.test(neu) && (neu.match(/\bcaption,/g) ?? []).length === 3 && wiz.includes("{feeInfo.caption}"));
+  const mkt = src("src/app/admin/markets/[id]/page.tsx");
+  ok("8.3 · the market page's stake-share fee is captioned by describeFeeModel from THIS poll's frozen rates, and shows the winners' share",
+     /describeFeeModel\(marketRates\)\.caption/.test(mkt) && mkt.includes("Winners share if YES wins") && mkt.includes("Winners share if NO wins"));
+  const sim = src("src/app/admin/config/fee-simulator.tsx");
+  ok("8.4 · the simulator prices stake-share through the engine alone (poolFee, settledPayoutFor, levySplit, the engine's sweeps) — no formula of its own",
+     /export function simulateStakeShare\(/.test(sim) && ["poolFee(", "settledPayoutFor(", "levySplit(", "worstCaseWinnerRatio(", "stakeShareBreakEvenShare("].every((k) => sim.includes(k)));
+  for (const [name, rates] of [["stake-share", STAKE_SHARE], ["loser-share", LOSER_SHARE], ["capped", CAPPED]] as const) {
+    const c = describeFeeModel(rates).caption;
+    ok(`8.5 · the ${name} caption the card's KPI shows fits it (≤ ${FEE_CAPTION_MAX_CHARS} chars)`, c.length <= FEE_CAPTION_MAX_CHARS, `${c.length}: "${c}"`);
+  }
 }
 
 console.log(`\nfee-model-caption: ${pass} passed, ${fail} failed`);

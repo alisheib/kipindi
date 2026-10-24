@@ -75,6 +75,11 @@ export type PlaybookPolicy = {
    * window moved wins more than 50% + this, the game is exploitable. The break-even against a
    * 13%-of-pool commission is about 6.5 points, so anything at or beyond that is a refusal;
    * `warnDirectionalEdge` is where it becomes worth saying out loud.
+   * ⚠️ (FEE-TAX-2026-10, R2c) THAT BREAK-EVEN IS A PROPERTY OF THE FEE MODEL, NOT OF THIS KNOB. On a balanced round a
+   * winner gets back R per shilling, and a naive strategy breaks even at a win rate of 1 / R: 53.5% under `loser-share`
+   * 13%, 57.5% under the retired `capped-commission` 13% of the pool, 62.1% under `stake-share` 13% + a 15% tax. So the
+   * knob stays the operator's LIMIT — what it refuses is unchanged — and the officer's sentence no longer calls it the
+   * break-even: handed the chain's frozen fee (`PlaybookFee`), `judgeAsset` states that fee's own break-even beside it.
    *
    * ⛔ Symmetric on purpose. A 43% persistence is exactly as exploitable as a 57% one — the
    * player just bets the other way.
@@ -191,6 +196,25 @@ export type PlaybookVerdict = {
   /** True when level 2 may be overridden with a recorded reason. Level 3 is never overridable. */
   overridable: boolean;
 };
+
+/**
+ * ⭐ THE FEE A CHAIN ON THIS ASSET FREEZES, reduced to what the directional gate's sentence needs (FEE-TAX-2026-10, R2c).
+ * Derived by the caller from the chain's FROZEN rate profile through the payout engine (`playbookFeeFor` in
+ * `updown-playbook-store.ts`) — never typed here, because this module imports nothing and every fee model has its own.
+ */
+export type PlaybookFee = {
+  /** The model and its rate as the officer reads them — `describeFeeModel`'s caption ("loser-share 13%", "13% of stakes"). */
+  caption: string;
+  /** The win rate on decided rounds at which betting a BALANCED round breaks even against this fee: 1 / (what a winner
+   *  gets back per shilling staked there). 53.5% under loser-share 13%; 62.1% under stake-share 13% + 15%. */
+  breakEvenWinRate: number;
+};
+
+/** A fee whose break-even is a usable win rate, or null. */
+function usableFee(fee: PlaybookFee | null | undefined): PlaybookFee | null {
+  return fee && typeof fee.caption === "string" && fee.caption.length > 0
+    && Number.isFinite(fee.breakEvenWinRate) && fee.breakEvenWinRate > 0 && fee.breakEvenWinRate < 1 ? fee : null;
+}
 
 export type Playbook = {
   symbol: string;
@@ -379,12 +403,20 @@ export function buildPlaybook(
  * persist, a player betting the last direction beats the commission and the game stops being a
  * game. Both were measured on the tape before anything was listed —
  * GBP/USD's variance ratio is 0.50 and EUR/USD's naive directional strategy wins 58.6%.
+ *
+ * ⭐ `fee` (FEE-TAX-2026-10, R2c): the fee a chain on this asset freezes. Handed it, the directional sentences name the
+ * policy's figure as the LIMIT it is and state the frozen fee's own break-even beside it — "50% + the knob" is not the
+ * break-even of every model (see `maxDirectionalEdge`). Without it every sentence reads exactly as it always has. The
+ * LEVELS never depend on it: what is refused, discouraged or clear is the policy's alone.
  */
 export function judgeAsset(
   p: AssetProfile | undefined,
   policy: PlaybookPolicy,
   nowMs: number,
+  fee?: PlaybookFee | null,
 ): PlaybookVerdict {
+  const be = usableFee(fee);
+  const breakEven = be ? ` Against this chain's fee (${be.caption}) a naive strategy breaks even at ${pct(be.breakEvenWinRate)} on a balanced round.` : "";
   if (!profileUsable(p, policy, nowMs)) {
     return {
       level: 2, overridable: policy.allowOverrideOnWarn,
@@ -407,16 +439,23 @@ export function judgeAsset(
   if (worst && worst.e > policy.maxDirectionalEdge) {
     return {
       level: 3, overridable: false,
-      reason: `Betting ${worst.v < 0.5 ? "against" : "with"} the previous ${worst.d}-minute move wins ` +
-        `${pct(worst.v < 0.5 ? 1 - worst.v : worst.v)} of decided rounds — past the ` +
-        `${pct(0.5 + policy.maxDirectionalEdge)} at which a naive strategy beats the commission.`,
+      reason: be
+        ? `Betting ${worst.v < 0.5 ? "against" : "with"} the previous ${worst.d}-minute move wins ` +
+          `${pct(worst.v < 0.5 ? 1 - worst.v : worst.v)} of decided rounds — past the ` +
+          `${pct(0.5 + policy.maxDirectionalEdge)} limit.${breakEven}`
+        : `Betting ${worst.v < 0.5 ? "against" : "with"} the previous ${worst.d}-minute move wins ` +
+          `${pct(worst.v < 0.5 ? 1 - worst.v : worst.v)} of decided rounds — past the ` +
+          `${pct(0.5 + policy.maxDirectionalEdge)} at which a naive strategy beats the commission.`,
     };
   }
   if (worst && worst.e > policy.warnDirectionalEdge) {
     return {
       level: 2, overridable: policy.allowOverrideOnWarn,
-      reason: `A naive directional strategy wins ${pct(worst.v < 0.5 ? 1 - worst.v : worst.v)} of decided ` +
-        `${worst.d}-minute rounds — short of the ${pct(0.5 + policy.maxDirectionalEdge)} break-even, but worth watching.`,
+      reason: be
+        ? `A naive directional strategy wins ${pct(worst.v < 0.5 ? 1 - worst.v : worst.v)} of decided ` +
+          `${worst.d}-minute rounds — short of the ${pct(0.5 + policy.maxDirectionalEdge)} limit, but worth watching.${breakEven}`
+        : `A naive directional strategy wins ${pct(worst.v < 0.5 ? 1 - worst.v : worst.v)} of decided ` +
+          `${worst.d}-minute rounds — short of the ${pct(0.5 + policy.maxDirectionalEdge)} break-even, but worth watching.`,
     };
   }
   // ⛔ THE VARIANCE RATIO NEVER BLOCKS, AND THAT IS A DELIBERATE CORRECTION.
@@ -430,9 +469,13 @@ export function judgeAsset(
   if (Number.isFinite(prof.varianceRatio30) && drift > policy.maxVarianceRatioDrift) {
     return {
       level: 2, overridable: policy.allowOverrideOnWarn,
-      reason: `Variance ratio ${prof.varianceRatio30.toFixed(2)} against a fair-market 1.00 — this tape ` +
-        `${prof.varianceRatio30 < 1 ? "reverses" : "trends"} more than a coin flip should. Not yet ` +
-        `exploitable against the commission, but the margin is thinner than it looks.`,
+      reason: be
+        ? `Variance ratio ${prof.varianceRatio30.toFixed(2)} against a fair-market 1.00 — this tape ` +
+          `${prof.varianceRatio30 < 1 ? "reverses" : "trends"} more than a coin flip should. Not yet past the ` +
+          `directional limit, but the margin is thinner than it looks.${breakEven}`
+        : `Variance ratio ${prof.varianceRatio30.toFixed(2)} against a fair-market 1.00 — this tape ` +
+          `${prof.varianceRatio30 < 1 ? "reverses" : "trends"} more than a coin flip should. Not yet ` +
+          `exploitable against the commission, but the margin is thinner than it looks.`,
     };
   }
   return { level: 1, overridable: true, reason: `Tape behaves like a fair market (variance ratio ${prof.varianceRatio30.toFixed(2)}).` };

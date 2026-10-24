@@ -37,9 +37,10 @@ import { UpDownBetReceiptModal } from "./updown-bet-receipt-modal";
 import type { UpDownReceiptInfo } from "@/lib/updown-receipt";
 import { stakeChipLabel } from "./stake-math";
 import { noticeBody } from "@/components/ui/empty-state-text";
+import { HouseLeanWarning } from "@/components/markets/house-lean-warning";
 // ⭐ D2 · ONE RULE for "which side is empty", read from the round's RAW pools and shared with the card and the round
 // page — see `@/lib/updown-pricing`. The buttons quote no multiplier (the owner's ruling of 2026-10-14).
-import { emptySideOf, type UpDownPricing } from "@/lib/updown-pricing";
+import { emptySideOf, upDownNoticeEitherSide, type UpDownPricing } from "@/lib/updown-pricing";
 
 type Bet = ReturnType<typeof useUpDownQuickBet>;
 
@@ -147,6 +148,11 @@ export function UpDownStakeControls({
     : empty === "UP" ? t.market.udNobodyBacked.replace("{side}", t.market.udUp)
     : empty === "DOWN" ? t.market.udNobodyBacked.replace("{side}", t.market.udDown)
     : null;
+  // ⭐ FEE-TAX-2026-10 · a stake-share round's notice for a control that offers BOTH sides (`upDownNoticeEitherSide`):
+  // the standing line, and the below-stake warning naming the side whose win would pay back less than this stake. ⛔ It
+  // states NO figure here — these choices quote nothing before the commit (the owner's ruling of 2026-10-14); the round
+  // page's confirm panel and the receipt carry the figures. Null on every older round.
+  const notice = upDownNoticeEitherSide(pricing, bet.stakeReady ? bet.stake : null);
   const flash = usePlacePulse(bet.justPlaced?.nonce);
   const flashSide = bet.justPlaced?.side;
   const inputRef = useRef<HTMLInputElement>(null);
@@ -260,6 +266,10 @@ export function UpDownStakeControls({
           balance cannot cover it (UD-1: a doomed tap is prevented, never round-tripped),
           and once the lock has passed on the server-anchored clock (UD-2). */}
       {/* UD-9 · the spinner acknowledges a tap; repeat taps remain repeat bets. */}
+      {/* FEE-TAX-2026-10 · the below-stake warning stands ABOVE the two buttons, because a tap on one of them places. */}
+      {notice?.belowSide && (
+        <HouseLeanWarning level="below" stakeShare below={{ side: sideWord(t, notice.belowSide, "UPDOWN") }} className={compact ? "mb-1" : "mb-2"} />
+      )}
       <UpDownSidePair assetName={assetName} onPick={bet.place}
         amount={bet.stakeReady ? bet.stake : null}
         disabled={!bet.stakeReady || bet.insufficient || bet.locallyLocked}
@@ -310,6 +320,14 @@ export function UpDownStakeControls({
           <I.info s={11} className="mt-[2px] shrink-0" />
           {/* R10-B (round 10's read, tile 166): the note holds "dau lako" / "your stake" like every notice body. */}
           <span>{noticeBody(emptyCopy)}</span>
+        </p>
+      )}
+      {/* FEE-TAX-2026-10 · the standing line on BOTH sizes — the board card is where most bets are placed — in the empty
+          side's factual register: a winning bet can return less than its stake when its side ends much bigger. */}
+      {notice && (
+        <p className={cn("flex items-start gap-1 text-body-sm leading-[1.45] text-text-faint break-keep [overflow-wrap:anywhere]", compact ? "mt-1" : "mt-1.5")} data-ss-standing="">
+          <I.info s={11} className="mt-[2px] shrink-0" />
+          <span>{noticeBody(t.market.ssStanding)}</span>
         </p>
       )}
       {/* ⛔ NO ESTIMATE NOTE HERE ANY MORE: it explained the `× N` these buttons no longer print (the owner's ruling of

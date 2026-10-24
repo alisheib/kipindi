@@ -23,11 +23,11 @@ export default function Loading() {
             ⚠️ The loser-share warning card above it is CONDITIONAL on `config.feeModel`
             and is deliberately not ghosted: the capped-fee model is the standing one. */}
         <SkCard lines={5} title={false} />
-        {/* Fee simulator — titled. THREE inputs on the page's own
-            `grid-cols-2 lg:grid-cols-4` ladder (fee-simulator.tsx:87), then three result
-            strips of the same shape below them. */}
+        {/* Fee simulator — titled. The law simulated and the example books (FEE-TAX-2026-10, R2c), then the
+            four inputs on the page's own `grid-cols-2 lg:grid-cols-4` ladder, then the result strips of the
+            same shape below them. */}
         <SkFormCard
-          fields={3}
+          fields={5}
           titleW="w-[128px]"
           cols="grid-cols-2 lg:grid-cols-4"
           afterFields={
@@ -37,16 +37,22 @@ export default function Loading() {
             </div>
           }
         />
-        {/* Global rates — titled. ⛔ FOURTEEN fields on `md:grid-cols-2`
-            (config-form.tsx:90-201), not four on `sm:grid-cols-2`: the old ghost drew two
-            field rows for seven, ~380px short, then missed the nested fee-model panel
-            below them entirely. Fields are the kit `Input` at its default size, i.e.
-            `--h-input` 44 — NOT the `sm` rung. */}
+        {/* Fees & taxes — titled (FEE-TAX-2026-10, R2c). ⛔ TWENTY-ONE fields on `md:grid-cols-2` under
+            the default model: the polls panel's eleven (the model and its total, Platform, Operator, the
+            estimate and its switch, the capped pair, the winning tax, TRA and GBT) and the ten other platform
+            rates — then the model's description and Up & Down's panel (its profile, its chains, its three
+            fields and the reason). Fields are the kit `Input` at its default size, i.e. `--h-input` 44 — NOT
+            the `sm` rung. */}
         <SkFormCard
-          fields={14}
+          fields={21}
           titleW="w-40"
           cols="md:grid-cols-2"
-          afterFields={<SkBar className="h-[180px] w-full rounded-lg" />}
+          afterFields={
+            <div className="space-y-3">
+              <SkBar className="h-[72px] w-full rounded-md" />
+              <SkBar className="h-[360px] w-full rounded-lg" />
+            </div>
+          }
         />
         {/* Per-market overrides — titled; cells are `p-3`. */}
         <SkTableCard cols={5} rows={4} cellPy={16} />

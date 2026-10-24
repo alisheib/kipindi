@@ -55,7 +55,11 @@ export type SheetSeed = {
   yesPool: number;
   noPool: number;
   rates: EstimateRates | null;
+  /** `{pct}` — the market's frozen fee per its model (`feePctFor`); null under capped-commission. */
   feePct: number | null;
+  /** `{tax}` — a stake-share market's frozen winnings tax (FEE-TAX-2026-10); null or absent under every other model, and
+   *  absent from a seed rendered before it existed. */
+  taxPct?: number | null;
   min: number;
   max: number;
   /** When betting closes, ISO; null when the market carries neither close nor resolution time. */

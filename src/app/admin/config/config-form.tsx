@@ -16,12 +16,42 @@ import {
 } from "./actions";
 import type { RateConfig } from "@/lib/server/market-config";
 import { formatTzs } from "@/lib/utils";
-import { PLATFORM_MIN_STAKE, PLATFORM_MAX_STAKE } from "@/lib/payout";
-import { feeLawLive } from "@/lib/fee-law-gate";
+import { PLATFORM_MIN_STAKE, PLATFORM_MAX_STAKE, rateBp } from "@/lib/payout";
+import { feeLawLive, newFeeLawRefusal } from "@/lib/fee-law-gate";
 import { useMayAct, useActDisabledReason } from "@/components/admin/act-gate";
 
+/**
+ * Every field the global form draws, in the units the config STORES them in — the writer's baseline (FEE-TAX-2026-10,
+ * R2c; the independent review of R2a). The stake bounds are the STORED ones (the fields show the enforced, floored
+ * figures), so a stored bound under the platform floor differs from what is shown and is written by the next save.
+ */
+const GLOBAL_FORM_FIELDS = [
+  "commissionRate", "feeCeilingRate", "cashOutFeeRate", "freeExitGraceMinutes", "paidExitWindowMinutes", "withdrawalFeeRate",
+  "withdrawalGatewayShareRate", "minStake", "maxStake", "thinProfitRatio", "starterBalanceTzs", "objectionWindowHours",
+  "traTaxOnCommissionRate", "gbtLevyOnCommissionRate", "feeModel", "platformFeeRate", "operatorFeeRate", "estimatedWinningsRate",
+  "showEstimatedWinnings", "winningsTaxRate",
+] as const satisfies ReadonlyArray<keyof RateConfig>;
+
+/**
+ * The gate's own words as a STATE — for a control drawn disabled while the new law is not in force — rather than as a
+ * refusal: nothing was attempted, so its closing "Nothing was changed." is dropped. `null` once the law is in force.
+ */
+export function lawNotInForce(): string | null {
+  const shut = newFeeLawRefusal();
+  return shut === null ? null : shut.replace(/\s*Nothing was changed\.\s*$/, "");
+}
+
+function globalBaseline(config: RateConfig, storedStake: { minStake: number; maxStake: number } | null): Partial<RateConfig> {
+  const out: Partial<RateConfig> = {};
+  for (const k of GLOBAL_FORM_FIELDS) (out as Record<string, unknown>)[k] = config[k];
+  if (storedStake) { out.minStake = storedStake.minStake; out.maxStake = storedStake.maxStake; }
+  return out;
+}
+
 /** `storedStake` — the global bounds as stored. The form shows the ENFORCED ones (floored on read, 2026-10-07); when a
- *  stored value differs, the hint says both, and saving the form writes the enforced value back. */
+ *  stored value differs, the hint says both, and saving the form writes the enforced value back.
+ *  ⭐ `config` is the row READ FRESH (`readMarketConfigFresh`, the page's read): the form is drawn from what is stored now,
+ *  never this container's boot copy, and posts what it was drawn with as its `baseline`. */
 export function GlobalConfigForm({ config, storedStake = null }: { config: RateConfig; storedStake?: { minStake: number; maxStake: number } | null }) {
   // A1 — /admin/config is the `accounting` domain, and AUDITOR + COMPLIANCE both hold
   // accounting VIEW without ACT. The rate values stay readable — a read-only officer needs
@@ -70,7 +100,8 @@ export function GlobalConfigForm({ config, storedStake = null }: { config: RateC
         toast({ title: "Couldn't update", description: r.error, variant: "danger" });
       } else {
         markSaved();
-        setSavedShowEst(fd.get("showEstimatedWinnings") === "true");
+        // ⚠️ The switch is posted only when it CHANGED (see `drawn`): an unchanged one keeps what was last saved.
+        setSavedShowEst((was) => (fd.has("showEstimatedWinnings") ? fd.get("showEstimatedWinnings") === "true" : was));
         router.refresh();
         deferToast({
           title: "Global config updated",
@@ -81,21 +112,68 @@ export function GlobalConfigForm({ config, storedStake = null }: { config: RateC
     });
   };
 
+  const commPct = (config.commissionRate * 100).toFixed(1);
+  const ceilPct = (config.feeCeilingRate * 100).toFixed(1);
+  const cashOutPct = (config.cashOutFeeRate * 100).toFixed(1);
+  const wdrPct = (config.withdrawalFeeRate * 100).toFixed(2);
+  const gwPct = (config.withdrawalGatewayShareRate * 100).toFixed(2);
+  const traPct = (config.traTaxOnCommissionRate * 100).toFixed(1);
+  const gbtPct = (config.gbtLevyOnCommissionRate * 100).toFixed(1);
+  // To the hundredth, trimmed ("3", "6.5", "3.25"): the stake-share arithmetic works in whole basis points, so a figure
+  // drawn to one decimal could show 3.3 for a stored 3.25.
+  const platformPct = String(Number((config.platformFeeRate * 100).toFixed(2)));
+  const operatorPct = String(Number((config.operatorFeeRate * 100).toFixed(2)));
+  const estPct = (config.estimatedWinningsRate * 100).toFixed(0);
+  const loserSharePct = ((config.platformFeeRate + config.operatorFeeRate) * 100).toFixed(1);
+  // FEE-TAX-2026-10 · the fee on every stake as the stake-share arithmetic charges it (whole basis points), and the saved
+  // winnings tax — EMPTY until an officer types one: there is no default tax (`market-config.ts`).
+  const stakeSharePctText = String(rateBp(config.platformFeeRate + config.operatorFeeRate) / 100);
+  const winTaxPct = config.winningsTaxRate === undefined ? "" : String(Number((config.winningsTaxRate * 100).toFixed(2)));
+  // ⛔ THE NEW LAW'S GATE, read as every door reads it: while it is shut the stake-share option and the winning tax are
+  // drawn DISABLED, with the gate's own words — so neither is ever posted, and an unrelated save cannot be refused for them.
+  const lawLive = feeLawLive();
+  const lawShut = lawNotInForce();
+
+  /**
+   * ⭐ THE STRINGS EVERY FIELD WAS DRAWN WITH (FEE-TAX-2026-10, R2c; the independent review of R2a). A save sends only the
+   * fields the officer CHANGED — never the values a page opened minutes ago was drawn with, which a stale container would
+   * otherwise write back over another officer's save — beside the `baseline` the writer compares them with. It also ends
+   * a quieter rewrite: the ceiling is drawn rounded ("33.3"), so every save used to store 0.333 over an exact ⅓.
+   */
+  const drawn: Record<string, string> = {
+    commissionRate: commPct, feeCeilingRate: ceilPct, cashOutFeeRate: cashOutPct,
+    freeExitGraceMinutes: String(config.freeExitGraceMinutes), paidExitWindowMinutes: String(config.paidExitWindowMinutes),
+    withdrawalFeeRate: wdrPct, withdrawalGatewayShareRate: gwPct,
+    // The bounds as STORED: a stored figure under the floor differs from the enforced one shown, so it is sent.
+    minStake: String(storedStake?.minStake ?? config.minStake), maxStake: String(storedStake?.maxStake ?? config.maxStake),
+    thinProfitRatio: config.thinProfitRatio.toFixed(2), starterBalanceTzs: String(config.starterBalanceTzs ?? 0),
+    objectionWindowHours: String(config.objectionWindowHours),
+    traTaxOnCommissionRate: traPct, gbtLevyOnCommissionRate: gbtPct,
+    feeModel: config.feeModel, platformFeeRate: platformPct, operatorFeeRate: operatorPct, estimatedWinningsRate: estPct,
+    winningsTaxRate: winTaxPct, showEstimatedWinnings: String(savedShowEst),
+  };
+
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
     // The checkbox posts nothing when unchecked — set it explicitly from state so
     // "off" is an explicit false, not "leave unchanged".
     fd.set("showEstimatedWinnings", showEst ? "true" : "false");
+    // Only what was changed is sent (see `drawn`), with the values this form was drawn with, as stored: the writer's
+    // `baseline`, which refuses a changed field another officer moved since. ⚠️ Set here, never a hidden input — the
+    // dirty check snapshots every field, and a baseline that a refresh redraws would read as an unsaved change.
+    for (const [name, was] of Object.entries(drawn)) if (fd.get(name) === was) fd.delete(name);
+    fd.set("baseline", JSON.stringify(globalBaseline(config, storedStake)));
 
     // Money-model change? (the fee model, its two rate slices, the estimate rate,
-    // or the show-estimate toggle) → confirm first, it reprices EVERY future poll.
+    // the winning tax, or the show-estimate toggle) → confirm first, it reprices EVERY future poll.
     const num = (v: FormDataEntryValue | null) => (v === null || v === "" ? null : Number(v) / 100);
     const changed =
       String(fd.get("feeModel") ?? config.feeModel) !== config.feeModel ||
       (num(fd.get("platformFeeRate")) !== null && num(fd.get("platformFeeRate")) !== config.platformFeeRate) ||
       (num(fd.get("operatorFeeRate")) !== null && num(fd.get("operatorFeeRate")) !== config.operatorFeeRate) ||
       (num(fd.get("estimatedWinningsRate")) !== null && num(fd.get("estimatedWinningsRate")) !== config.estimatedWinningsRate) ||
+      (num(fd.get("winningsTaxRate")) !== null && num(fd.get("winningsTaxRate")) !== config.winningsTaxRate) ||
       showEst !== config.showEstimatedWinnings;
     if (changed) {
       setConfirmFd(fd);
@@ -104,41 +182,193 @@ export function GlobalConfigForm({ config, storedStake = null }: { config: RateC
     runSave(fd);
   };
 
-  const commPct = (config.commissionRate * 100).toFixed(1);
-  const ceilPct = (config.feeCeilingRate * 100).toFixed(1);
-  const cashOutPct = (config.cashOutFeeRate * 100).toFixed(1);
-  const wdrPct = (config.withdrawalFeeRate * 100).toFixed(2);
-  const gwPct = (config.withdrawalGatewayShareRate * 100).toFixed(2);
-  const traPct = (config.traTaxOnCommissionRate * 100).toFixed(1);
-  const gbtPct = (config.gbtLevyOnCommissionRate * 100).toFixed(1);
-  const platformPct = (config.platformFeeRate * 100).toFixed(1);
-  const operatorPct = (config.operatorFeeRate * 100).toFixed(1);
-  const estPct = (config.estimatedWinningsRate * 100).toFixed(0);
-  const loserSharePct = ((config.platformFeeRate + config.operatorFeeRate) * 100).toFixed(1);
-
   return (
     <form ref={formRef} {...formProps} onSubmit={onSubmit} className="space-y-3">
+      {/* ── FEES & TAXES (FEE-TAX-2026-10, R2c) ─────────────────────────────────
+          The polls' fee model, its rates labelled by the base each model charges on, the winning tax and the two levies on
+          our fees. Applies to FUTURE polls only: every existing poll keeps the model + rates it froze at creation, so the
+          calculations never mix. ⛔ The stake-share option and the winning tax are drawn DISABLED with the gate's reason
+          while `fee-law-gate.ts` is shut — the server refuses both too (`validate`). */}
+      <div className="rounded-lg border border-border bg-bg-overlay p-3 space-y-3">
+        <div>
+          <p className="font-mono text-micro uppercase eyebrow text-text-subtle">Polls · fee model and taxes</p>
+          <p className="mt-0.5 text-body-sm text-text-muted">
+            Applies to <strong>new polls only</strong>. Existing polls keep the model they were created under —
+            the calculations never mix.
+          </p>
+        </div>
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          <Field label="Fee model (new polls)" hint="How new polls charge their fee and what players see before betting.">
+            <Select
+              name="feeModel"
+              ariaLabel="Fee model for new polls"
+              disabled={!mayAct}
+              disabledReason={disabledReason}
+              defaultValue={config.feeModel}
+              onChange={(v) => setFeeModel(v as RateConfig["feeModel"])}
+              options={[
+                { value: "loser-share", label: "Loser-share — % of the losing pool" },
+                // The new law, named with the rate it would charge from today's Platform + Operator. Shown always, chosen
+                // only once the gate is open — greyed with the plain reason, never hidden (the Select's own rule).
+                {
+                  value: "stake-share",
+                  label: `Stake-share — ${stakeSharePctText}% of every stake`,
+                  disabled: !lawLive,
+                  ...(lawShut ? { hint: lawShut } : {}),
+                },
+                { value: "capped-commission", label: "Capped commission — % of the pool, capped" },
+              ]}
+            />
+          </Field>
+          {feeModel === "loser-share" ? (
+            <Field
+              label="Total loser-share fee"
+              hint="Platform + Operator, charged on the losing side. Winners split the rest of the pool."
+            >
+              <Input name="_loserShareTotal" type="text" defaultValue={`${loserSharePct}% of the losing pool`} mono disabled />
+            </Field>
+          ) : feeModel === "stake-share" ? (
+            <Field
+              label="Total fee on every stake"
+              hint="Platform + Operator, charged on every stake, on both sides — the same whichever side wins."
+            >
+              <Input name="_stakeShareTotal" type="text" defaultValue={`${stakeSharePctText}% of every stake`} mono disabled />
+            </Field>
+          ) : null}
+        </div>
+
+        {/* What the selected model does — updates on every change so the officer
+            always sees exactly what new polls will apply. */}
+        <div className="rounded-md border border-border/70 bg-bg-base/40 px-3 py-2 text-body-sm leading-relaxed text-text-muted">
+          {feeModel === "stake-share" ? (
+            <>
+              <strong className="text-text">Stake-share.</strong> When a poll resolves, the fee is a fixed percentage of
+              <strong> every</strong> stake, on both sides (Platform + Operator), and the winning tax is withheld from the
+              losing side&apos;s net stakes for TRA. Winners get their stake less its fee, plus a share of the rest. On a
+              lopsided poll a winner can be paid back less than their stake — players are warned on the bet screen first.
+            </>
+          ) : feeModel === "loser-share" ? (
+            <>
+              <strong className="text-text">Loser-share.</strong> When a poll resolves, the fee is a fixed
+              percentage of the <strong>losing</strong> side&apos;s pool (Platform + Operator, set below). Winners get
+              their stake back plus a share of the rest of the pool. Players are shown an estimated
+              &ldquo;possible winnings&rdquo; before betting. The fee depends on which side loses.
+            </>
+          ) : (
+            <>
+              <strong className="text-text">Capped commission (legacy).</strong> Retired 2026-07-23 for polls and
+              2026-08-14 for Up &amp; Down; it is shown here because markets created before those dates froze it and
+              settle by it forever. The fee is a percentage of the whole pool, but never more than a third of the
+              smaller side, and it is the <strong>same whichever side wins</strong>.
+              No payout figure is shown to players before they bet. Uses the commission + ceiling fields below.
+            </>
+          )}
+        </div>
+
+        {/* The rates the selected model reads, each labelled by the base it charges on. */}
+        {feeModel !== "capped-commission" ? (
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <Field
+              label={feeModel === "stake-share" ? "Platform fee (% of every stake)" : "Platform fee (% of the losing pool)"}
+              hint={feeModel === "stake-share"
+                ? `Current ${platformPct}%. Slice of EVERY stake, on both sides.`
+                : `Current ${platformPct}%. Slice of the losing pool (default 3%).`}
+            >
+              <Input name="platformFeeRate" type="number" step="0.01" min="0" max="100" defaultValue={platformPct} mono />
+            </Field>
+            <Field
+              label={feeModel === "stake-share" ? "Operator fee (% of every stake)" : "Operator fee (% of the losing pool)"}
+              hint={feeModel === "stake-share"
+                ? `Current ${operatorPct}%. Slice of EVERY stake, on both sides. TRA + GBT come OUT of our fees, not the player.`
+                : `Current ${operatorPct}%. Slice of the losing pool (default 10%). TRA + GBT come OUT of this, not the player.`}
+            >
+              <Input name="operatorFeeRate" type="number" step="0.01" min="0" max="100" defaultValue={operatorPct} mono />
+            </Field>
+            {feeModel === "loser-share" ? (
+              <>
+                <Field
+                  label="Estimated-winnings bonus (%)"
+                  hint={`Current ${estPct}%. The fixed pre-bet “possible winnings” a player sees = stake × ${(1 + config.estimatedWinningsRate).toFixed(2)}. A marketing ESTIMATE, not the real payout — the disclaimer says so (default 50% → 1.5×).`}
+                >
+                  <Input name="estimatedWinningsRate" type="number" step="1" min="0" max="500" defaultValue={estPct} mono />
+                </Field>
+                <Field label="Show estimate to players" hint="When on, loser-share polls show the pre-bet estimate + disclaimer. When off, players see only qualitative copy.">
+                  <div className="flex items-center gap-2.5">
+                    <Toggle
+                      on={showEst}
+                      onClick={() => setShowEst((v) => !v)}
+                      disabled={!mayAct}
+                      aria-label="Show the possible-winnings estimate to players before betting"
+                    />
+                    <span className="text-[13px] text-text-muted">
+                      {showEst ? "Shown pre-bet" : "Hidden pre-bet"}
+                    </span>
+                  </div>
+                </Field>
+              </>
+            ) : null}
+          </div>
+        ) : null}
+
+        {/* The capped-commission pair — the selected model's own rates when it is capped; under any other model inert for
+            new polls, and still drawn so the stored figures stay in view (and a switch back has its rates). */}
+        <div className="space-y-2">
+          {feeModel !== "capped-commission" ? (
+            <p className="text-body-sm text-text-muted">Capped commission (legacy) — not used by the selected model.</p>
+          ) : null}
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <Field
+              label="Commission rate (%)"
+              hint={`Current ${commPct}%. Our cut, as a share of the WHOLE pool — capped by the fee ceiling.`}
+            >
+              <Input name="commissionRate" type="number" step="0.1" min="0" max="30" defaultValue={commPct} mono />
+            </Field>
+            {/* THE CEILING. This one field is what makes "a winner is never paid below
+                his stake" true under the capped model. It is not a tuning knob like the others — read the hint. */}
+            <Field
+              label="Fee ceiling (% of the smaller side)"
+              hint={
+                config.feeCeilingRate === 0
+                  ? `⚠ Current 0.0%. A 0% ceiling zeroes the fee on EVERY poll (fee = min(commission×pool, 0) = 0) — the house collects NO commission and winners keep the entire pool. Set 0 only for a deliberate free / goodwill period; otherwise raise it (e.g. 33.3%). Your commission rate above has no effect while this is 0.`
+                  : config.feeCeilingRate > 0.5
+                  ? `⚠ Current ${ceilPct}%. Above 50% the house takes MORE than all the winners combined. Winners still never lose money, but check this is what you mean.`
+                  : `Current ${ceilPct}%. The fee can never exceed this share of the SMALLER side. The smaller side is the prize — cap the fee below it and a winning bet can never be paid less than it staked. At 33.3% winners always keep at least twice what we take.`
+              }
+            >
+              <Input name="feeCeilingRate" type="number" step="0.1" min="0" max="100" defaultValue={ceilPct} mono />
+            </Field>
+          </div>
+        </div>
+
+        {/* The winning tax and the two levies on our fees — three different things, said so. */}
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          <Field
+            label="Winning tax (%)"
+            hint={lawShut ?? (feeModel === "stake-share"
+              ? (winTaxPct === ""
+                ? "None saved yet, and there is no default — a stake-share poll cannot be created until one is. Withheld from each winner's share of the losing side's net stakes, for TRA."
+                : `Current ${winTaxPct}%. Withheld from each winner's share of the losing side's net stakes, for TRA — it reduces what winners are paid.`)
+              : `${winTaxPct === "" ? "None saved yet, and there is no default." : `Current ${winTaxPct}%.`} Applies only to stake-share polls; inert under the selected model.`)}
+          >
+            <Input name="winningsTaxRate" type="number" step="0.01" min="0" max="50" defaultValue={winTaxPct} placeholder="—" mono disabled={!mayAct || !lawLive} />
+          </Field>
+          <Field
+            label="TRA (% of our fees)"
+            hint={`Current ${traPct}% of every fee we earn, to TRA — paid out of our fee, never by a player. (The winning tax is a separate thing.)`}
+          >
+            <Input name="traTaxOnCommissionRate" type="number" step="0.1" min="0" max="50" defaultValue={traPct} mono />
+          </Field>
+          <Field
+            label="GBT (% of our fees)"
+            hint={`Current ${gbtPct}% of every fee we earn, to GBT — paid out of our fee, never by a player.`}
+          >
+            <Input name="gbtLevyOnCommissionRate" type="number" step="0.1" min="0" max="50" defaultValue={gbtPct} mono />
+          </Field>
+        </div>
+      </div>
+
+      <p className="font-mono text-micro uppercase eyebrow text-text-subtle">Other platform rates</p>
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-        <Field
-          label="Commission rate (%)"
-          hint={`Current ${commPct}%. Our cut, as a share of the WHOLE pool — capped by the fee ceiling below.`}
-        >
-          <Input name="commissionRate" type="number" step="0.1" min="0" max="30" defaultValue={commPct} mono />
-        </Field>
-        {/* THE CEILING. This one field is what makes "a winner is never paid below
-            his stake" true. It is not a tuning knob like the others — read the hint. */}
-        <Field
-          label="Fee ceiling (% of the smaller side)"
-          hint={
-            config.feeCeilingRate === 0
-              ? `⚠ Current 0.0%. A 0% ceiling zeroes the fee on EVERY poll (fee = min(commission×pool, 0) = 0) — the house collects NO commission and winners keep the entire pool. Set 0 only for a deliberate free / goodwill period; otherwise raise it (e.g. 33.3%). Your commission rate above has no effect while this is 0.`
-              : config.feeCeilingRate > 0.5
-              ? `⚠ Current ${ceilPct}%. Above 50% the house takes MORE than all the winners combined. Winners still never lose money, but check this is what you mean.`
-              : `Current ${ceilPct}%. The fee can never exceed this share of the SMALLER side. The smaller side is the prize — cap the fee below it and a winning bet can never be paid less than it staked. At 33.3% winners always keep at least twice what we take.`
-          }
-        >
-          <Input name="feeCeilingRate" type="number" step="0.1" min="0" max="100" defaultValue={ceilPct} mono />
-        </Field>
         <Field
           label="Cash-out fee (%)"
           hint={`Current ${cashOutPct}%. Only applies if a paid-exit window is set below (0 = no paid exit, so this is unused). Charged on an early exit after the free window and booked to the house; holding to settlement is unaffected.`}
@@ -228,119 +458,6 @@ export function GlobalConfigForm({ config, storedStake = null }: { config: RateC
             mono
           />
         </Field>
-        <Field
-          label="TRA tax on commission (%)"
-          hint={`Current ${traPct}%. Percentage of the total commission paid to TRA. Does NOT affect player payouts.`}
-        >
-          <Input name="traTaxOnCommissionRate" type="number" step="0.1" min="0" max="50" defaultValue={traPct} mono />
-        </Field>
-        <Field
-          label="GBT levy on commission (%)"
-          hint={`Current ${gbtPct}%. Percentage of the total commission paid to GBT. Does NOT affect player payouts.`}
-        >
-          <Input name="gbtLevyOnCommissionRate" type="number" step="0.1" min="0" max="50" defaultValue={gbtPct} mono />
-        </Field>
-      </div>
-
-      {/* ── FEE MODEL (owner decision 2026-07-23) ─────────────────────────────
-          Applies to FUTURE polls only. Every existing poll keeps the model +
-          rates it froze at creation, so the two calculations never mix. */}
-      <div className="rounded-lg border border-border bg-bg-overlay p-3 space-y-3">
-        <div>
-          <p className="font-mono text-micro uppercase eyebrow text-text-subtle">Fee model</p>
-          <p className="mt-0.5 text-body-sm text-text-muted">
-            Applies to <strong>new polls only</strong>. Existing polls keep the model they were created under —
-            the two calculations never mix.
-          </p>
-        </div>
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-          <Field label="Fee model (new polls)" hint="How new polls charge their fee and what players see before betting.">
-            <Select
-              name="feeModel"
-              ariaLabel="Fee model for new polls"
-              disabled={!mayAct}
-              disabledReason={disabledReason}
-              defaultValue={config.feeModel}
-              onChange={(v) => setFeeModel(v as RateConfig["feeModel"])}
-              options={[
-                { value: "loser-share", label: "Loser-share — % of the losing pool" },
-                { value: "capped-commission", label: "Capped commission — % of the pool, capped" },
-                // FEE-TAX-2026-10 · offered only once `fee-law-gate.ts` is open — or when it is what is stored, so the
-                // select can never show one law while posting another. R2c: the Fees & taxes card replaces this select.
-                ...(feeLawLive() || config.feeModel === "stake-share"
-                  ? [{ value: "stake-share", label: "Stake-share — % of every stake" }]
-                  : []),
-              ]}
-            />
-          </Field>
-          {feeModel === "loser-share" ? (
-            <Field
-              label="Total loser-share fee"
-              hint="Platform + Operator, charged on the losing side. Winners split the rest of the pool."
-            >
-              <Input name="_loserShareTotal" type="text" defaultValue={`${loserSharePct}% of the losing pool`} mono disabled />
-            </Field>
-          ) : null}
-        </div>
-
-        {/* What the selected model does — updates on every change so the officer
-            always sees exactly what new polls will apply. */}
-        <div className="rounded-md border border-border/70 bg-bg-base/40 px-3 py-2 text-body-sm leading-relaxed text-text-muted">
-          {feeModel === "stake-share" ? (
-            /* FEE-TAX-2026-10 · never the capped wording below. R2c: the Fees & taxes card brings its rate fields. */
-            <>
-              <strong className="text-text">Stake-share.</strong> When a poll resolves, the fee is a fixed percentage of
-              <strong> every</strong> stake, on both sides (Platform + Operator), and a winnings tax is withheld from the
-              losing side&apos;s net stakes for TRA. Winners get their stake less its fee, plus a share of the rest. On a
-              lopsided poll a winner can be paid back less than their stake.
-            </>
-          ) : feeModel === "loser-share" ? (
-            <>
-              <strong className="text-text">Loser-share.</strong> When a poll resolves, the fee is a fixed
-              percentage of the <strong>losing</strong> side&apos;s pool (Platform + Operator, set below). Winners get
-              their stake back plus a share of the rest of the pool. Players are shown an estimated
-              &ldquo;possible winnings&rdquo; before betting. The fee depends on which side loses.
-            </>
-          ) : (
-            <>
-              <strong className="text-text">Capped commission (legacy).</strong> Retired 2026-07-23 for polls and
-              2026-08-14 for Up &amp; Down; it is shown here because markets created before those dates froze it and
-              settle by it forever. The fee is a percentage of the whole pool, but never more than a third of the
-              smaller side, and it is the <strong>same whichever side wins</strong>.
-              No payout figure is shown to players before they bet. Uses the commission + ceiling fields above.
-            </>
-          )}
-        </div>
-
-        {feeModel === "loser-share" ? (
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-            <Field label="Platform fee (%)" hint={`Current ${platformPct}%. Slice of the losing pool (default 3%).`}>
-              <Input name="platformFeeRate" type="number" step="0.1" min="0" max="100" defaultValue={platformPct} mono />
-            </Field>
-            <Field label="Operator fee (%)" hint={`Current ${operatorPct}%. Slice of the losing pool (default 10%). TRA + GBT come OUT of this, not the player.`}>
-              <Input name="operatorFeeRate" type="number" step="0.1" min="0" max="100" defaultValue={operatorPct} mono />
-            </Field>
-            <Field
-              label="Estimated-winnings bonus (%)"
-              hint={`Current ${estPct}%. The fixed pre-bet “possible winnings” a player sees = stake × ${(1 + config.estimatedWinningsRate).toFixed(2)}. A marketing ESTIMATE, not the real payout — the disclaimer says so (default 50% → 1.5×).`}
-            >
-              <Input name="estimatedWinningsRate" type="number" step="1" min="0" max="500" defaultValue={estPct} mono />
-            </Field>
-            <Field label="Show estimate to players" hint="When on, loser-share polls show the pre-bet estimate + disclaimer. When off, players see only qualitative copy.">
-              <div className="flex items-center gap-2.5">
-                <Toggle
-                  on={showEst}
-                  onClick={() => setShowEst((v) => !v)}
-                  disabled={!mayAct}
-                  aria-label="Show the possible-winnings estimate to players before betting"
-                />
-                <span className="text-[13px] text-text-muted">
-                  {showEst ? "Shown pre-bet" : "Hidden pre-bet"}
-                </span>
-              </div>
-            </Field>
-          </div>
-        ) : null}
       </div>
 
       {/* ⭐ THE TWO HALVES OF ONE TRUTH, both driven by the same `dirty`.
@@ -380,7 +497,10 @@ export function GlobalConfigForm({ config, storedStake = null }: { config: RateC
             operator what the save button will do, so it is now plain prose on
             text-body-sm, the smallest rung above the 12.5px reading floor. */}
         <p className="font-mono text-body-sm text-text-subtle">
-          A save is refused if any winner could be paid below their stake
+          {/* FEE-TAX-2026-10 · model-aware: under stake-share the floor is not a promise the law makes. */}
+          {feeModel === "stake-share"
+            ? "A save is refused if a rate is out of bounds. Under stake-share a winner can be paid below their stake — players are warned before they bet"
+            : "A save is refused if any winner could be paid below their stake"}
         </p>
       </div>
 
@@ -408,7 +528,10 @@ export function GlobalConfigForm({ config, storedStake = null }: { config: RateC
   );
 }
 
-export function MarketOverrideForm({ globalConfig }: { globalConfig: RateConfig }) {
+/** `existing` — every market's override as the page read it (fresh): the one for the market typed is posted as the
+ *  writer's `baseline` (`{}` when the page showed none), so an override another officer saved since is refused in words,
+ *  never written over (FEE-TAX-2026-10, R2c). */
+export function MarketOverrideForm({ globalConfig, existing = {} }: { globalConfig: RateConfig; existing?: Record<string, Partial<RateConfig>> }) {
   // A1 — /admin/config is the `accounting` domain, and AUDITOR + COMPLIANCE both hold
   // accounting VIEW without ACT. The rate values stay readable — a read-only officer needs
   // to see what the platform charges — and only the writes are gated.
@@ -422,6 +545,9 @@ export function MarketOverrideForm({ globalConfig }: { globalConfig: RateConfig 
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
+    // ⚠️ Set here, not drawn as a field: this form offers exactly the two inputs its action consumes (F3).
+    const typed = String(fd.get("marketId") ?? "").trim();
+    fd.set("baseline", JSON.stringify(Object.hasOwn(existing, typed) ? existing[typed] : {}));
     start(async () => {
       const r = await setMarketOverrideAction(fd);
       if (!r.ok) {

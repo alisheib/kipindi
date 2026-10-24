@@ -13,7 +13,7 @@ import { findProvider, type FeedProviderId } from "@/lib/updown-providers";
 import {
   createAsset, updateAsset, setAssetEnabled,
   createChain, updateChain, setChainState,
-  setUpDownConfig,
+  setUpDownConfig, type UpDownConfig,
   ALLOWED_DURATIONS, type Duration,
   archiveChain, unarchiveChain, deleteChain,
 } from "@/lib/server/updown-config";
@@ -405,6 +405,18 @@ export async function updateReadingMethodAction(formData: FormData) {
 export async function updateThresholdsAction(formData: FormData) {
   const session = await ensure(CONTROL_DOMAIN.updateThresholds, "updateThresholds");
   try {
+    // ⭐ THE VALUES THE FORM WAS DRAWN WITH (FEE-TAX-2026-10, R2c; the independent review of R2a): the writer applies only
+    // what differs from them and refuses a field another officer changed since the page was opened. ⛔ A post that
+    // carries none, or one that cannot be read, is refused — never treated as "no baseline", the overwrite this stops.
+    const rawBase = formData.get("baseline");
+    let baseline: Partial<UpDownConfig>;
+    try {
+      const v: unknown = typeof rawBase === "string" && rawBase !== "" ? JSON.parse(rawBase) : null;
+      if (!v || typeof v !== "object" || Array.isArray(v)) throw new Error("no baseline");
+      baseline = v as Partial<UpDownConfig>;
+    } catch {
+      return { ok: false as const, error: "This page's copy of the thresholds could not be compared with the saved ones. Reload the page and try again." };
+    }
     const marginPct = num(formData, "defaultMarginPct");
     const r = await setUpDownConfig({
       maxStalenessSeconds: num(formData, "maxStalenessSeconds"),
@@ -414,7 +426,7 @@ export async function updateThresholdsAction(formData: FormData) {
       defaultMaxStake: num(formData, "defaultMaxStake"),
       // Round margin: % in the UI → basis points (0.5% → 50). See UPDOWN-PRICING.md.
       defaultMarginBps: marginPct != null ? Math.round(marginPct * 100) : undefined,
-    }, session.userId);
+    }, session.userId, { baseline });
     if (!r.ok) return { ok: false as const, error: r.error };
     refresh();
     return { ok: true as const, warn: r.warn };

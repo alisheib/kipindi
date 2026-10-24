@@ -1245,6 +1245,31 @@ export const dict = {
       volumeSparkline: "Volume sparkline",
       crowdedWarning: "Upside is thin here — the other side is small.",
       thinUpsideNote: "The other side's stakes are the prize, so there isn't much to win. You will never be paid less than you staked for a correct call — but the profit here is small.",
+      /**
+       * FEE-TAX-2026-10 (R2c) · the bet screens of a market frozen under `stake-share` — a fee on every stake, a winnings tax
+       * on what the winners win (Ali's rulings of 2026-10-24) — and ONLY those: every older market keeps the words above.
+       * `stake-share-notice.ts` decides when each is drawn. ⛔ No rate is typed in any of them: {pct}, {fee} and {tax} are
+       * the market's frozen figures, {payout} and {stake} the engine's shillings, {side} the side's own word.
+       *   ssStanding     the standing line, on every stake-share bet screen (ruling 1: a win can pay back less than the stake)
+       *   ssNoTaker      a book with nobody on the other side yet (ruling 2: a one-sided market refunds every stake)
+       *   ssBelowTitle   the amber warning's title, when this side's win would pay back less than the stake
+       *   ssBelowBody    …its sentence with the figures, where a screen may state them
+       *   ssBelowSide    …and without them, on Up & Down's two-way choices (they quote nothing, the ruling of 2026-10-14)
+       *   ssOurFee · ssNetStake · ssIfWins · ssTaxWithheld   the confirm's receipt rows
+       *   ssFeeLine      the dial's line under its figure · ssFeeNote the Up & Down commit's note · ssHowItWorks the ⓘ
+       */
+      ssStanding: "A winning bet can return less than its stake when its side ends up much bigger than the other.",
+      ssNoTaker: "Full refund if nobody takes the other side.",
+      ssBelowTitle: "Less than you bet, even if you win",
+      ssBelowBody: "If {side} wins, you get back about {payout} for your {stake} — less than you bet — because the other side is small.",
+      ssBelowSide: "If {side} wins at this stake, you get back less than you bet — because the other side is small.",
+      ssOurFee: "Our fee · {pct}%",
+      ssNetStake: "Goes into the pool",
+      ssIfWins: "If {side} wins, you get about",
+      ssTaxWithheld: "Winnings tax withheld · {pct}%",
+      ssFeeLine: "Our {pct}% fee on this stake is {fee}, so {net} goes into the pool.",
+      ssFeeNote: "This figure is after our {fee}% fee on every stake and the {tax}% winnings tax.",
+      ssHowItWorks: "We take {fee}% of every stake, on both sides. If your side wins, you get back your stake less our fee, plus your share of the other side's stakes after our fee and a {tax}% winnings tax withheld for TRA. Until betting closes the figure moves with every bet.",
       noCommentsYet: "No comments yet — start the conversation.",
       commentsCapped: "Showing the {n} most recent of {total} comments.",
       holds: "holds", commentHidden: "hidden · under review",
@@ -3203,6 +3228,11 @@ export const dict = {
       howCta: "Got it, let's start",
       /** The estimate's footnote (§3), shared with S8's bet sheet. {pct} is the commission on the losing side. */
       estimateNote: "Estimate. The final amount depends on the pool when the market closes. Our {pct}% commission on the losing side is already deducted.",
+      /** FEE-TAX-2026-10 (R2c) · the same footnote for a market frozen under `stake-share`: {fee} its fee on every stake,
+       *  {tax} its winnings tax — the market's frozen figures, never typed. Every older market keeps `estimateNote`. */
+      ssEstimateNote: "Estimate. The final amount depends on the pool when the market closes. Our {fee}% fee on every stake and the {tax}% winnings tax are already deducted.",
+      /** …and the compact line's, beside `estimateNoteCompact`. */
+      ssEstimateNoteCompact: "Estimate · our {fee}% fee and the {tax}% winnings tax are already deducted.",
       /** The home's head: two lines, the second built from the side words. */
       headlineAsk: "Answer the question.",
       headlineSides: "{yes} or {no}.",
@@ -4888,6 +4918,18 @@ export const dict = {
       volumeSparkline: "Grafu ya ujazo",
       crowdedWarning: "Faida ni ndogo hapa — upande mwingine ni mdogo.",
       thinUpsideNote: "Dau la upande mwingine ndiyo zawadi, kwa hiyo hakuna kingi cha kushinda. Hutalipwa chini ya dau lako ukiwa sahihi — lakini faida hapa ni ndogo.",
+      ssStanding: "Hata ukishinda, unaweza kurudishiwa chini ya dau lako ikiwa upande wako utaishia kuwa mkubwa sana kuliko mwingine.",
+      ssNoTaker: "Dau lako litarudishwa kamili ikiwa hakuna atakayechukua upande mwingine.",
+      ssBelowTitle: "Chini ya dau lako, hata ukishinda",
+      ssBelowBody: "{side} ikishinda, unarudishiwa takriban {payout} kwa dau lako la {stake} — chini ya ulichoweka — kwa sababu upande mwingine ni mdogo.",
+      ssBelowSide: "{side} ikishinda kwa dau hili, unarudishiwa chini ya ulichoweka — kwa sababu upande mwingine ni mdogo.",
+      ssOurFee: "Ada yetu · {pct}%",
+      ssNetStake: "Kinachoingia bwawani",
+      ssIfWins: "{side} ikishinda, unapata takriban",
+      ssTaxWithheld: "Kodi ya ushindi inayokatwa · {pct}%",
+      ssFeeLine: "Ada yetu ya {pct}% kwa dau hili ni {fee}, kwa hiyo {net} kinaingia bwawani.",
+      ssFeeNote: "Kiasi hiki ni baada ya ada yetu ya {fee}% kwa kila dau na kodi ya ushindi ya {tax}%.",
+      ssHowItWorks: "Tunachukua {fee}% ya kila dau, pande zote mbili. Upande wako ukishinda, unarudishiwa dau lako ukiondoa ada yetu, pamoja na sehemu yako ya madau ya upande mwingine baada ya ada yetu na kodi ya ushindi ya {tax}% inayokatwa kwa ajili ya TRA. Hadi madau yafungwe, kiasi hubadilika kwa kila dau.",
       noCommentsYet: "Hakuna maoni bado — anza mazungumzo.",
       commentsCapped: "Inaonyesha maoni {n} ya hivi karibuni kati ya {total}.",
       holds: "ana", commentHidden: "imefichwa · inakaguliwa",
@@ -6392,6 +6434,8 @@ export const dict = {
       howExampleBody: "Dau {stake} kwenye {side} inayoonyesha ≈{mult}× → ukishinda unapata takriban {payout}. Ukikosea, unapoteza dau lako.",
       howCta: "Nimeelewa, anza",
       estimateNote: "Makadirio. Kiasi halisi hutegemea bwawa soko likifungwa. Kamisheni ya {pct}% imeshatolewa.",
+      ssEstimateNote: "Makadirio. Kiasi halisi hutegemea bwawa soko likifungwa. Ada yetu ya {fee}% ya kila dau na kodi ya ushindi ya {tax}% zimeshatolewa.",
+      ssEstimateNoteCompact: "Makadirio · ada ya {fee}% na kodi ya ushindi ya {tax}% zimeshatolewa.",
       headlineAsk: "Jibu swali.",
       headlineSides: "{yes} au {no}.",
       homeChipsAria: "Aina za maswali",
@@ -7921,6 +7965,18 @@ export const dict = {
       volumeSparkline: "成交量走势图",
       crowdedWarning: "此处收益空间较小——对方池子很小。",
       thinUpsideNote: "对方的投注就是奖金，所以可赢的不多。判断正确时您绝不会拿到低于本金的金额——但此处利润很小。",
+      ssStanding: "如果您这一方最终的投注额远大于另一方，即使获胜，您拿回的金额也可能低于您的投注额。",
+      ssNoTaker: "若无人投注另一方，您的投注将全额退还。",
+      ssBelowTitle: "即使获胜，您拿回的也少于您的投注额",
+      ssBelowBody: "若“{side}”获胜，您投注 {stake}，约可拿回 {payout}——少于您的投注额——因为另一方的投注很少。",
+      ssBelowSide: "以此投注额，若“{side}”获胜，您拿回的金额将少于您的投注额——因为另一方的投注很少。",
+      ssOurFee: "我们的费用 · {pct}%",
+      ssNetStake: "计入奖池",
+      ssIfWins: "若“{side}”获胜，您约可获得",
+      ssTaxWithheld: "代扣奖金税 · {pct}%",
+      ssFeeLine: "本笔投注我们收取 {pct}% 的费用，即 {fee}，计入奖池的为 {net}。",
+      ssFeeNote: "此金额已扣除我们对每笔投注收取的 {fee}% 费用及 {tax}% 的奖金税。",
+      ssHowItWorks: "我们对双方的每笔投注收取 {fee}% 的费用。若您这一方获胜，您将拿回扣除我们费用后的本金，外加您在另一方投注中所占的份额——该份额已扣除我们的费用，以及代 TRA 预扣的 {tax}% 奖金税。在投注截止前，该金额会随每笔投注变动。",
       noCommentsYet: "暂无评论——来开启讨论吧。",
       commentsCapped: "显示最近 {n} 条评论，共 {total} 条。",
       holds: "持有", commentHidden: "已隐藏 · 审核中",
@@ -9415,6 +9471,8 @@ export const dict = {
       howExampleBody: "在「{side}」一方（显示 ≈{mult}×）投注 {stake} → 若赢，约可获得 {payout}。若猜错，您将输掉这笔投注。",
       howCta: "明白了，开始",
       estimateNote: "预估。最终金额取决于市场关闭时的奖池。已扣除输方 {pct}% 的佣金。",
+      ssEstimateNote: "预估。最终金额取决于市场关闭时的奖池。已扣除我们对每笔投注收取的 {fee}% 费用及 {tax}% 的奖金税。",
+      ssEstimateNoteCompact: "预估 · 已扣除 {fee}% 费用及 {tax}% 奖金税。",
       headlineAsk: "回答问题。",
       headlineSides: "{yes}还是{no}。",
       homeChipsAria: "问题类别",

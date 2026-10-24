@@ -17,10 +17,34 @@
 import { loadConfig, saveConfig } from "./config-store";
 import {
   DEFAULT_POLICY, resolvePolicy, buildPlaybook, judgeAsset, judgeChoice,
-  type AssetProfile, type PlaybookPolicy, type Playbook, type PlaybookVerdict,
+  type AssetProfile, type PlaybookFee, type PlaybookPolicy, type Playbook, type PlaybookVerdict,
 } from "@/lib/updown-playbook";
 import { ALLOWED_DURATIONS } from "@/lib/updown-durations";
+import { describeFeeModel, poolFee, resolveFeeModel, type FeeRates } from "@/lib/payout";
 import type { PlaybookAdvice } from "./updown-symbols";
+
+/**
+ * ⭐ THE FEE A CHAIN FREEZES, AS THE DIRECTIONAL GATE READS IT (FEE-TAX-2026-10, R2c) — its caption and the win rate at which
+ * a naive strategy breaks even on a BALANCED round, 1 / (what a winner gets back per shilling there), computed by the
+ * payout engine on that round under the profile's own model: 53.5% under loser-share 13%, 62.1% under stake-share 13% +
+ * 15%. A stake-share profile carries no tax (a round takes the platform's when it is stamped), so the platform's is laid
+ * beside it exactly as the stamp lays it; with none saved there is no break-even to state, and null is answered — never
+ * a default. Never throws: a profile the engine refuses is null, and the gate's words are then its older ones.
+ */
+export function playbookFeeFor(profile: Partial<FeeRates> | null | undefined, platform?: { winningsTaxRate?: number }): PlaybookFee | null {
+  if (!profile) return null;
+  try {
+    const rates = resolveFeeModel(profile) === "stake-share" && platform?.winningsTaxRate !== undefined
+      ? { ...profile, winningsTaxRate: platform.winningsTaxRate }
+      : profile;
+    const side = 500_000;
+    const back = poolFee(side, side, rates, "YES").netPool / side;
+    if (!Number.isFinite(back) || back <= 1) return null;
+    return { caption: describeFeeModel(rates).caption, breakEvenWinRate: 1 / back };
+  } catch {
+    return null;
+  }
+}
 
 /** One row holds the tunable policy. Absent row = code defaults, the `DEFAULT_GRANTS` pattern. */
 export const POLICY_KEY = "updown.playbook.policy";
@@ -65,8 +89,9 @@ export async function playbookLookup(nowMs = Date.now()): Promise<{
   policy: PlaybookPolicy;
   /** The whole picture for one asset — minimum length, dead hours, what is recommended. */
   book: (symbol: string, catalogueMin?: number | null) => Playbook;
-  /** The verdict on the INSTRUMENT, independent of any round length. */
-  asset: (symbol: string) => PlaybookVerdict | undefined;
+  /** The verdict on the INSTRUMENT, independent of any round length — its sentences stating `fee`'s own break-even when
+   *  the caller hands the fee a chain on the asset freezes (`playbookFeeFor`). */
+  asset: (symbol: string, fee?: PlaybookFee | null) => PlaybookVerdict | undefined;
   /** The verdict on one asset at one length. Undefined when no profile exists at all. */
   choice: (symbol: string, durationMinutes?: number, catalogueMin?: number | null) => PlaybookVerdict | undefined;
   profile: (symbol: string) => AssetProfile | undefined;
@@ -95,7 +120,7 @@ export async function playbookLookup(nowMs = Date.now()): Promise<{
     // advice source as "nobody measured" and an explicit ① as "measured and fine" — handing back
     // a cheerful ① for an asset we have never looked at would be the exact lie this module exists
     // to stop telling.
-    asset: (symbol) => (bySymbol.has(symbol) ? judgeAsset(bySymbol.get(symbol), policy, nowMs) : undefined),
+    asset: (symbol, fee) => (bySymbol.has(symbol) ? judgeAsset(bySymbol.get(symbol), policy, nowMs, fee) : undefined),
     choice: (symbol, durationMinutes, catalogueMin = null) => {
       if (!bySymbol.has(symbol) || durationMinutes == null) return undefined;
       return judgeChoice(book(symbol, catalogueMin), bySymbol.get(symbol), policy, durationMinutes);

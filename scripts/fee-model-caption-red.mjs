@@ -64,8 +64,10 @@ const MUTATIONS = [
     name: "preview-priced-off-the-bare-default",
     why: "★ THE SECOND HALF. The caption stays derived but the FIGURE goes back to the default profile — which no live chain reads, and which cannot show a half-migrated board",
     file: PAGE,
-    from: "  const feePreview = poolFee(FEE_PREVIEW_POOL / 2, FEE_PREVIEW_POOL / 2, boardFee.profile, \"YES\");",
-    to: "  const feePreview = poolFee(FEE_PREVIEW_POOL / 2, FEE_PREVIEW_POOL / 2, cfg.defaultRateProfile, \"YES\");",
+    // RE-ANCHORED 2026-10-24 (FEE-TAX-2026-10 R2c): the preview never throws now (a stake-share board with no platform tax
+    // saved says "—"), so the call sits inside its try — the mutation is the same: price it off the bare default.
+    from: "    try { return poolFee(FEE_PREVIEW_POOL / 2, FEE_PREVIEW_POOL / 2, boardFee.profile, \"YES\"); } catch { return null; }",
+    to: "    try { return poolFee(FEE_PREVIEW_POOL / 2, FEE_PREVIEW_POOL / 2, cfg.defaultRateProfile, \"YES\"); } catch { return null; }",
   },
   {
     name: "reducer-ignores-the-chains",
