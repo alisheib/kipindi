@@ -10,6 +10,8 @@
  *     ordinary market card, never a win card)
  *   - the AMOUNT is always re-read from the ledger, never carried in the URL, so
  *     it cannot be inflated even with a valid token
+ *   - a stake-share WIN paid back BELOW its stake (FEE-TAX-2026-10, ruling 1) is no
+ *     gain, so it is neither minted nor resolved as a win card
  *
  * Run: npx tsx scripts/win-share.test.mts
  */
@@ -143,6 +145,42 @@ let token = "";
   const r = await resolveWinShareToken(inflated);
   ok("an injected 'payout' field is IGNORED — ledger wins", r !== null && r.payout === winPos.finalPayout, `got=${r?.payout} ledger=${winPos.finalPayout}`);
   ok("the fabricated 50,000,000 never appears", r?.payout !== 50_000_000);
+}
+
+// ── 6. A WIN paid back BELOW its stake has no win card (FEE-TAX-2026-10, R3b; ruling 1) ──
+// Under `stake-share` a winner on a lopsided market is paid back less than it staked: 100,000 against 10,000 pays the big
+// side 94,395. Its side won; its money did not — so the public "Won on 50pick" card, whose payout is struck in gilt, is
+// refused at the mint AND at the render. ⛔ The new law is not in force (`fee-law-gate.ts`): the gate is opened in this
+// process only, to stamp the market.
+{
+  const gate = await import("../src/lib/fee-law-gate.ts");
+  await mkUser("ws_big", 200_000);
+  await mkUser("ws_small", 100_000);
+  gate.__setFeeLawLiveForTest(true);
+  let lop: { id: string; feeSnapshot?: { feeModel?: string } | null };
+  try {
+    lop = await createMarket({
+      titleEn: "Stake-share lopsided", titleSw: "Soko", titleZh: "市场", category: "macro", sourceUrl: "https://bot.go.tz",
+      resolutionCriterion: "crit", resolutionAt: new Date(Date.now() + 3600_000).toISOString(), proposedBy: "ws_off1",
+      rateOverrides: { feeModel: "stake-share", platformFeeRate: 0.03, operatorFeeRate: 0.10, winningsTaxRate: 0.15, freeExitGraceMinutes: 0, paidExitWindowMinutes: 0 },
+    } as never) as never;
+  } finally {
+    gate.__setFeeLawLiveForTest(null);
+  }
+  ok("precondition: the market froze stake-share", lop.feeSnapshot?.feeModel === "stake-share", JSON.stringify(lop.feeSnapshot));
+  await buyPosition("ws_big", { marketId: lop.id, side: "YES", stake: 100_000 });
+  await buyPosition("ws_small", { marketId: lop.id, side: "NO", stake: 10_000 });
+  await resolveMarket({ marketId: lop.id, outcome: "YES", officerId: "ws_off1", evidence: "official source" });
+  await resolveMarket({ marketId: lop.id, outcome: "YES", officerId: "ws_off2" });
+  await settleMarket(lop.id, { force: true });
+  const big = (await positionStore.listForUser("ws_big")).find((p) => p.marketId === lop.id)!;
+  ok("precondition: the big side WON and was paid back 94,395 of its 100,000", big?.status === "WIN" && big?.finalPayout === 94_395,
+    `status=${big?.status} payout=${big?.finalPayout}`);
+  ok("⛔ its owner cannot mint a win card for it", (await mintWinShareToken("ws_big", big.id)) === null);
+  const forged = signSession({ p: "win-share", pos: big.id, exp: Date.now() + 60_000 });
+  ok("⛔ …and a validly signed token naming it resolves to NO card (the market card is drawn instead)", (await resolveWinShareToken(forged)) === null);
+  ok("CONTROL · the ordinary win above still mints and resolves",
+    (await mintWinShareToken("ws_win", winPos.id)) !== null && (await resolveWinShareToken(token)) !== null);
 }
 
 console.log(`\nwin-share: ${pass} passed, ${fail} failed`);

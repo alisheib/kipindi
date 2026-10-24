@@ -54,6 +54,11 @@ import { millioneaTicketHref } from "@/lib/position-permalink";
 import { eatClock } from "@/components/maswali/maswali-format";
 import { MASWALI_VOID_REASON_KEY, type MaswaliVoidReason } from "@/lib/maswali-void-reason";
 import { computeWithdrawalFee } from "@/lib/payout";
+// FEE-TAX-2026-10 · R3b — a stake-share result's words are the dictionary's (`payoutTax.*`), read here at writing time, and
+// its figures are the settlement's own records (`stake-share-receipt.ts`). Markets frozen under the older models never
+// reach either: their notices below are byte for byte what they were.
+import { dict } from "@/lib/i18n-dict";
+import type { StakeShareWinReceipt } from "@/lib/stake-share-receipt";
 
 export type NotifyInput = Omit<StoredNotification, "id" | "userId" | "readAt" | "dismissedAt" | "createdAt"> & {
   userId: string;
@@ -332,6 +337,12 @@ export function notifyBetPlaced(userId: string, opts: {
   side: "YES" | "NO"; stake: number; payoutIfWin: number; marketTitle: LocalizedText; marketId: string; positionId?: string;
   /** The poll's OWN rates. Hardcoding these numbers is how the copy came to lie. */
   cashOutFeeRate: number; freeExitGraceMinutes: number; paidExitWindowMinutes?: number;
+  /**
+   * ⭐ STAKE-SHARE ONLY (FEE-TAX-2026-10, R3b): our fee on this stake at the market's frozen rate and the rest of it, its
+   * stake in the pool (`stakeShareEntryFee`). Absent on every older model, whose notice is unchanged. The free-exit terms
+   * after it are the same sentence either way: a free exit refunds the whole stake, fee included (ruling 2).
+   */
+  stakeShare?: { feePct: number; fee: number; net: number } | null;
 }) {
   // These were hardcoded "free exit within 5 min, then 9% fee applies" (and the
   // Swahili silently omitted the fee entirely). Both numbers now come from the
@@ -341,16 +352,19 @@ export function notifyBetPlaced(userId: string, opts: {
   const mins = opts.freeExitGraceMinutes;
   const pct = +(opts.cashOutFeeRate * 100).toFixed(1);
   const paid = opts.paidExitWindowMinutes ?? 0;
+  // FEE-TAX-2026-10 · R3b: a stake-share bet names our fee and its stake in the pool first; "" on every older model.
+  const ss = opts.stakeShare;
+  const feeIn = (l: "en" | "sw" | "zh") => ss ? `${fill(dict[l].payoutTax.betFee, { pct: ss.feePct, fee: formatTzs(ss.fee), net: formatTzs(ss.net) })} · ` : "";
   // Default policy: no paid tail — after the free window it locks to settlement.
   const bodyEn = paid > 0
-    ? `${clipQuote(opts.marketTitle.en, 70)} · free exit within ${mins} min, then a ${pct}% fee applies.`
-    : `${clipQuote(opts.marketTitle.en, 70)} · free exit within ${mins} min, then it locks to settlement.`;
+    ? `${clipQuote(opts.marketTitle.en, 70)} · ${feeIn("en")}free exit within ${mins} min, then a ${pct}% fee applies.`
+    : `${clipQuote(opts.marketTitle.en, 70)} · ${feeIn("en")}free exit within ${mins} min, then it locks to settlement.`;
   const bodySw = paid > 0
-    ? `${clipQuote(opts.marketTitle.sw, 50)} · toka bila gharama ndani ya dakika ${mins}, baadaye ada ya ${pct}% itatumika.`
-    : `${clipQuote(opts.marketTitle.sw, 50)} · toka bila gharama ndani ya dakika ${mins}, kisha linafungwa hadi malipo.`;
+    ? `${clipQuote(opts.marketTitle.sw, 50)} · ${feeIn("sw")}toka bila gharama ndani ya dakika ${mins}, baadaye ada ya ${pct}% itatumika.`
+    : `${clipQuote(opts.marketTitle.sw, 50)} · ${feeIn("sw")}toka bila gharama ndani ya dakika ${mins}, kisha linafungwa hadi malipo.`;
   const bodyZh = paid > 0
-    ? `${clipQuote(opts.marketTitle.zh, 50)} · ${mins} 分钟内可免费退出，之后按 ${pct}% 收取手续费。`
-    : `${clipQuote(opts.marketTitle.zh, 50)} · ${mins} 分钟内可免费退出，之后将锁定至结算。`;
+    ? `${clipQuote(opts.marketTitle.zh, 50)} · ${feeIn("zh")}${mins} 分钟内可免费退出，之后按 ${pct}% 收取手续费。`
+    : `${clipQuote(opts.marketTitle.zh, 50)} · ${feeIn("zh")}${mins} 分钟内可免费退出，之后将锁定至结算。`;
   return notify({
     userId,
     kind: "BET_PLACED",
@@ -378,10 +392,10 @@ export function notifyBetPlaced(userId: string, opts: {
  * wrong for one of two products is not a safe default; it is a decision nobody made. Callers
  * now state where the money is, and `positionPermalinkHref` is how they say it.
  */
-export function notifyWin(userId: string, amount: number, label: LocalizedText, href: string) {
+export function notifyWin(userId: string, amount: number, label: LocalizedText, href: string, stakeShare?: StakeShareWinNotice | null) {
   // ⛔ NO IDENTITY SENTENCE ON A WIN (owner, 2026-09-13, the quiet rule). A receipt says what happened
   // to the money and nothing about verification; `test:cert-c3` §7 asserts it in all three languages.
-  return notify({
+  const row = {
     userId,
     kind: "WIN",
     titleEn: `You won ${formatTzs(amount)}`,
@@ -395,7 +409,55 @@ export function notifyWin(userId: string, amount: number, label: LocalizedText, 
     bodySw: `${clipQuote(label.sw, 70)} kimelipa. Bonyeza kuona.`,
     bodyZh: `${clipQuote(label.zh, 50)} 已赔付。点击查看。`,
     href,
+  } satisfies NotifyInput;
+  // ⭐ FEE-TAX-2026-10 · R3b — a STAKE-SHARE win names its parts, and one paid below its stake is never a gain
+  // (`stakeShareWinWords`). Every older model's win is the row above, byte for byte.
+  if (stakeShare) {
+    const w = stakeShareWinWords(row, label, stakeShare, POLL_RESULT_ROOMS);
+    return notify({ ...row, ...w.copy, kind: w.kind });
+  }
+  return notify(row);
+}
+
+/**
+ * A stake-share win's parts, for its notice (FEE-TAX-2026-10, R3b) — the receipt from the settlement's own records
+ * (`stakeShareWinReceipt`: `Position.feeTzs`, `BET_PAYOUT.taxWithheld`, the net credited) and the market's FROZEN winnings
+ * tax as copy prints it (15). Built by settlement beside the payout it describes, never re-priced from a rate here.
+ */
+export type StakeShareWinNotice = { receipt: StakeShareWinReceipt; taxPct: number };
+
+/** The rooms each result family cuts a market's name to (the visual pass, round 6 · A7) — the stake-share words keep them. */
+const POLL_RESULT_ROOMS = { en: 70, sw: 70, zh: 50 } as const;
+const UPDOWN_RESULT_ROOMS = { en: 70, sw: 50, zh: 50 } as const;
+
+type ResultCopy = { titleEn: string; titleSw: string; titleZh: string; bodyEn: string; bodySw: string; bodyZh: string };
+
+/**
+ * ⭐ A STAKE-SHARE WIN'S WORDS (FEE-TAX-2026-10, R3b) — the poll's and the round's alike:
+ *   · a GAIN keeps its title — "You won {paid}", the net credited, as every win's title has always been — and its body
+ *     names the parts in the order they add up: the stake, our fee, the winnings before tax, the winnings tax withheld
+ *     (stake − fee + winnings − tax = paid);
+ *   · ⛔ a win paid BELOW its stake (ruling 1) is never a gain: its title is "Returned {paid} of your {stake} stake", its
+ *     body says why (the other side was small) with the same parts, and it is filed `ROUND_RESULT` — a result recorded,
+ *     on the quiet plate — never `WIN`, whose plate is the gold seal (`notification-appearance.ts`: gold is earned money).
+ * The figures are the receipt's, the words the dictionary's (`payoutTax.*`); the market's name is cut to its family's room.
+ */
+function stakeShareWinWords(copy: ResultCopy, title: LocalizedText, n: StakeShareWinNotice, rooms: { en: number; sw: number; zh: number }): { kind: "WIN" | "ROUND_RESULT"; copy: ResultCopy } {
+  const r = n.receipt;
+  const say = (l: "en" | "sw" | "zh", key: "bellWin" | "bellBelow" | "belowTitle") => fill(dict[l].payoutTax[key], {
+    title: clipQuote(title[l], rooms[l]), stake: formatTzs(r.stake), fee: formatTzs(r.fee), winnings: formatTzs(r.grossWinnings),
+    tax: formatTzs(r.tax), pct: n.taxPct, paid: formatTzs(r.paid),
   });
+  if (r.belowStake) {
+    return {
+      kind: "ROUND_RESULT",
+      copy: {
+        titleEn: say("en", "belowTitle"), titleSw: say("sw", "belowTitle"), titleZh: say("zh", "belowTitle"),
+        bodyEn: say("en", "bellBelow"), bodySw: say("sw", "bellBelow"), bodyZh: say("zh", "bellBelow"),
+      },
+    };
+  }
+  return { kind: "WIN", copy: { ...copy, bodyEn: say("en", "bellWin"), bodySw: say("sw", "bellWin"), bodyZh: say("zh", "bellWin") } };
 }
 
 /**
@@ -490,7 +552,8 @@ function notifyUpDownResult(
   userId: string,
   kind: NotifyInput["kind"],
   opts: UpDownResultOpts,
-  copy: { titleEn: string; titleSw: string; titleZh: string; bodyEn: string; bodySw: string; bodyZh: string },
+  copy: ResultCopy,
+  stakeShare?: StakeShareWinNotice | null,
 ) {
   // The position id keeps two positions' rows apart even when round, stake and outcome match — the 90-second dedupe
   // compares the rendered message AND the link. ⭐ It rides the LINK, not the sentence (round 3, 2026-10-09: " · pos_…"
@@ -498,6 +561,9 @@ function notifyUpDownResult(
   // ⚠️ `opts` is re-pointed rather than the `href:` line edited: `red:updown-bell` anchors its href mutations on that
   // line, byte for byte (scripts/anchors/updown-bell.anchors.mjs), and they still mean what they say.
   opts = { ...opts, roundHref: roundTicketHref(opts.roundHref, opts.positionId) };
+  // ⭐ FEE-TAX-2026-10 · R3b — a STAKE-SHARE win names its parts, and one paid below its stake is filed as a result, never a
+  // win (`stakeShareWinWords`). Re-pointed here, like `opts` above, so the one `notify` call below stays the anchored one.
+  if (kind === "WIN" && stakeShare) ({ kind, copy } = stakeShareWinWords(copy, opts.marketTitle, stakeShare, UPDOWN_RESULT_ROOMS));
   return notify({
     userId,
     kind,
@@ -509,8 +575,9 @@ function notifyUpDownResult(
   }, { pushTag: opts.pushTag });
 }
 
-/** Up & Down WIN. `payout` is the REALISED amount, never a place-time projection (E-105). */
-export function notifyUpDownWin(userId: string, opts: UpDownResultOpts & { payout: number }) {
+/** Up & Down WIN. `payout` is the REALISED amount, never a place-time projection (E-105). `stakeShare` (FEE-TAX-2026-10,
+ *  R3b): a stake-share round's parts — the builder words them, and a win paid below its stake is never a gain. */
+export function notifyUpDownWin(userId: string, opts: UpDownResultOpts & { payout: number; stakeShare?: StakeShareWinNotice | null }) {
   return notifyUpDownResult(userId, "WIN", opts, {
     titleEn: `You won ${formatTzs(opts.payout)}`,
     titleSw: `Umeshinda ${formatTzs(opts.payout)}`,
@@ -518,7 +585,7 @@ export function notifyUpDownWin(userId: string, opts: UpDownResultOpts & { payou
     bodyEn: `${clipQuote(opts.marketTitle.en, 70)} · paid to your wallet.`,
     bodySw: `${clipQuote(opts.marketTitle.sw, 50)} · imelipwa kwenye pochi yako.`,
     bodyZh: `${clipQuote(opts.marketTitle.zh, 50)} · 已支付至您的钱包。`,
-  });
+  }, opts.stakeShare);
 }
 
 /**
@@ -656,10 +723,26 @@ export function notifySelectionClosed(userId: string, opts: {
   marketTitle: LocalizedText; marketId: string;
   payoutIfYes: number; payoutIfNo: number;
   hasYes: boolean; hasNo: boolean;
+  /**
+   * ⭐ STAKE-SHARE ONLY (FEE-TAX-2026-10, R3b): the market's frozen fee and winnings tax as copy prints them, and what the
+   * player staked on each side — so the notice says the figures are after both, and, when the one side they hold would be
+   * paid back LESS than they staked (ruling 1), says that too. Absent on every older model, whose notice is unchanged.
+   */
+  stakeShare?: { feePct: number; taxPct: number; stakeIfYes: number; stakeIfNo: number } | null;
 }) {
   const both = opts.hasYes && opts.hasNo;
   const only = opts.hasYes ? opts.payoutIfYes : opts.payoutIfNo;
   const side: StoredSide = opts.hasYes ? "YES" : "NO";
+  // FEE-TAX-2026-10 · R3b: the sentences a stake-share close adds after the figures ("" on every older model). A player
+  // holding one side whose figure is under its stake is told so; a hedger's two figures are each a side's, so they are not.
+  const ss = opts.stakeShare;
+  const onlyStake = ss ? (opts.hasYes ? ss.stakeIfYes : ss.stakeIfNo) : 0;
+  const after = (l: "en" | "sw" | "zh") => {
+    if (!ss) return "";
+    const gap = l === "zh" ? "" : " ";
+    const below = !both && only < onlyStake ? `${gap}${fill(dict[l].payoutTax.closedBelow, { stake: formatTzs(onlyStake) })}` : "";
+    return `${gap}${fill(dict[l].payoutTax.closedAfter, { feePct: ss.feePct, taxPct: ss.taxPct })}${below}`;
+  };
 
   // ⛔ §L3 — THE SIDE WORDS WERE HARD-WRITTEN INTO ALL THREE LANGUAGES. A Swahili player read
   // "YES ikishinda utapata …" and a Chinese one "若 YES 获胜您将获得 …", on the message that
@@ -677,18 +760,18 @@ export function notifySelectionClosed(userId: string, opts: {
   const oneW = { en: sideWordIn("en", side, "MARKET"), sw: sideWordIn("sw", side, "MARKET"), zh: sideWordIn("zh", side, "MARKET") };
 
   const bodyEn = both
-    ? `${clipQuote(opts.marketTitle.en, 60)} · Betting is closed. If ${yesW.en} wins you receive ${formatTzs(opts.payoutIfYes)}; if ${noW.en} wins you receive ${formatTzs(opts.payoutIfNo)}.`
-    : `${clipQuote(opts.marketTitle.en, 60)} · Betting is closed. If ${oneW.en} wins you receive ${formatTzs(only)}.`;
+    ? `${clipQuote(opts.marketTitle.en, 60)} · Betting is closed. If ${yesW.en} wins you receive ${formatTzs(opts.payoutIfYes)}; if ${noW.en} wins you receive ${formatTzs(opts.payoutIfNo)}.${after("en")}`
+    : `${clipQuote(opts.marketTitle.en, 60)} · Betting is closed. If ${oneW.en} wins you receive ${formatTzs(only)}.${after("en")}`;
   const bodySw = both
-    ? `Kuweka dau kumefungwa. ${yesW.sw} ikishinda utapata ${formatTzs(opts.payoutIfYes)}; ${noW.sw} ikishinda utapata ${formatTzs(opts.payoutIfNo)}.`
-    : `Kuweka dau kumefungwa. ${oneW.sw} ikishinda utapata ${formatTzs(only)}.`;
+    ? `Kuweka dau kumefungwa. ${yesW.sw} ikishinda utapata ${formatTzs(opts.payoutIfYes)}; ${noW.sw} ikishinda utapata ${formatTzs(opts.payoutIfNo)}.${after("sw")}`
+    : `Kuweka dau kumefungwa. ${oneW.sw} ikishinda utapata ${formatTzs(only)}.${after("sw")}`;
   // ⚠️ THE CHINESE SIDE WORD IS BRACKETED, AND THAT IS NOT DECORATION. `是` and `否` are also
   // ordinary function words, so `若是获胜` reads as the conjunction 若是 ("if") swallowing the
   // side — the player loses which side it was. 「」 marks it as the option's NAME. The same
   // reasoning bracketed `backYesAria` and `probOverTime` in the dictionary.
   const bodyZh = both
-    ? `${clipQuote(opts.marketTitle.zh, 50)} · 投注已截止。若「${yesW.zh}」获胜您将获得 ${formatTzs(opts.payoutIfYes)}；若「${noW.zh}」获胜您将获得 ${formatTzs(opts.payoutIfNo)}。`
-    : `${clipQuote(opts.marketTitle.zh, 50)} · 投注已截止。若「${oneW.zh}」获胜您将获得 ${formatTzs(only)}。`;
+    ? `${clipQuote(opts.marketTitle.zh, 50)} · 投注已截止。若「${yesW.zh}」获胜您将获得 ${formatTzs(opts.payoutIfYes)}；若「${noW.zh}」获胜您将获得 ${formatTzs(opts.payoutIfNo)}。${after("zh")}`
+    : `${clipQuote(opts.marketTitle.zh, 50)} · 投注已截止。若「${oneW.zh}」获胜您将获得 ${formatTzs(only)}。${after("zh")}`;
 
   return notify({
     userId,

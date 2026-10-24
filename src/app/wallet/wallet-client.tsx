@@ -21,6 +21,8 @@ import { PaymentLogo } from "@/components/wallet/payment-logo";
 import { KycFirstDepositNotice } from "@/components/wallet/kyc-first-deposit-notice";
 import type { FirstDepositNotice } from "@/lib/kyc-notice";
 import { formatTzs, formatNumber, cn } from "@/lib/utils";
+// FEE-TAX-2026-10 · R3b — a stake-share payout row's parts, from the records settlement wrote.
+import { stakeShareWinReceipt } from "@/lib/stake-share-receipt";
 import { grantStatusChip, playerStatusInk } from "@/lib/status-tone";
 import { Chip } from "@/components/ui/chip";
 import { formatEatDate, formatEatDateTime } from "@/lib/eat-day";
@@ -523,6 +525,10 @@ function TxnRow({ tx }: { tx: Transaction }) {
   };
   const ledgerGlyph = tx.storedType ? LEDGER_GLYPH[tx.storedType] : null;
   const LedgerGlyph = ledgerGlyph ? I[ledgerGlyph] : I.receipt;
+  // ⭐ FEE-TAX-2026-10 · R3b — a stake-share payout row shows how it adds up, from its own records: stake − our fee +
+  // winnings − winnings tax = this row's amount. A win paid below its stake says so in plain words, never as a gain. Every
+  // other row has no `winBreakdown` and renders exactly as before; a record that does not hold together shows none.
+  const parts = tx.winBreakdown ? stakeShareWinReceipt({ ...tx.winBreakdown, paid: tx.amount }) : null;
   return (
     /* The row's machine-readable identity — see `position-card.tsx` for the contract and why a
        driver must not parse the visible status word on a trilingual product. */
@@ -598,6 +604,27 @@ function TxnRow({ tx }: { tx: Transaction }) {
             <p className="font-mono text-micro uppercase eyebrow text-text-subtle">{t.wallet.amount}</p>
             <p className="font-mono font-bold tabular-nums text-text">{formatTzs(Math.abs(tx.amount))}</p>
           </div>
+          {parts && (
+            /* The breakdown spans both columns: five labelled amounts, label left, figure right, the figure never wrapping. */
+            <div data-win-breakdown="" className="col-span-2 rounded-md border border-border/60 bg-bg-overlay/40 px-2 py-1.5">
+              <p className="font-mono text-micro uppercase eyebrow text-text-subtle">{t.payoutTax.breakdownTitle}</p>
+              <dl className="mt-1 space-y-0.5">
+                {([
+                  [t.payoutTax.stake, formatTzs(parts.stake)],
+                  [t.payoutTax.ourFee, `−${formatTzs(parts.fee)}`],
+                  [t.payoutTax.winnings, `+${formatTzs(parts.grossWinnings)}`],
+                  [t.payoutTax.winningsTax, `−${formatTzs(parts.tax)}`],
+                  [t.payoutTax.paid, formatTzs(parts.paid)],
+                ] as const).map(([label, value]) => (
+                  <div key={label} className="flex items-baseline justify-between gap-2">
+                    <dt className="min-w-0 text-text-muted">{label}</dt>
+                    <dd className="shrink-0 font-mono font-bold tabular-nums text-text"><Cash>{value}</Cash></dd>
+                  </div>
+                ))}
+              </dl>
+              {parts.belowStake && <p className="mt-1 text-text-muted">{t.payoutTax.belowShort}</p>}
+            </div>
+          )}
           {/* Both references, in FULL. This used to print `tx.id.slice(0, 16)`
               and nothing else — a truncated internal id is useless to quote at
               a bank, and the gateway reference (the one the bank and Selcom can

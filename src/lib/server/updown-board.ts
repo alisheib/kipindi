@@ -746,13 +746,18 @@ async function myStakesByMarket(userId: string | undefined, marketIds: readonly 
       // took the other side (E-65), so "my side !== the outcome" is NOT a loss.
       if (p.status === "WIN" || p.status === "LOSS" || p.status === "VOID" || p.status === "CASHED_OUT") {
         const side = p.side === "YES" ? "UP" : "DOWN";
-        const knownPayout = validRealizedPayout({ status: p.status, stake: p.stake, payout: p.finalPayout })
+        // FEE-TAX-2026-10 · R3b: a stake-share leg's own fee makes its WIN floor the net stake (`validRealizedPayout`).
+        const knownPayout = validRealizedPayout({ status: p.status, stake: p.stake, payout: p.finalPayout, fee: p.feeTzs })
           ? p.finalPayout : null;
         const prev = e.results.find((item) => item.side === side && item.status === p.status);
         if (prev) {
           prev.stake += p.stake;
           prev.payout = prev.payout != null && knownPayout != null ? prev.payout + knownPayout : null;
         } else e.results.push({ status: p.status, side, stake: p.stake, payout: knownPayout });
+        // ⭐ FEE-TAX-2026-10 · R3b — the row carries its legs' fees (stake-share only; NULL on every older model's row), so a
+        // card that re-validates it holds a stake-share WIN to its net stake, never to the stake it was ruled below.
+        const row = prev ?? e.results[e.results.length - 1];
+        row.fee = p.feeTzs == null ? (prev ? prev.fee ?? null : null) : (prev?.fee ?? 0) + p.feeTzs;
         // The legacy single-result field is defined only when it is genuinely one
         // result. A hedger or mixed-status holder is never represented by the last row.
         const only = e.results.length === 1 ? e.results[0] : null;
@@ -1553,7 +1558,8 @@ function myPositionFor(
   for (const p of positions) {
     stake += p.stake;
     if (p.side === "YES") up += p.stake; else down += p.stake;
-    const validPayout = p.status !== "OPEN" && validRealizedPayout({ status: p.status, stake: p.stake, payout: p.finalPayout });
+    // FEE-TAX-2026-10 · R3b: a stake-share leg's own fee makes its WIN floor the net stake (`validRealizedPayout`).
+    const validPayout = p.status !== "OPEN" && validRealizedPayout({ status: p.status, stake: p.stake, payout: p.finalPayout, fee: p.feeTzs });
     if (validPayout) { payout += p.finalPayout!; anyPayout = true; }
     if (p.status === "OPEN") allSettled = false;
     else {
@@ -1567,8 +1573,12 @@ function myPositionFor(
   // One winning leg does not make the player's combined position a win. In
   // particular, a two-sided holder can receive less than their total stake.
   // Keep each settled row below, and give a mixed aggregate a neutral label.
+  // ⭐ FEE-TAX-2026-10 · R3b — and one that WON but was paid back less than it staked (stake-share, ruling 1) is not a win to
+  // gild either: its side won and its money did not, so it reads as the round's plain totals. Unreachable under the older
+  // models' winner floor.
+  const lone = settledStatuses.size === 1 ? [...settledStatuses][0] : "MIXED";
   const result: "WIN" | "LOSS" | "VOID" | "CASHED_OUT" | "MIXED" | null = !allSettled || incompletePayout
-    ? null : settledStatuses.size === 1 ? [...settledStatuses][0] : "MIXED";
+    ? null : lone === "WIN" && payout < stake ? "MIXED" : lone;
   // ⭐ Newest first, matching /updown/history's own ordering so a player reading both
   // surfaces sees their positions in one order. `listForMarket` orders by the store's
   // own key, so the sort is explicit here rather than assumed.
@@ -1577,7 +1587,7 @@ function myPositionFor(
       id: p.id,
       side: (p.side === "YES" ? "UP" : "DOWN") as "UP" | "DOWN",
       stake: p.stake,
-      payout: p.status !== "OPEN" && validRealizedPayout({ status: p.status, stake: p.stake, payout: p.finalPayout })
+      payout: p.status !== "OPEN" && validRealizedPayout({ status: p.status, stake: p.stake, payout: p.finalPayout, fee: p.feeTzs })
         ? p.finalPayout : null,
       status: p.status,
       placedAt: p.placedAt,

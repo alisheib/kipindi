@@ -354,5 +354,63 @@ ok("one validated day drives the filter, the chip AND the empty state",
   /const dayKey = state\.day \|\| null/.test(histPage),
   "the page filters on the raw query param again — `?day=lol` will empty the page");
 
+// ── 8 · stake-share rounds (FEE-TAX-2026-10, R3b) ─────────────────────────────
+section("8 · a stake-share round won below its stake is RETURNED, never won; the tax is said");
+// ⭐ On a day of its own, AFTER §6's runs, so §6's candidates and inbox are what they always were. The figures are the
+// stake-share split's own (FEE-TAX-PLAN §3): 100,000 against 10,000 pays the big side 94,395 — below its stake (ruling 1) —
+// and a balanced 10,000 against 10,000 pays 16,095; each withholds 1,305 winnings tax for TRA.
+{
+  const { dict } = await import("../src/lib/i18n-dict.ts");
+  const { updownDigestHtml } = await import("../src/lib/server/email.ts");
+  const fill = (s: string, v: Record<string, string | number>) => s.replace(/\{(\w+)\}/g, (raw, k: string) => (k in v ? String(v[k]) : raw));
+  const DAY2 = "2026-08-06";
+  const from2 = eatDayStartMs(DAY2), to2 = from2 + 24 * 60 * 60 * 1000;
+  await mkUser("dg_ss");
+  let k = 0;
+  const ssPos = (o: { status: "WIN" | "LOSS" | "VOID"; stake: number; finalPayout: number; feeTzs: number | null; winningsTaxTzs: number | null }) => positionStore.set({
+    id: `pos_ss_${++k}`, userId: "dg_ss", marketId: "mkt_ud", side: "YES", bonusStakeTzs: 0, potentialPayout: 0,
+    placedAt: nowIso, settledAt: at(from2 + k * 60_000), idempotencyKey: null, ...o,
+  } as unknown as StoredPosition);
+  await ssPos({ status: "WIN", stake: 100_000, finalPayout: 94_395, feeTzs: 13_000, winningsTaxTzs: 1_305 });
+  await ssPos({ status: "WIN", stake: 10_000, finalPayout: 16_095, feeTzs: 1_300, winningsTaxTzs: 1_305 });
+  await ssPos({ status: "LOSS", stake: 5_000, finalPayout: 0, feeTzs: 650, winningsTaxTzs: 0 });
+  await ssPos({ status: "VOID", stake: 2_000, finalPayout: 2_000, feeTzs: null, winningsTaxTzs: null });
+  const day = (await positionStore.dailyTotalsByUser({ fromIso: at(from2), toIso: at(to2), productLine: "UPDOWN" })).find((r) => r.userId === "dg_ss");
+  ok("8.1 · the aggregate keeps every outcome where it was: 2 wins, 1 loss, 1 refund — a gain is never re-filed as a refund",
+    day?.rounds === 4 && day?.wins === 2 && day?.losses === 1 && day?.refunds === 1 && day?.wonPayout === 110_490 && day?.refundedStake === 2_000
+      && day?.lostStake === 5_000 && day?.staked === 117_000 && day?.returned === 112_490, JSON.stringify(day));
+  ok("8.2 · …and counts the win paid below its stake apart (1 · 94,395 of 100,000) and sums the tax withheld (2,610)",
+    day?.belowStakeWins === 1 && day?.belowStakePayout === 94_395 && day?.belowStakeStake === 100_000 && day?.winningsTax === 2_610, JSON.stringify(day));
+  const c = day ? digestCopy({ userId: "dg_ss", dayKey: DAY2, totals: day, net: day.returned - day.staked }) : null;
+  const v = { n: 1, paid: "TZS 94,395", stake: "TZS 100,000" };
+  ok("8.3 · ⛔ \"won\" counts the GAIN only — \"won 1 (TZS 16,095 paid)\", never \"won 2\"",
+    !!c && c.bodyEn.includes("won 1 (TZS 16,095 paid)") && !c.bodyEn.includes("won 2") && c.bodySw.includes("umeshinda 1 (TZS 16,095 imelipwa)") && c.bodyZh.includes("赢 1 轮（赔付 TZS 16,095）"),
+    c?.bodyEn);
+  ok("8.4 · ★ the below-stake round is its own clause with what came back and what was staked, in all three languages",
+    !!c && c.bodyEn.includes(fill(dict.en.payoutTax.digestBelow, v)) && c.bodySw.includes(fill(dict.sw.payoutTax.digestBelow, v)) && c.bodyZh.includes(fill(dict.zh.payoutTax.digestBelow, v)),
+    c?.bodyEn);
+  ok("8.5 · the loss and the refund keep their own clauses and figures",
+    !!c && c.bodyEn.includes("lost 1 (TZS 5,000)") && c.bodyEn.includes("refunded 1 (TZS 2,000)"), c?.bodyEn);
+  ok("8.6 · the winnings tax withheld is its own sentence, last, in all three languages",
+    !!c && c.bodyEn.endsWith(` ${fill(dict.en.payoutTax.digestTax, { amount: "TZS 2,610" })}`) && c.bodySw.endsWith(` ${fill(dict.sw.payoutTax.digestTax, { amount: "TZS 2,610" })}`)
+      && c.bodyZh.endsWith(`。${fill(dict.zh.payoutTax.digestTax, { amount: "TZS 2,610" })}`), c?.bodyEn);
+  ok("8.7 · ⛔ the day's title is its true net — it LOST 4,510 (117,000 staked, 112,490 back) — never a gain",
+    !!c && c.titleEn === "Up & Down · you lost TZS 4,510" && /umepoteza/.test(c.titleSw) && /亏损/.test(c.titleZh), c?.titleEn);
+  const letter = updownDigestHtml({
+    dayLabel: "6 Aug", rounds: 4, wins: 2, losses: 1, refunds: 1, wonPayout: 110_490, lostStake: 5_000, refundedStake: 2_000,
+    staked: 117_000, returned: 112_490, net: -4_510, belowStakeWins: 1, belowStakePayout: 94_395, winningsTax: 2_610,
+  }).replace(/<[^>]+>/g, " ").replace(/\s{2,}/g, " ");
+  ok("8.8 · the letter: \"Won (1)\" is the gain's 16,095; the below-stake row and the tax row stand apart, neither in the good tone",
+    letter.includes("Won (1) TZS 16,095") && letter.includes(`${fill(dict.en.payoutTax.digestBelowRow, { n: 1 })} TZS 94,395`)
+      && letter.includes(`${dict.en.payoutTax.winningsTax} TZS 2,610`) && !letter.includes("Won (2)"), letter.slice(0, 400));
+  const plainLetter = updownDigestHtml({
+    dayLabel: "6 Aug", rounds: 2, wins: 2, losses: 0, refunds: 0, wonPayout: 17_400, lostStake: 0, refundedStake: 0,
+    staked: 10_000, returned: 17_400, net: 7_400,
+  });
+  ok("8.9 · CONTROL · a day with no stake-share round: the letter has no new row, the copy no new clause",
+    !plainLetter.includes(dict.en.payoutTax.digestBelowRow.replace(" ({n})", "")) && !plainLetter.includes(dict.en.payoutTax.winningsTax)
+      && !winning.bodyEn.includes("Winnings tax") && !winning.bodyEn.includes("paid back less"), winning.bodyEn);
+}
+
 console.log(`\nupdown-digest (E-37 + E-43): ${pass} passed, ${fail} failed`);
 if (fail > 0) process.exit(1);

@@ -50,8 +50,10 @@ const MUTATIONS = [
     // ⚠️ RE-ANCHORED 2026-08-15: `label` became `LocalizedText` so every player notification
     // carries all three market titles (§7.2c). The MUTATION is unchanged — restore the default
     // href, which is wrong for one of two products.
-    find: `export function notifyWin(userId: string, amount: number, label: LocalizedText, href: string) {`,
-    with: `export function notifyWin(userId: string, amount: number, label: LocalizedText, href = "/positions") {`,
+    // ⚠️ RE-ANCHORED 2026-10-24 (FEE-TAX-2026-10, R3b): a stake-share win's parts ride an optional fifth parameter after
+    // `href`; the mutation is the same default href, kept before it.
+    find: `export function notifyWin(userId: string, amount: number, label: LocalizedText, href: string, stakeShare?: StakeShareWinNotice | null) {`,
+    with: `export function notifyWin(userId: string, amount: number, label: LocalizedText, href = "/positions", stakeShare?: StakeShareWinNotice | null) {`,
   },
   {
     name: "updown-position-falls-back-to-the-long-form-list (the rule itself)",

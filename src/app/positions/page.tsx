@@ -473,6 +473,9 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
                     serverNow={serverNow}
                     positionId={p.id}
                     refCode={myRefCode}
+                    // FEE-TAX-2026-10 · R3b: a stake-share position's own fee and withheld tax (NULL on every older model).
+                    fee={p.feeTzs ?? null}
+                    winningsTax={p.winningsTaxTzs ?? null}
                   />
                 );
               }

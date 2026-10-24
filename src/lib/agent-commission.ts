@@ -38,9 +38,20 @@
  * name at every boundary and the conversion happens once, below.
  */
 export type WaterfallRates = {
-  /** loser-share: the "platform" slice of the fee, as a fraction of the losing pool. */
+  /**
+   * ⭐ WHAT THE FEE IS A SHARE OF (FEE-TAX-2026-10, R3b) — the base the worked example is stated on, named by the polls'
+   * live fee model:
+   *   · `"winnings"` — `loser-share`: the fee is a share of the LOSING pool, which is the winnings pool (absent ⇒ this,
+   *     exactly the table every page drew before the change);
+   *   · `"stakes"` — `stake-share`: the fee is a share of EVERY stake, win or lose, so the base is what recruits stake.
+   * The arithmetic is the same on either base, and so are the figures on a round one (1,000,000 → 130,000 / 13,000 /
+   * 6,500 / 110,500 / 11,050 / 553 / 10,497). ⛔ NEITHER BASE IS EVER THE WINNINGS TAX: that is TRA's money withheld from
+   * players' winnings, never a fee 50pick kept, so no row of this table can carry it.
+   */
+  base?: WaterfallBase;
+  /** The "platform" slice of the fee, as a fraction of its base (the losing pool, or every stake). */
   platformFeeRate: number;
-  /** loser-share: the "operator" slice of the fee, as a fraction of the losing pool. */
+  /** The "operator" slice of the fee, as a fraction of its base. */
   operatorFeeRate: number;
   /** TRA's statutory deduction, as a fraction OF OUR FEE. */
   traTaxOnCommissionRate: number;
@@ -52,9 +63,14 @@ export type WaterfallRates = {
   withholdingPct: number;
 };
 
-/** The eight rows of management's table, in order. The id is what a surface keys copy off. */
+/** The base a worked example is stated on (`WaterfallRates.base`). */
+export type WaterfallBase = "winnings" | "stakes";
+
+/** The eight rows of management's table, in order. The id is what a surface keys copy off. The first row is the base:
+ *  `"winnings"` or `"stakes"` (FEE-TAX-2026-10, R3b). */
 export type WaterfallStepId =
   | "winnings"
+  | "stakes"
   | "grossFee"
   | "tra"
   | "gbt"
@@ -143,13 +159,15 @@ export function splitWithholding(
   return { grossTzs: gross, taxWithheldTzs, netTzs: gross - taxWithheldTzs };
 }
 
-/** The total fee rate the loser-share model charges, as a fraction. 3% + 10% = 13%. */
+/** The total fee rate, as a fraction of its base — 3% + 10% = 13%, of the losing pool (loser-share) or of every stake
+ *  (stake-share). */
 export function totalFeeRate(rates: Pick<WaterfallRates, "platformFeeRate" | "operatorFeeRate">): number {
   return rates.platformFeeRate + rates.operatorFeeRate;
 }
 
 /**
- * ⭐ MANAGEMENT'S TABLE, DERIVED — the eight rows, for a worked example of `winningsTzs`.
+ * ⭐ MANAGEMENT'S TABLE, DERIVED — the eight rows, for a worked example of `winningsTzs` (the base's amount: winnings, or
+ * stakes — `rates.base`).
  *
  * ⚠️ IT IS AN ILLUSTRATION AND THE SURFACE MUST SAY SO. Nothing here is a forecast of what
  * any particular agent will earn: it is arithmetic on a round number, shown so a partner can
@@ -157,11 +175,15 @@ export function totalFeeRate(rates: Pick<WaterfallRates, "platformFeeRate" | "op
  * the gold discipline in `DESIGN_AUTHORITY.md` §B4 — renders every figure FLAT, because
  * gilding a projected amount promises in ink what no round has decided.
  *
- * ⚠️ THE BASE IS THE WINNINGS POOL, WHICH IS THE LOSING POOL. In a two-sided pool the losing
- * side's stakes are what the winners are paid from, so "the aggregate winnings your recruits
- * generated" and "the pool our fee is charged on" are the same shillings seen from two
- * sides. That is why management's 13%-of-winnings framing and the engine's
+ * ⚠️ UNDER `loser-share` THE BASE IS THE WINNINGS POOL, WHICH IS THE LOSING POOL. In a two-sided
+ * pool the losing side's stakes are what the winners are paid from, so "the aggregate winnings
+ * your recruits generated" and "the pool our fee is charged on" are the same shillings seen
+ * from two sides. That is why management's 13%-of-winnings framing and the engine's
  * 13%-of-the-losing-pool implementation describe one number and not two.
+ * ⭐ UNDER `stake-share` (FEE-TAX-2026-10, R3b) THE BASE IS EVERY STAKE — winner and loser alike
+ * pay their own fee, and the house's net of it is what an agent's share is priced on
+ * (`stakeShareCommissionBases`). Same arithmetic, same figures on a round base; the first row
+ * is then `"stakes"`, and the winnings tax players pay is in no row (it is not a fee we keep).
  *
  * ⛔ THE ROWS ARE NOT INDEPENDENTLY ROUNDED FROM THE BASE. Each deduction is taken from the
  * figure the row above it actually carries, so the column adds up when a reader checks it
@@ -172,9 +194,10 @@ export function totalFeeRate(rates: Pick<WaterfallRates, "platformFeeRate" | "op
 export function commissionWaterfall(
   winningsTzs: number,
   rates: WaterfallRates,
-): { steps: WaterfallStep[]; netPayoutTzs: number; effectivePctOfWinnings: number } {
+): { steps: WaterfallStep[]; netPayoutTzs: number; base: WaterfallBase; effectivePct: number } {
   const winnings = Number.isFinite(winningsTzs) && winningsTzs > 0 ? Math.floor(winningsTzs) : 0;
   const feeRate = totalFeeRate(rates);
+  const base: WaterfallBase = rates.base ?? "winnings";
 
   const grossFee = Math.round(winnings * feeRate);
   const tra = Math.round(grossFee * rates.traTaxOnCommissionRate);
@@ -185,7 +208,7 @@ export function commissionWaterfall(
   const split = agentCommissionSplit(netFee, rates.agentPct, rates.withholdingPct);
 
   const steps: WaterfallStep[] = [
-    { id: "winnings", amountTzs: winnings, ratePct: null, deduction: false, subtotal: false },
+    { id: base, amountTzs: winnings, ratePct: null, deduction: false, subtotal: false },
     { id: "grossFee", amountTzs: grossFee, ratePct: feeRate * 100, deduction: false, subtotal: false },
     { id: "tra", amountTzs: tra, ratePct: rates.traTaxOnCommissionRate * 100, deduction: true, subtotal: false },
     { id: "gbt", amountTzs: gbt, ratePct: rates.gbtLevyOnCommissionRate * 100, deduction: true, subtotal: false },
@@ -198,10 +221,10 @@ export function commissionWaterfall(
   return {
     steps,
     netPayoutTzs: split.netTzs,
-    // What the partner actually keeps, per shilling of winnings their recruits generate. The
-    // headline rate is a share of the NET FEE, which is a much smaller base than the pool —
-    // so this is the number that answers "what does 10% really mean?" without anyone having
-    // to divide two figures out of a table themselves.
-    effectivePctOfWinnings: winnings > 0 ? (split.netTzs / winnings) * 100 : 0,
+    base,
+    // What the partner actually keeps, per shilling of the base — the winnings their recruits generate, or (stake-share)
+    // what they stake. The headline rate is a share of the NET FEE, which is a much smaller base than the pool — so this is
+    // the number that answers "what does 10% really mean?" without anyone having to divide two figures out of a table.
+    effectivePct: winnings > 0 ? (split.netTzs / winnings) * 100 : 0,
   };
 }

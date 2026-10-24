@@ -65,6 +65,11 @@ import { notifyBetPlaced, notifyWin, notifyLoss, notifyRefund, notifyCashout, no
   // Management ruling ① (2026-09-05) — the seal-time notice that makes the objection window reachable.
   notifyVerdictRecorded } from "./notification-service";
 import { sendEmailToUser, betPlacedHtml, winNotificationHtml, lossNotificationHtml, cashOutReceiptHtml, oneSidedRefundHtml, marketResolutionAdminHtml, marketCancelledRefundHtml, marketCancelledAdminHtml, bonusFulfilledHtml, selectionClosedHtml } from "./email";
+// FEE-TAX-2026-10 · R3b: what a stake-share result's notices and letters state — the parts from the split each winner is
+// paid by, and the bet receipt's fee at the market's frozen rate. Null under every older model, whose words are unchanged.
+import { winLetterSubject } from "./email";
+import { stakeShareEntryFee, stakeShareWinReceipt } from "@/lib/stake-share-receipt";
+import { stakeSharePct, winningsTaxPct } from "@/lib/payout";
 import { onRecruitBet, onRecruitSettlement, clawbackMarketCommission } from "./affiliate-service";
 // R5-B (2026-10-09, F10): a market's name quoted in a notice — the bell, its push, an email's subject line — is cut at a word
 // boundary, with "…" (notification-text.ts). The ledger's own descriptions ("… on \"<title>\"") are money records, pinned
@@ -2337,6 +2342,9 @@ async function buyPositionInner(userId: string, opts: BuyOpts, ctx: BetContext, 
     // Inbox receipt — kit-faithful, opens to the market detail. The cash-out terms
     // it quotes come from THIS POLL'S frozen rates, not a hardcoded "5 min / 9%".
     const betRates = ratesFor(market);
+    // ⭐ FEE-TAX-2026-10 · R3b: a stake-share bet's receipt names our fee on it and its stake in the pool, at THIS market's
+    // frozen rate (`stakeShareEntryFee`); null under every older model, whose receipt is unchanged.
+    const entryFee = stakeShareEntryFee(opts.stake, betRates);
     // Up & Down: no per-round receipt. The card already shows the stake, and forty
     // inbox entries an hour is noise, not information. Money records are unaffected —
     // the txn, ledger and audit rows above are already written.
@@ -2358,6 +2366,7 @@ async function buyPositionInner(userId: string, opts: BuyOpts, ctx: BetContext, 
       cashOutFeeRate: betRates.cashOutFeeRate,
       freeExitGraceMinutes: betRates.freeExitGraceMinutes,
       paidExitWindowMinutes: betRates.paidExitWindowMinutes,
+      stakeShare: entryFee,
     });
     // Note: `payoutIfWin` is deliberately NOT passed to the email. It printed a
     // "Potential return" figure that every in-app surface suppresses before betting
@@ -2373,6 +2382,7 @@ async function buyPositionInner(userId: string, opts: BuyOpts, ctx: BetContext, 
         marketTitle: messageTitle(shortTitles, "en", market.titleEn, market), placedAt: c.placedAt, resolvesAt: market.resolutionAt,
         cashOutFeeRate: betRates.cashOutFeeRate, freeExitGraceMinutes: betRates.freeExitGraceMinutes,
         paidExitWindowMinutes: betRates.paidExitWindowMinutes,
+        stakeShare: entryFee,
       }),
       tag: "bet-placed",
     }), { confirmedOnly: true }).catch(() => {});
@@ -2688,17 +2698,36 @@ export async function notifySelectionClosedForMarket(marketId: string): Promise<
   let bettorsNotified = 0;
   // S12 WP12 · the title switch, read once for every notice and letter this close sends (`message-titles.ts`).
   const shortTitles = await shortTitlesInMessagesNow();
+  // ⭐ FEE-TAX-2026-10 · R3b — a stake-share close says its figures are after our fee and the winnings tax, at THIS market's
+  // frozen rates, and tells a one-side holder whose figure is under their stake so (ruling 1). Both null under every older
+  // model, whose notice and letter are unchanged. ⛔ Never on a ONE-SIDED book: its figure is the stake itself, refunded in
+  // full at no fee (ruling 2, `closeTimePayouts`), so "after our fee and the tax" would be false there.
+  const closeRates = ratesFor(m);
+  const closeOneSided = m.yesPool === 0 || m.noPool === 0;
+  const closeFeePct = closeOneSided ? null : stakeSharePct(closeRates);
+  const closeTaxPct = closeOneSided ? null : winningsTaxPct(closeRates);
   for (const userId of bettors) {
     bettorsNotified++;
     const mine = open.filter((p) => p.userId === userId);
     const ifYes = mine.filter((p) => p.side === "YES").reduce((s, p) => s + (payoutByPosition.get(p.id) ?? 0), 0);
     const ifNo = mine.filter((p) => p.side === "NO").reduce((s, p) => s + (payoutByPosition.get(p.id) ?? 0), 0);
+    const hasYes = mine.some((p) => p.side === "YES");
+    const hasNo = mine.some((p) => p.side === "NO");
+    const closeShare = closeFeePct !== null && closeTaxPct !== null ? {
+      feePct: closeFeePct, taxPct: closeTaxPct,
+      stakeIfYes: mine.filter((p) => p.side === "YES").reduce((s, p) => s + p.stake, 0),
+      stakeIfNo: mine.filter((p) => p.side === "NO").reduce((s, p) => s + p.stake, 0),
+    } : null;
+    // The one side a holder holds, and whether its figure is below what they staked on it (a hedger's two are not one).
+    const oneSideStake = closeShare && hasYes !== hasNo ? (hasYes ? closeShare.stakeIfYes : closeShare.stakeIfNo) : null;
+    const oneSideBelow = oneSideStake !== null && (hasYes ? ifYes : ifNo) < oneSideStake ? oneSideStake : null;
 
     notifySelectionClosed(userId, {
       marketTitle: messageTitles(shortTitles, localizedText(m.titleEn, m.titleSw, m.titleZh), m), marketId: m.id,
       payoutIfYes: ifYes, payoutIfNo: ifNo,
-      hasYes: mine.some((p) => p.side === "YES"),
-      hasNo: mine.some((p) => p.side === "NO"),
+      hasYes,
+      hasNo,
+      stakeShare: closeShare,
     }).catch(() => {});
     // ⭐ HOUSE BOTS (04 F6, ruling 144): one notice over every position, exactly as for any player; only the
     // email is skipped when every position here is house-marked. It says nothing about it (D19c).
@@ -2711,6 +2740,7 @@ export async function notifySelectionClosedForMarket(marketId: string): Promise<
         marketTitle: messageTitle(shortTitles, "en", m.titleEn, m), closedAt: m.selectionClosedAt ?? m.resolutionAt, resolvesAt: m.resolutionAt, marketId: m.id,
         payoutIfYes: mine.some((p) => p.side === "YES") ? ifYes : null,
         payoutIfNo: mine.some((p) => p.side === "NO") ? ifNo : null,
+        stakeShare: closeShare ? { feePct: closeShare.feePct, taxPct: closeShare.taxPct, belowStake: oneSideBelow } : null,
       }),
       tag: "selection-closed",
     }), { confirmedOnly: true }).catch(() => {});
@@ -4833,6 +4863,12 @@ export async function settleMarket(
         // figure in three records). Undefined under every older model, whose rows keep exactly the shape they had.
         const sharePart = shareSplit ? shareSplit.perWinner.get(p.id) : undefined;
         if (shareSplit && !sharePart) throw new Error(`settle ${m.id}: the stake-share split names no part for winning position ${p.id} — refusing to settle`);
+        // ⭐ FEE-TAX-2026-10 · R3b — what this winner's bell and letter state: its parts from the split it is paid by (the
+        // figures its position and payout rows carry) and the market's frozen rates. Null under every older model, whose
+        // notices are byte for byte what they were. A win paid below its stake (ruling 1) is worded as returned, never won.
+        const winReceipt = sharePart ? stakeShareWinReceipt({ stake: p.stake, fee: sharePart.fee, tax: sharePart.tax, paid: payout }) : null;
+        const winTaxPct = winReceipt ? winningsTaxPct(settleCfg) : null;
+        const winNotice = winReceipt && winTaxPct !== null ? { receipt: winReceipt, taxPct: winTaxPct } : null;
         paidWallets.add(p.userId);
         const payoutTxnId = `txn_${randomId(12)}`;
         // ATOMIC (audit C3): the wallet credit, the position → WIN mark, the
@@ -4896,7 +4932,7 @@ export async function settleMarket(
           // E-101 · the bell entry opens THIS ticket. It used to open `/positions`, which is
           // the long-form list — right product here by luck (this branch is suppressed for
           // Up & Down), wrong row always.
-          queueSettlementEffect(() => { void notifyWin(p.userId, payout, messageTitles(shortTitles, localizedText(m.titleEn, m.titleSw, m.titleZh), m), positionPermalinkHref(p.id)); });
+          queueSettlementEffect(() => { void notifyWin(p.userId, payout, messageTitles(shortTitles, localizedText(m.titleEn, m.titleSw, m.titleZh), m), positionPermalinkHref(p.id), winNotice); });
           // ⭐ ↑ The market's name alone (round 3 of the visual pass, 2026-10-09): " · pos_…" was appended to it, a raw id
           // in the sentence ("<title> · pos_… kimelipa."). The link is this position's own permalink, so two wins on one
           // market already stay two notices. (Written UNDER the call: `test:updown-digest` §5 looks 400 characters back
@@ -4904,8 +4940,11 @@ export async function settleMarket(
           // SEAM:emailWin — no per-stake email for a house-marked position (04 F6); the bell is any player's (ruling 143).
           if (p.houseBotId == null) queueSettlementEffect(() => { void sendEmailToUser(p.userId, (email) => ({
             to: email,
-            subject: `You won · ${formatTzs(payout)}`,
-            html: winNotificationHtml({ reference: p.id, payout, stake: p.stake, marketTitle: messageTitle(shortTitles, "en", m.titleEn, m), settledAt }),
+            subject: winLetterSubject(payout, winReceipt),
+            html: winNotificationHtml({
+              reference: p.id, payout, stake: p.stake, marketTitle: messageTitle(shortTitles, "en", m.titleEn, m), settledAt,
+              stakeShare: winReceipt ? { receipt: winReceipt, feePct: stakeSharePct(settleCfg), taxPct: winTaxPct } : null,
+            }),
             tag: "win",
           }), { confirmedOnly: true }).catch(() => {}); });
         } else {
@@ -4919,6 +4958,7 @@ export async function settleMarket(
             roundHref: updownRoundHref,
             pushTag: updownResultPushTag(m.id),
             positionId: p.id,
+            stakeShare: winNotice,
           }); });
         }
       } else {

@@ -1090,8 +1090,11 @@ export function UpDownCard(props: UpDownCardProps) {
                 {cardResults[0].payout != null && <>
                   <span aria-hidden>·</span>
                   {cardResults[0].status !== "VOID" && <span>{t.market.udPaidOut}</span>}
+                  {/* Gold is a WIN that GAINED: a payout under the stake — a stake-share win paid back below its stake
+                      (FEE-TAX-2026-10, R3b; ruling 1) — takes the text's ink first; its side won, its money did not. The
+                      WIN test after it is the one `test:gold-is-money` and the U43 fixture guard read, unchanged. */}
                   <span className="amount font-semibold"
-                        style={{ color: cardResults[0].status === "WIN" ? "var(--gold-300)" : "var(--text)" }}>
+                        style={{ color: cardResults[0].payout < cardResults[0].stake ? "var(--text)" : cardResults[0].status === "WIN" ? "var(--gold-300)" : "var(--text)" }}>
                     {formatTzs(cardResults[0].payout)}
                   </span>
                 </>}

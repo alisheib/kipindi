@@ -1,4 +1,4 @@
-import { commissionWaterfall, type WaterfallRates, type WaterfallStepId } from "@/lib/agent-commission";
+import { commissionWaterfall, type WaterfallBase, type WaterfallRates, type WaterfallStepId } from "@/lib/agent-commission";
 import { fill, formatTzs } from "@/lib/utils";
 import { fillNodes } from "@/lib/fill-nodes";
 import { keepConnectives } from "@/components/ui/keep-run";
@@ -37,6 +37,8 @@ import type { Dict } from "@/lib/i18n-dict";
 /** The row order is the module's, so a step added there cannot be forgotten here. */
 const LABEL_KEY: Record<WaterfallStepId, keyof Dict["agent"]> = {
   winnings: "wfWinnings",
+  // FEE-TAX-2026-10 · R3b: the base of a `stake-share` table — what recruits stake, never what they win.
+  stakes: "wfStakes",
   grossFee: "wfGrossFee",
   tra: "wfTra",
   gbt: "wfGbt",
@@ -47,6 +49,7 @@ const LABEL_KEY: Record<WaterfallStepId, keyof Dict["agent"]> = {
 };
 const NOTE_KEY: Record<WaterfallStepId, keyof Dict["agent"]> = {
   winnings: "wfWinningsNote",
+  stakes: "wfStakesNote",
   grossFee: "wfGrossFeeNote",
   tra: "wfTraNote",
   gbt: "wfGbtNote",
@@ -55,6 +58,16 @@ const NOTE_KEY: Record<WaterfallStepId, keyof Dict["agent"]> = {
   withholding: "wfWithholdingNote",
   netPayout: "wfNetPayoutNote",
 };
+/**
+ * ⭐ THE WORDS THAT CHANGE WITH THE BASE (FEE-TAX-2026-10, R3b). On a `stake-share` table the fee row is "{pct}% of every
+ * stake" with its own note (the winnings tax is never in it), and the basis and effective lines speak of stakes. Every
+ * other row reads the same on either base. A `loser-share` table draws exactly the words it always did.
+ */
+const STAKES_WORDS: Partial<Record<WaterfallStepId, readonly [keyof Dict["agent"], keyof Dict["agent"]]>> = {
+  grossFee: ["wfGrossFeeStakes", "wfGrossFeeStakesNote"],
+};
+const wordsFor = (id: WaterfallStepId, base: WaterfallBase): readonly [keyof Dict["agent"], keyof Dict["agent"]] =>
+  (base === "stakes" ? STAKES_WORDS[id] : undefined) ?? [LABEL_KEY[id], NOTE_KEY[id]];
 
 export function CommissionWaterfall({
   t,
@@ -66,8 +79,9 @@ export function CommissionWaterfall({
   rates: WaterfallRates;
   basisTzs?: number;
 }) {
-  const { steps, effectivePctOfWinnings } = commissionWaterfall(basisTzs, rates);
+  const { steps, base, effectivePct } = commissionWaterfall(basisTzs, rates);
   const a = t.agent as unknown as Record<string, string>;
+  const stakes = base === "stakes";
 
   return (
     <section className="rounded-xl glass-panel p-4">
@@ -82,7 +96,7 @@ export function CommissionWaterfall({
           keeps its voice, the number keeps mono + tabular figures. `test:type-scale` §1 fails
           a money element that inherits a proportional family from the paragraph around it. */}
       <p className="mt-1 text-body-sm leading-relaxed text-text-muted">
-        {fillNodes(t.agent.wfBasis, { amount: <span className="font-mono tabular-nums">{formatTzs(basisTzs)}</span> })}
+        {fillNodes(stakes ? t.agent.wfBasisStakes : t.agent.wfBasis, { amount: <span className="font-mono tabular-nums">{formatTzs(basisTzs)}</span> })}
       </p>
 
       {/**
@@ -108,9 +122,10 @@ export function CommissionWaterfall({
           <span className="font-mono text-micro uppercase eyebrow text-text-subtle kp-track-end">{t.agent.wfColAmount}</span>
         </div>
         {steps.map((s) => {
+          const [labelKey, noteKey] = wordsFor(s.id, base);
           const label = s.ratePct === null
-            ? a[LABEL_KEY[s.id]]
-            : fill(a[LABEL_KEY[s.id]], { pct: formatPct(s.ratePct) });
+            ? a[labelKey]
+            : fill(a[labelKey], { pct: formatPct(s.ratePct) });
           return (
             <div
               key={s.id}
@@ -142,7 +157,7 @@ export function CommissionWaterfall({
                     copy — `text-caption` is 11px. The hierarchy against the parameter name
                     above comes from COLOUR, which is the lever §T leaves open. */}
                 <span className="mt-0.5 block text-body-sm leading-snug text-text-faint">
-                  {a[NOTE_KEY[s.id]]}
+                  {a[noteKey]}
                 </span>
               </dt>
               <dd className={`amount shrink-0 tabular-nums text-right ${
@@ -170,7 +185,7 @@ export function CommissionWaterfall({
           table, and leaving a reader to divide two of its rows themselves is how "10%" gets
           heard as ten percent of the winnings. */}
       <p className="mt-3 text-body-sm leading-relaxed text-text">
-        {fill(t.agent.wfEffective, { pct: formatPct(effectivePctOfWinnings) })}
+        {fill(stakes ? t.agent.wfEffectiveStakes : t.agent.wfEffective, { pct: formatPct(effectivePct) })}
       </p>
       {/* Also reading copy — and it is the sentence that stops the table being read as a
           forecast, which makes it the last thing that should be set below the floor. */}

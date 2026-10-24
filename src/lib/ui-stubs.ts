@@ -45,6 +45,13 @@ export type Transaction = {
   hasReceipt?: boolean;
   /** A deposit held for return (`isRgHeldDeposit`): filed as `reversed`, NAMED "Held for return" (Ali, 2026-10-14). */
   heldForReturn?: boolean;
+  /**
+   * ⭐ STAKE-SHARE ONLY (FEE-TAX-2026-10, R3b) — a `BET_PAYOUT` row that withheld a winnings tax carries its position's stake
+   * and own fee beside the tax on the row, so the row can show how the payout adds up (`stakeShareWinReceipt`, with this
+   * row's `amount` as what was paid). Read by the page from the position's own record, owner-checked; absent on every other
+   * row and whenever that read fails — the row then shows no breakdown rather than a guessed one.
+   */
+  winBreakdown?: { stake: number; fee: number; tax: number } | null;
 };
 
 /** Logged-out shell identity (isAuthed:false) — never an authenticated user. */

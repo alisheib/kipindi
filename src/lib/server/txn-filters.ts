@@ -96,6 +96,25 @@ export function attentionOf(t: StoredTxn, nowMs: number = Date.now()): Attention
   return null;
 }
 
+/**
+ * ⭐ WHAT A ROW'S `taxWithheld` IS (FEE-TAX-2026-10, R3b) — one column, two different taxes, so every figure names its own:
+ *   · `BET_PAYOUT` — the stake-share WINNINGS tax withheld from a winner for TRA (its `SETTLEMENT_WINNINGS_TAX` ledger line);
+ *   · `AGENT_COMMISSION` / `AGENT_COMMISSION_REVERSAL` — the agent's own commission WITHHOLDING (and its reversal);
+ *   · any other row that ever carries one is shown as "other", never hidden — a shilling nobody can see is one nobody watches.
+ * ⛔ NEVER SUMMED ACROSS KINDS: the two are on different bases (a winner's prize, an agent's commission), so the officers'
+ * list labels each row rather than offering a total. And the "Fees & commission" tile is untouched: it sums `fee`, which a
+ * settlement row carries as 0 under every model (the stake-share fee is on the position and in the ledger, not the row).
+ */
+export type TaxWithheldKind = "winnings" | "agent" | "other";
+
+export function taxWithheldOf(t: Pick<StoredTxn, "type" | "taxWithheld">): { amount: number; kind: TaxWithheldKind } | null {
+  const amount = t.taxWithheld ?? 0;
+  if (!(Number.isFinite(amount) && amount > 0)) return null;
+  if (t.type === "BET_PAYOUT") return { amount, kind: "winnings" };
+  if (t.type === "AGENT_COMMISSION" || t.type === "AGENT_COMMISSION_REVERSAL") return { amount, kind: "agent" };
+  return { amount, kind: "other" };
+}
+
 /** True when the row is unreconciled — confirmed gateway money with no provider ref. */
 export function isUnreconciled(t: StoredTxn): boolean {
   return GATEWAY_TYPES.includes(t.type) && t.status === "CONFIRMED" && !t.providerRef;

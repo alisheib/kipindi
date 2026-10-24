@@ -37,6 +37,8 @@ import { sharePreviewDescription, sharePreviewPrice, sharePreviewSettled } from 
 import { ROOT_OPEN_GRAPH } from "../../layout";
 import { timeLeftLabel } from "@/lib/markets/time-left";
 import { poolFee } from "@/lib/payout";
+// FEE-TAX-2026-10 · R3b — a stake-share market's settlement figures for its public resolution panel.
+import { stakeShareMarketFigures } from "@/lib/stake-share-receipt";
 import { getEffectiveConfig } from "@/lib/server/market-config";
 import { getProbabilityChart } from "@/lib/server/market-history";
 import { roundStore } from "@/lib/server/updown-dal";
@@ -258,6 +260,12 @@ export default async function MarketDetail({
     marketRates,
     m.resolvedOutcome === "YES" || m.resolvedOutcome === "NO" ? m.resolvedOutcome : undefined,
   );
+  // ⭐ FEE-TAX-2026-10 · R3b — under STAKE-SHARE the panel states the whole settlement (our fee, the winnings tax withheld,
+  // what the winners were paid) from the market's FROZEN rates, through the reader that mirrors settlement; null on every
+  // older model, on a refund, and on a figure it cannot stand behind — the panel then shows exactly what it always did.
+  const stakeSharePanel = m.resolvedOutcome
+    ? stakeShareMarketFigures({ yesPool: m.yesPool, noPool: m.noPool, resolvedOutcome: m.resolvedOutcome, productLine: m.productLine }, marketRates)
+    : null;
   // ⛔ `feeHeadlinePct` WAS REMOVED HERE (2026-08-14, B3). It existed for exactly one
   // consumer — the two hedge bodies — and those now quote no rate at all, because the fee
   // is stated by the payout projection in the same panel and RULES.md §7 exists to keep a
@@ -1018,6 +1026,7 @@ export default async function MarketDetail({
               noPool={m.noPool}
               fee={marketFee}
               rates={marketRates}
+              stakeShare={stakeSharePanel}
               evidence={m.resolutionEvidence}
               settledAt={m.settledAt}
               objection={objectionState}

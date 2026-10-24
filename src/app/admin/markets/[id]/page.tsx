@@ -16,6 +16,8 @@ import { Sensitive } from "@/components/ui/sensitive";
 import { Stat } from "@/components/ui/stat";
 import { Callout } from "@/components/ui/callout";
 import { chargedFee, describeFeeModel, poolFee, payoutViewFor, stakeSharePct } from "@/lib/payout";
+// FEE-TAX-2026-10 · R3b — a settled stake-share market's arithmetic beside what its positions booked.
+import { stakeShareBooked, stakeShareMarketFigures } from "@/lib/stake-share-receipt";
 import { ratesFor } from "@/lib/server/market-service";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { Select } from "@/components/ui/select";
@@ -208,6 +210,15 @@ async function MarketPredictorsContent({
   // (a one-sided pool refunds whichever side wins). The words are the lexicon's, in the tense the money is in.
   const feeRefunded = ("refunded" in marketFee && marketFee.refunded) || feeIfYes.refunded || feeIfNo.refunded;
   const refundLine = m.settledAt ? REFUND.done.en : outcome ? REFUND.atSettlement.en : REFUND.ifOneSided.en;
+  // ⭐ FEE-TAX-2026-10 · R3b — A SETTLED STAKE-SHARE MARKET, AS BOOKED: the arithmetic it settled by (F, T, what the winners
+  // were paid — `stakeShareMarketFigures`, the reader that mirrors settlement) beside what its positions' own records add up
+  // to (Σ `feeTzs`, Σ `winningsTaxTzs`, Σ the winners' `finalPayout` — `stakeShareBooked`), and each position's fee and tax
+  // in the table below. Null before settlement, on a refund and under every older model, whose page is unchanged.
+  const ssSettled = isStakeShare && !!m.settledAt && (outcome === "YES" || outcome === "NO")
+    ? stakeShareMarketFigures({ yesPool: m.yesPool, noPool: m.noPool, resolvedOutcome: outcome, productLine: m.productLine }, marketRates)
+    : null;
+  const ssBooked = ssSettled ? stakeShareBooked(allPositions, ssSettled) : null;
+  const ssColumns = isStakeShare && !!m.settledAt;
 
   return (
     <>
@@ -443,6 +454,31 @@ async function MarketPredictorsContent({
           ) : null}
         </AdminCard>
 
+        {/* ⭐ FEE-TAX-2026-10 · R3b — the settled stake-share market as booked: each figure is what the positions' own records
+            add up to, with the settlement arithmetic beneath it, and one line saying whether the two agree. */}
+        {ssSettled && ssBooked && (
+          <AdminCard title="Settled under stake-share — as booked" sw="Imetatuliwa kwa ada ya kila dau — kama ilivyorekodiwa" padding="p-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <Stat label="Fee booked" value={formatTzs(ssBooked.feeBooked)} money hint={`arithmetic ${formatTzs(ssSettled.fee)} · ${ssSettled.feePct}% of every stake`} />
+              <Stat label="Winnings tax withheld" value={formatTzs(ssBooked.taxBooked)} money hint={`arithmetic ${formatTzs(ssSettled.winningsTax)} · ${ssSettled.taxPct}% of the prize fund`} />
+              <Stat label="Paid to winners" value={formatTzs(ssBooked.paidBooked)} money hint={`arithmetic ${formatTzs(ssSettled.paidToWinners)}`} />
+              <Stat label="Prize fund" value={formatTzs(ssSettled.prizeFund)} money hint="the losing side's stakes after their fee" />
+            </div>
+            {ssBooked.agrees ? (
+              <p data-stake-share-booked="agrees" className="mt-3 font-mono text-body-sm text-text-muted">
+                The {ssBooked.positions} settled positions carry exactly the market&apos;s fee, its winnings tax and what its winners were paid.
+              </p>
+            ) : (
+              <Callout tone="warning" className="mt-3" title="BOOKED ≠ ARITHMETIC — investigate before any report is filed">
+                The positions&apos; own records do not add up to the settlement arithmetic
+                {ssBooked.missing > 0 ? ` (${ssBooked.missing} settled ${ssBooked.missing === 1 ? "position carries" : "positions carry"} no fee)` : ""}.
+                Fee {formatTzs(ssBooked.feeBooked)} against {formatTzs(ssSettled.fee)}, tax {formatTzs(ssBooked.taxBooked)} against{" "}
+                {formatTzs(ssSettled.winningsTax)}, paid {formatTzs(ssBooked.paidBooked)} against {formatTzs(ssSettled.paidToWinners)}.
+              </Callout>
+            )}
+          </AdminCard>
+        )}
+
         {/* KPIs */}
         <KpiGrid>
           <AdminKpi label="Predictors"     sw="Watabiri"   value={String(m.predictorCount)} />
@@ -495,6 +531,9 @@ async function MarketPredictorsContent({
                   <SortTh field="side"   label="Side"    current={sort} dir={dir} sp={sp} baseHref={`/admin/markets/${id}`} />
                   <SortTh field="stake"  label="Stake"   current={sort} dir={dir} sp={sp} baseHref={`/admin/markets/${id}`} align="right" />
                   <SortTh field="payout" label="Payout"  current={sort} dir={dir} sp={sp} baseHref={`/admin/markets/${id}`} align="right" />
+                  {/* FEE-TAX-2026-10 · R3b: a settled stake-share market's per-position records — its own fee, its tax withheld. */}
+                  {ssColumns && <th className="text-right">Fee</th>}
+                  {ssColumns && <th className="text-right">Tax withheld</th>}
                   <SortTh field="status" label="Status"  current={sort} dir={dir} sp={sp} baseHref={`/admin/markets/${id}`} />
                   <SortTh field="placed" label="Placed"  current={sort} dir={dir} sp={sp} baseHref={`/admin/markets/${id}`} />
                   <th className="text-left">Profile</th>
@@ -545,6 +584,12 @@ async function MarketPredictorsContent({
                           </span>
                         )}
                       </td>
+                      {ssColumns && (
+                        <td className="text-right font-mono tabular-nums text-text-muted whitespace-nowrap">{p.feeTzs != null ? formatTzs(p.feeTzs) : "—"}</td>
+                      )}
+                      {ssColumns && (
+                        <td className="text-right font-mono tabular-nums text-text-muted whitespace-nowrap">{p.winningsTaxTzs ? formatTzs(p.winningsTaxTzs) : "—"}</td>
+                      )}
                       <td>
                         <Chip size="sm" variant={STATUS_VARIANT[p.status] ?? "neutral"}>
                           {p.status === "CASHED_OUT" ? "Cashed out" : p.status.charAt(0) + p.status.slice(1).toLowerCase()}
@@ -564,14 +609,14 @@ async function MarketPredictorsContent({
                 {filtered.length === 0 && (
                   allPositions.length === 0 ? (
                     <AdminTableEmpty
-                      colSpan={8}
+                      colSpan={ssColumns ? 10 : 8}
                       kind="positions"
                       title="No positions yet"
                       body="No one has taken a position on this market yet."
                     />
                   ) : (
                     <AdminTableEmpty
-                      colSpan={8}
+                      colSpan={ssColumns ? 10 : 8}
                       kind="positions"
                       title="No matches"
                       body="No positions match the current filter — try clearing it."

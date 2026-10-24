@@ -81,7 +81,31 @@ type Rendered = { template: string; benign: string; hostile: string };
  * free-text fields the hostile render puts the payload in EVERY one of them —
  * escaping one position and missing another is precisely the bug shape here.
  */
+/**
+ * ⭐ FEE-TAX-2026-10 · R3b — a stake-share win's parts, as settlement's receipt states them (`stakeShareWinReceipt`): a GAIN
+ * (10,000 against 10,000) and a win paid back BELOW its stake (100,000 against 10,000, ruling 1). Literal, uncast.
+ */
+const SS_GAIN = { stake: 10_000, fee: 1_300, netStake: 8_700, grossWinnings: 8_700, tax: 1_305, paid: 16_095, net: 6_095, belowStake: false };
+const SS_BELOW = { stake: 100_000, fee: 13_000, netStake: 87_000, grossWinnings: 8_700, tax: 1_305, paid: 94_395, net: -5_605, belowStake: true };
 const RENDERS: Rendered[] = [
+  // ⭐ FEE-TAX-2026-10 · R3b — the stake-share shapes, rendered and read like every other template (§3). ⚠️ Listed BEFORE
+  // their legacy entries, so `byName` (the LAST render of each template) keeps the legacy letter §5 was written for; §5d
+  // reads these by their own handles.
+  { template: "winNotificationHtml",
+    benign:  E.winNotificationHtml({ reference: "pos_ss_gain", payout: 16_095, stake: 10_000, marketTitle: SAFE, settledAt: "2026-07-31T09:00:00.000Z", stakeShare: { receipt: SS_GAIN, feePct: 13, taxPct: 15 } }),
+    hostile: E.winNotificationHtml({ reference: HOSTILE, payout: 16_095, stake: 10_000, marketTitle: HOSTILE, settledAt: HOSTILE, stakeShare: { receipt: SS_GAIN, feePct: 13, taxPct: 15 } }) },
+  { template: "winNotificationHtml",
+    benign:  E.winNotificationHtml({ reference: "pos_ss_below", payout: 94_395, stake: 100_000, marketTitle: SAFE, settledAt: "2026-07-31T09:00:00.000Z", stakeShare: { receipt: SS_BELOW, feePct: 13, taxPct: 15 } }),
+    hostile: E.winNotificationHtml({ reference: HOSTILE, payout: 94_395, stake: 100_000, marketTitle: HOSTILE, settledAt: HOSTILE, stakeShare: { receipt: SS_BELOW, feePct: 13, taxPct: 15 } }) },
+  { template: "betPlacedHtml",
+    benign:  E.betPlacedHtml({ reference: "pos_ss_bet", side: "YES", stake: 10_000, marketTitle: SAFE, placedAt: "2026-07-31T09:00:00.000Z", resolvesAt: "2026-08-01T12:00:00.000Z", cashOutFeeRate: 0.1, freeExitGraceMinutes: 5, paidExitWindowMinutes: 0, stakeShare: { feePct: 13, fee: 1_300, net: 8_700, taxPct: 15 } }),
+    hostile: E.betPlacedHtml({ reference: HOSTILE, side: "NO", stake: 1, marketTitle: HOSTILE, placedAt: HOSTILE, resolvesAt: HOSTILE, cashOutFeeRate: 0.1, freeExitGraceMinutes: 5, paidExitWindowMinutes: 0, stakeShare: { feePct: 13, fee: 0, net: 1, taxPct: 15 } }) },
+  { template: "selectionClosedHtml",
+    benign:  E.selectionClosedHtml({ marketTitle: SAFE, closedAt: "2026-07-31T09:00:00.000Z", resolvesAt: "2026-08-01T09:00:00.000Z", marketId: "mkt_ss", payoutIfYes: 94_395, payoutIfNo: null, stakeShare: { feePct: 13, taxPct: 15, belowStake: 100_000 } }),
+    hostile: E.selectionClosedHtml({ marketTitle: HOSTILE, closedAt: HOSTILE, resolvesAt: HOSTILE, marketId: HOSTILE, payoutIfYes: 1, payoutIfNo: null, stakeShare: { feePct: 13, taxPct: 15, belowStake: 2 } }) },
+  { template: "updownDigestHtml",
+    benign:  E.updownDigestHtml({ dayLabel: "6 Aug", rounds: 3, wins: 2, losses: 1, refunds: 0, wonPayout: 110_490, lostStake: 5_000, refundedStake: 0, staked: 115_000, returned: 110_490, net: -4_510, belowStakeWins: 1, belowStakePayout: 94_395, winningsTax: 2_610 }),
+    hostile: E.updownDigestHtml({ dayLabel: HOSTILE, rounds: 1, wins: 1, losses: 0, refunds: 0, wonPayout: 1, lostStake: 0, refundedStake: 0, staked: 2, returned: 1, net: -1, belowStakeWins: 1, belowStakePayout: 1, winningsTax: 1 }) },
   { template: "depositConfirmedHtml",
     benign:  E.depositConfirmedHtml({ amount: 50_000, method: "M-Pesa", reference: "txn_a1", gatewayRef: "dep_b2", balance: 150_000 }),
     hostile: E.depositConfirmedHtml({ amount: 50_000, method: HOSTILE, reference: HOSTILE, gatewayRef: HOSTILE, balance: 1 }) },
@@ -602,6 +626,47 @@ ok("bet-placed email (no paid tail) says selling closes at the window",
 const betPaid = plain(E.betPlacedHtml({ reference: "pos_a2", side: "YES", stake: 10_000, marketTitle: SAFE, resolvesAt: "2026-08-01T12:00:00.000Z", cashOutFeeRate: 0.07, freeExitGraceMinutes: 3, paidExitWindowMinutes: 30 }));
 ok("bet-placed email (paid tail) quotes THAT poll's fee, not a constant",
   betPaid.includes("3-min free exit") && betPaid.includes("7%") && !betPaid.includes("10%"));
+
+// ── 5d · stake-share letters (FEE-TAX-2026-10, R3b) ────────────────────────────
+// A stake-share win's letter adds up its parts in order — stake, our fee, the winnings before tax, the tax withheld — and
+// a win paid back BELOW its stake (ruling 1) is not a gain: royal chrome, a neutral subject and heading, a "−" net.
+{
+  const ssWin = (receipt: typeof SS_GAIN) => E.winNotificationHtml({ reference: "pos_ss", payout: receipt.paid, stake: receipt.stake, marketTitle: SAFE, settledAt: "2026-07-31T09:00:00.000Z", stakeShare: { receipt, feePct: 13, taxPct: 15 } });
+  const GOLD_BAR = "linear-gradient(90deg,#c49a2e,#e8c05a,#c49a2e)";
+  const gain = ssWin(SS_GAIN), below = ssWin(SS_BELOW);
+  const gainText = plain(gain), belowText = plain(below);
+  ok("5d.1 · the gain letter: gold, \"You won TZS 16,095\", the parts in order and the net +TZS 6,095",
+    gain.includes(GOLD_BAR) && /You won TZS 16,095/.test(gainText)
+      && /Stake TZS 10,000 Our fee \(13%\) −TZS 1,300 Your winnings, before tax \+TZS 8,700 Winnings tax withheld \(15%\) −TZS 1,305 Paid to you TZS 16,095 Against your stake \+TZS 6,095/.test(gainText),
+    gainText.slice(0, 400));
+  ok("5d.2 · ★ the below-stake letter: ROYAL, headed \"Returned TZS 94,395 of your TZS 100,000 stake\", net −TZS 5,605",
+    !below.includes(GOLD_BAR) && /Returned TZS 94,395 of your TZS 100,000 stake/.test(belowText) && /Against your stake −TZS 5,605/.test(belowText),
+    belowText.slice(0, 400));
+  ok("5d.3 · ⛔ …which says no \"You won\", no \"Position won\", no \"Umeshinda\" and no \"Net profit\"",
+    !/You won|Position won|Umeshinda|Net profit/.test(belowText), belowText.slice(0, 300));
+  ok("5d.4 · both say where the winnings tax goes (TRA), in English and Swahili",
+    [gainText, belowText].every((t) => t.includes("Tanzania Revenue Authority (TRA)") && t.includes("Mamlaka ya Mapato Tanzania (TRA)")));
+  ok("5d.5 · the subject follows the letter: neutral below the stake, \"You won\" on a gain and on every older win",
+    E.winLetterSubject(94_395, SS_BELOW) === "Returned TZS 94,395 of your TZS 100,000 stake" && E.winLetterSubject(16_095, SS_GAIN) === "You won · TZS 16,095"
+      && E.winLetterSubject(18_500) === "You won · TZS 18,500" && E.winLetterSubject(18_500, null) === "You won · TZS 18,500");
+  ok("5d.6 · CONTROL · the legacy win letter is the old one: gold, \"Net profit +TZS 8,500\", no stake-share row",
+    byName.winNotificationHtml.includes(GOLD_BAR) && /Net profit \+TZS 8,500/.test(plain(byName.winNotificationHtml)) && !/Winnings tax withheld|Our fee/.test(plain(byName.winNotificationHtml)));
+  const ssBet = plain(E.betPlacedHtml({ reference: "pos_ss_bet", side: "YES", stake: 10_000, marketTitle: SAFE, resolvesAt: "2026-08-01T12:00:00.000Z", cashOutFeeRate: 0.1, freeExitGraceMinutes: 5, paidExitWindowMinutes: 0, stakeShare: { feePct: 13, fee: 1_300, net: 8_700, taxPct: 15 } }));
+  ok("5d.7 · the stake-share bet receipt: \"Our fee (13%) TZS 1,300\", \"In the pool TZS 8,700\" and the 15% tax said once, both languages",
+    /Our fee \(13%\) TZS 1,300 In the pool TZS 8,700/.test(ssBet) && /a 15% tax is withheld from your winnings/.test(ssBet) && /kodi ya 15% hukatwa/.test(ssBet) && !/potential return/i.test(ssBet), ssBet.slice(0, 400));
+  ok("5d.8 · ⛔ …and with no frozen tax it states no tax sentence rather than guess one",
+    !/tax is withheld/.test(plain(E.betPlacedHtml({ reference: "pos_ss_bet", side: "YES", stake: 10_000, marketTitle: SAFE, resolvesAt: "2026-08-01T12:00:00.000Z", cashOutFeeRate: 0.1, freeExitGraceMinutes: 5, paidExitWindowMinutes: 0, stakeShare: { feePct: 13, fee: 1_300, net: 8_700, taxPct: null } }))));
+  ok("5d.9 · CONTROL · the legacy bet receipt is byte for byte the letter rendered without a stake-share part",
+    byName.betPlacedHtml === E.betPlacedHtml({ reference: "pos_a1", side: "YES", stake: 10_000, marketTitle: SAFE, placedAt: "2026-07-31T09:00:00.000Z", resolvesAt: "2026-08-01T12:00:00.000Z", cashOutFeeRate: 0.1, freeExitGraceMinutes: 5, paidExitWindowMinutes: 0, stakeShare: null }));
+  const ssClosed = plain(E.selectionClosedHtml({ marketTitle: SAFE, closedAt: "2026-07-31T09:00:00.000Z", resolvesAt: "2026-08-01T09:00:00.000Z", marketId: "mkt_ss", payoutIfYes: 94_395, payoutIfNo: null, stakeShare: { feePct: 13, taxPct: 15, belowStake: 100_000 } }));
+  ok("5d.10 · the stake-share close letter: after our fee and the tax, and under the TZS 100,000 stake, in both languages",
+    /after our 13% fee on every stake and the 15% tax on winnings/.test(ssClosed) && /less than your TZS 100,000 stake/.test(ssClosed) && /chini ya dau lako la TZS 100,000/.test(ssClosed), ssClosed.slice(0, 500));
+  ok("5d.11 · CONTROL · the legacy close letter is byte for byte the letter rendered without one",
+    byName.selectionClosedHtml === E.selectionClosedHtml({ marketTitle: SAFE, closedAt: "2026-07-31T09:00:00.000Z", resolvesAt: "2026-08-01T09:00:00.000Z", marketId: "mkt_a1", payoutIfYes: 18_500, payoutIfNo: null, stakeShare: null }));
+  const ssDigest = plain(E.updownDigestHtml({ dayLabel: "6 Aug", rounds: 3, wins: 2, losses: 1, refunds: 0, wonPayout: 110_490, lostStake: 5_000, refundedStake: 0, staked: 115_000, returned: 110_490, net: -4_510, belowStakeWins: 1, belowStakePayout: 94_395, winningsTax: 2_610 }));
+  ok("5d.12 · the digest letter: \"Won (1)\" is the gain alone, the below-stake row and the tax row stand apart",
+    /Won \(1\) TZS 16,095/.test(ssDigest) && /Paid back less than staked \(1\) TZS 94,395/.test(ssDigest) && /Winnings tax withheld TZS 2,610/.test(ssDigest) && !/Won \(2\)/.test(ssDigest), ssDigest.slice(0, 400));
+}
 
 // ── 5b · Identity, quietly (owner, 2026-09-13) ─────────────────────────────────
 //

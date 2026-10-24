@@ -55,11 +55,13 @@ import { useToast } from "@/components/ui/toast";
 import { useT } from "@/lib/i18n";
 import { positionStatusWord } from "@/lib/side-label";
 import { dispatchWinCelebration } from "@/components/markets/win-celebration";
-import { formatNumber, formatTzs } from "@/lib/utils";
+import { fill, formatNumber, formatTzs } from "@/lib/utils";
 import { DWELL_RESULT_MS } from "@/lib/feedback-timing";
-import { routeOutcome } from "@/lib/outcome-announcement";
+import { routeOutcome, type OutcomeKind } from "@/lib/outcome-announcement";
 import { isAttentive, presenceSinceMs, serverNow } from "@/lib/presence-window";
 import { recordAway } from "@/lib/away-ledger";
+// FEE-TAX-2026-10 · R3b — the one below-stake predicate: a win paid back less than its stake is never a ceremony.
+import { isBelowStakeWin } from "@/lib/stake-share-receipt";
 
 const WATCH_KEY = "50pick-notify-markets";
 /** Announced-once key. ⛔ Per POSITION, not per market — two bets on one market are two
@@ -225,8 +227,13 @@ export function NotifyPoller() {
                * this sitting began, what the server clock reads now, and whether anyone is
                * looking. Everything else — the 30-minute window, the freshness cap, the rule that
                * every uncertainty routes away from ceremony — lives there. */
+              /* ⭐ FEE-TAX-2026-10 · R3b — A WIN PAID BACK BELOW ITS STAKE IS NOT A WIN TO CELEBRATE (ruling 1). Its side won and
+               * less than the stake came back, so it is routed as the law routes any result that is neither a clean win
+               * nor a loss — MIXED: a factual toast if the player watched it land, the calm bar's count if not — and never
+               * the gold seal. Unreachable under the older models' winner floor, so every other row routes as before. */
+              const kind: OutcomeKind = p.status === "WIN" && isBelowStakeWin(p.payout, p.stake) ? "MIXED" : p.status;
               const routing = routeOutcome(
-                { kind: p.status, settledAtMs },
+                { kind, settledAtMs },
                 { presenceSinceMs: presenceSinceMs(), serverNowMs: serverNow(), attentive: isAttentive() },
               );
 
@@ -279,6 +286,18 @@ export function NotifyPoller() {
                 // with its full dwell as room appears. A coalesced member is delivered too: it is
                 // counted and its figure is summed into the group's own statement.
                 delivered = true;
+              } else if (routing.channel === "TOAST" && kind === "MIXED") {
+                // FEE-TAX-2026-10 · R3b — a stake-share win paid back below its stake, watched as it landed: a FACT, in
+                // the neutral receipt — what came back of what was staked — never the seal, never gold, never "won".
+                toast({
+                  title: fill(t.payoutTax.belowTitle, { paid: formatTzs(p.payout), stake: formatTzs(p.stake) }),
+                  description: label,
+                  variant: "factual",
+                  durationMs: DWELL_RESULT_MS,
+                  groupKey: routing.groupKey,
+                  groupLabel: (n) => ({ title: fill(t.payoutTax.belowGrouped, { n: formatNumber(n) }) }),
+                });
+                delivered = true;
               } else if (routing.channel === "TOAST") {
                 // LOSS — plain and direct. ⛔ NOT `warning`, which is GOLD, the celebration
                 // ink; and not `danger`, which reads as *something went wrong* when losing
@@ -312,7 +331,8 @@ export function NotifyPoller() {
                  * same transaction as the money, with 180-day retention. */
                 delivered = recordAway({
                   id: p.positionId,
-                  kind: p.status,
+                  // FEE-TAX R3b: a win paid back below its stake is held as MIXED — counted, never opened as a seal.
+                  kind,
                   amount: p.payout,
                   stake: p.stake,
                   settledAtMs,

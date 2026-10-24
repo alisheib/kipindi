@@ -68,6 +68,7 @@ every settled pool at 0, levy divergence 0, the books balanced; 47 + 3 open poll
 chains on loser-share; three polls of 2026-06/07 carry no snapshot and settle by the coded legacy terms, which the switch
 cannot touch. Millionea's `ticket-share` step joins the act when R4 merges.
 Today's money law is still in force everywhere; the fee change is not switched on.
+R3 lane b — what players, agents and officers read about a `stake-share` result — is written (branch `feetax-r3b`) and merged at integration (`feetax-int3`), gated off: the win's bell and letter name the stake, our fee, the winnings before tax, the tax withheld and what was paid, and a win paid back below its stake reads "Returned … of your … stake" (a result row, royal letter, no share card, no gold), never a gain; the bet receipt, the betting-closed notice, the Up & Down digest, the public resolution panel, the wallet row, /positions, the officers' transactions column and settled-market card, and the /agent waterfall on stakes follow each market's frozen model; new `test:stake-share-receipts` (predeploy).
 
 **Next:** R3 (lanes a: the tax report and books; b: receipts and notices), R4 (Millionea `ticket-share`) and R5 (lane a:
 every binding word; lane b: the one-time audited switch at boot — `fee-law-switch.ts`, its record, `/api/health`'s

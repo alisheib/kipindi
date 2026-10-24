@@ -198,7 +198,7 @@ ok("4.zero · a zero net fee accrues nothing", paid0 === 0 && (await db.referral
     engine.grossTzs === amt("agentShare") && engine.taxWithheldTzs === amt("withholding") && engine.netTzs === amt("netPayout"),
     JSON.stringify({ engine, table: { gross: amt("agentShare"), tax: amt("withholding"), net: amt("netPayout") } }));
   ok("7.effective · and the partner's effective share of the winnings pool is ~1.05%",
-    Math.abs(w.effectivePctOfWinnings - 1.0497) < 0.0001, String(w.effectivePctOfWinnings));
+    Math.abs(w.effectivePct - 1.0497) < 0.0001, String(w.effectivePct));
 }
 
 console.log(`\ncommission-bounded: ${pass} passed, ${fail} failed`);
