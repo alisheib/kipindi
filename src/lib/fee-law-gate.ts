@@ -30,7 +30,7 @@
  */
 
 /** False until release R5 of the fee & tax programme. ⛔ Flipped only in R5's one commit. */
-export const FEE_LAW_LIVE: boolean = false;
+export const FEE_LAW_LIVE: boolean = true;
 
 /** The test seam's value, when a suite has set one (`__setFeeLawLiveForTest`); `null` = the constant decides. */
 let testFlip: boolean | null = null;
