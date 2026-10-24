@@ -138,7 +138,12 @@ export const U43_REVIEWED_BLOBS: Readonly<Record<string, string>> = {
   // so the merged dictionary is again the first merge's — HUB-2B's ten keys and FLOW 14's `cancelWalletFrozen` over
   // 989199be6. The strip-mln check against main 3ec32bb72's dictionary: outside the three `millionea` blocks byte-identical,
   // its control (a planted classic edit) reported; inside them exactly eleven keys per language.
-  "src/lib/i18n-dict.ts": "cd82baeeaa09cabbf193b2777182a68f697d03df",
+  // D19a RE-PINNED AT FEE-TAX R1 (was cd82baeea, the polish release's; the lead, 2026-10-24 — the Owner's
+  // "Second-officer checks" card and the Millionea open hold): its diff against cd82baeea is 193 ADDED lines in three
+  // blocks — `secondOfficer.*` (57 keys) and `feeChange.millioneaOpenHeld` (1 key), in en, sw and zh — no line removed,
+  // no other line changed; the added lines scanned for every house / desk / bot / liquidity word in the three languages:
+  // none.
+  "src/lib/i18n-dict.ts": "e6c25553ba10de8b46504e820ed31091f9ee3b86",
   "src/app/legal/rules/_content-up-down.tsx": "a2ee86a3f3fd39cba34ddfdfd8ef316f7961cdf9",
   "src/app/legal/rules/up-down/page.tsx": "d6ab15942ad15e0812abf22fe236e27f91e586f5",
 };
