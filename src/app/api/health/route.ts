@@ -23,6 +23,7 @@ import { simpleJourneyCeiling } from "@/lib/feature-state";
 import { simpleJourneyStateNow } from "@/lib/server/simple-journey-switch";
 import { millioneaCeiling } from "@/lib/millionea-rollout";
 import { millioneaStateNow } from "@/lib/server/millionea-switch";
+import { feeLawHealth } from "@/lib/server/fee-law-switch";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -103,6 +104,8 @@ export async function GET() {
     const journeyState = await simpleJourneyStateNow().catch(() => "WITHDRAWN" as const);
     // Maswali Millionea's rollout (MASWALI-BUILD S1): the same ≤ 10 s switch read. Never rejects; not part of `ready`.
     const millioneaState = await millioneaStateNow().catch(() => "WITHDRAWN" as const);
+    // The fee law's switch (FEE-TAX-2026-10 R5): never rejects; not part of `ready`.
+    const feeLaw = await feeLawHealth();
 
     return NextResponse.json(
       {
@@ -206,6 +209,11 @@ export async function GET() {
           ceiling: millioneaCeiling().ceiling,
           state: millioneaState,
         },
+        // ⭐ THE NEW FEE LAW (FEE-TAX-2026-10, `fee-law-switch.ts`): `live` — the gate is open in this build; `switch` — the
+        // one-time act's record (none · claimed · failed · done · unreadable); `switchedAt` — the instant it is in force
+        // from, the one every binding text dates the change by. The production read-back reads it to prove the switch
+        // without a database. ⛔ The state word and the instant only: never a reason, an error or an author.
+        feeLaw,
         // 🔴 Is transactional email actually being delivered? Every send on this
         // platform is fire-and-forget from a money or auth path, and the failure
         // path was one `console.error` — so a Postmark key that died would have

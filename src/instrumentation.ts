@@ -44,6 +44,18 @@ export async function register() {
     const { runBootChecks } = await import("./lib/server/boot-checks");
     await runBootChecks();
 
+    // ⭐ FEE-TAX-2026-10 R5 · THE NEW FEE LAW'S ONE-TIME SWITCH (Ali's go-live answer of 2026-10-24: the release turns it
+    // on, under his ruling). Before any scheduler below can stamp a market, so this container's first new market already
+    // freezes the law in force. It does nothing while the gate is shut, does nothing once its record says done, and never
+    // throws (a failure is its own COMPLIANCE row, and it tries again by itself) — and it is bounded here, so a slow
+    // database cannot hold the boot: past the bound the act carries on in the background.
+    try {
+      const { startFeeLawSwitchAtBoot } = await import("./lib/server/fee-law-switch");
+      await Promise.race([startFeeLawSwitchAtBoot(), new Promise<void>((resolve) => { setTimeout(resolve, 60_000).unref?.(); })]);
+    } catch (err) {
+      console.error("[instrumentation] The fee-law switch could not start:", err);
+    }
+
     // Per-market scheduler — arm a timer for every market with a pending time
     // transition (closing-soon / selection-closed / resolve / settle). This is the
     // primary driver of market lifecycle; deadlines missed while the server was DOWN
