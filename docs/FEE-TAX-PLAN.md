@@ -18,8 +18,10 @@
 ## §0 · RESUME AT
 
 **State (2026-10-24):** R0 — the records — is being published: the rulings entry, this tracker, the RULES.md roll-out
-row, the NEXT-PLAN row and MASWALI-PLAN's S8 hold (gate lines 8 and 9 re-opened). No code has changed. Today's law is in
-force everywhere.
+row, the NEXT-PLAN row and MASWALI-PLAN's S8 hold (gate lines 8 and 9 re-opened). Today's law is in force everywhere.
+R2 lane a is written on branch `feetax-r2`, gated off (`fee-law-gate.ts`): the `stake-share` engine in `payout.ts`, the
+config's gated doors and compare-and-swap writers, the fresh read at stamping, the one act that moves every chain, the
+fee-model census. Not yet run on the runner; R2b (settlement, ledger, schema) and R2c (projections, screens, admin) follow.
 
 **Next:** R1 — any admin can do any step: the Owner setting "Second-officer checks" over the twelve checks of §4 R1, and
 the code lock that refuses to open a public Millionea week that would freeze the old fee model. Then R2.
@@ -40,7 +42,7 @@ tracker is its copy and supersedes it.
 |---|---|---|---|
 | R0 | The records: rulings, this tracker, the RULES row, the board row, the S8 hold | 🔨 | docs only |
 | R1 | Any admin can do any step + the Millionea open lock | ⬜ | |
-| R2 | Fee engine, settlement, ledger, safe config — gated off | ⬜ | |
+| R2 | Fee engine, settlement, ledger, safe config — gated off | 🔨 | lane a written (`feetax-r2`); R2b/R2c to follow |
 | R3 | Reports and money around settlement (polls + Up & Down) | ⬜ | |
 | R4 | Millionea `ticket-share` — engine, money, records, reports, figures — gated off | ⬜ | |
 | R5 | Every binding word in one commit, the gate flipped, the admin's three saves | ⬜ | the switch |
