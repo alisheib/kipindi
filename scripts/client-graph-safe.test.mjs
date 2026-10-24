@@ -123,6 +123,12 @@ console.log("\n[client-graph-safe] \u00a71 client-reachable modules stay clear o
     "lib/markets/estimate.ts",
     // The card's close label: imports only `eat-day.ts`, which imports nothing.
     "lib/markets/card-close-label.ts",
+    // ⭐ ADDED 2026-10-24 (FEE-TAX-2026-10, R2c). The bet screens' one stake-share view model — the dial, its confirm, the
+    // journey sheet and Up & Down's panels and arm run it in the browser — and the Fees & taxes card's Up & Down profile
+    // rules, read by the "use client" panel and the server action alike. The first imports only `payout.ts`; the second
+    // only its types.
+    "lib/stake-share-notice.ts",
+    "lib/updown-fee-profile.ts",
     // The pending-bet link and the same-origin rule it shares with the login form: `safe-next.ts` imports nothing,
     // `pending-bet.ts` imports only it.
     "lib/safe-next.ts",
