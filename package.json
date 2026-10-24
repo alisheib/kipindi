@@ -1539,6 +1539,7 @@
     "red:ops-provision-staff": "tsx scripts/ops-provision-staff.test.mts --prove-red",
     "ops:seed-test-float": "node scripts/seed-test-float.mjs",
     "ops:levy-divergence": "node scripts/live/ops/levy-divergence.cjs",
+    "ops:stake-share-settled": "node scripts/live/ops/stake-share-settled.cjs",
     "ops:payments-now": "node scripts/live/ops/payments-now.cjs",
     "ops:updown-probe-bars": "tsx scripts/ops-updown-probe-bars.mts",
     "test:house-bot-ops": "tsx scripts/db-scratch.mts --run npx tsx scripts/house-bot-ops.test.mts",

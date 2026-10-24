@@ -246,7 +246,8 @@ export async function runFeeLawSwitch(opts: { now?: Date; banner?: boolean; writ
       payload: { reason: FEE_LAW_SWITCH_REASON, claimId: mine.claimId, step, error: error.slice(0, 500), rolledBack, recorded,
         consequence: "The new fee law is NOT in force: every step taken was put back, and the act is tried again by this container and by the next boot. Read the step and the error." },
     });
-    console.error(`[fee-law-switch] FAILED at ${step}: ${error} · rolled back: ${rolledBack.join(", ") || "nothing to roll back"}`);
+    const undone = rolledBack.length > 0 ? rolledBack.join(", ") : "none needed";
+    console.error(`[fee-law-switch] FAILED at ${step}: ${error} · rolled back: ${undone}`);
     return { ran: true, state: "failed", step, error, rolledBack };
   };
 

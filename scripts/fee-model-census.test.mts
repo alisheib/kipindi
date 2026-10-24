@@ -55,6 +55,8 @@ const REGISTRY: Record<string, [number, string]> = {
   "src/lib/server/maswali-console.ts": [1, "jackpot-payout only — a Millionea week's own model, never a pool model"],
   "src/lib/server/maswali-player.ts": [1, "jackpot-payout only — a week whose snapshot froze any other model shows the player no terms (null), never a pool model's"],
   "src/lib/server/maswali-settlement.ts": [1, "jackpot-payout only — refuses any other model"],
+  // R5b (2026-10-24): the one-time switch reads its own save back — one comparison, against the model it just saved.
+  "src/lib/server/fee-law-switch.ts": [1, "the switch's read-back: the polls' stored model must be stake-share after its own save (any other model, a legacy one or none, fails the step and is rolled back); it prices nothing"],
   // R1's S8 hold, registered at R2's integration (2026-10-24): R2a's census was written beside R1, not after it.
   "src/lib/server/maswali-service.ts": [1, "the S8 hold (oldFeeModelHold): a PUBLIC week whose open would freeze jackpot-payout is held; every other model — a pool model a week never freezes, or R4's ticket-share — passes this check untouched"],
   // R2c (2026-10-24): `sheet-seed.ts` LEFT the registry — it reads a known-model LIST (stake-share included), no branch.
