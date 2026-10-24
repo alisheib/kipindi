@@ -11,10 +11,13 @@
  *
  *   §1  loser-share — UNCHANGED: each recruit's base is its pro-rata share of the market's levy-net fee,
  *       floor(rate × (stake / pool) × operatorNet(fee)). A winning and a losing recruit both accrue.
- *   §2  stake-share — every position PAID ITS OWN FEE (13% of its own stake, winner and loser alike), so the base is
- *       exactly that: floor(rate × levySplit(own fee).operatorNet). A winning and a losing recruit both accrue, and the
- *       fixture is chosen so the older pro-rata formula would give a DIFFERENT figure for each (§2.4) — the suite can tell
- *       the two laws apart.
+ *   §2  stake-share — every position PAID ITS OWN FEE (13% of its own stake, winner and loser alike), and the house kept
+ *       ONE figure of the market's fee F: levySplit(F).operatorNet. Each position's base is its largest-remainder share
+ *       of that figure BY ITS OWN FEE, ties by id (`stakeShareCommissionBases`) — so the bases sum to operatorNet(F)
+ *       EXACTLY, never a shilling of a fee the house did not keep (RULES §2.10), and a winning and a losing recruit both
+ *       accrue on their own fee. The fixture tells this law apart from both others: the pro-rata-by-stake formula would
+ *       pay the winner differently, and the first draft's levySplit(own fee) per position would pay the loser differently
+ *       — its bases summing to 796 against the 795 the house kept.
  *   §3  ⛔ THE WINNINGS TAX IS NEVER IN THE BASE: the same stakes under a 30% tax accrue exactly what they accrue under 15%,
  *       while the tax itself doubles — and the figure a tax-inclusive base would give is shown to differ.
  *   §4  A VOID CLAWS BACK: an accrual already standing against a stake-share market is REVERSED when the market settles
@@ -119,9 +122,11 @@ const show = (row: Any) => j(row && { status: row.status, gross: row.grossAmount
  * THE FIXTURE BOOK, the same in every section: two recruits and two outsiders —
  *   YES · recruit A 1,400 · outsider C 1,000        NO · recruit B 2,800 · outsider D 2,000        pool 7,200
  * Chosen (searched, not guessed) so every per-position fee is an exact 13% of its stake — A 182, C 130, B 364, D 260 — while
- * the market's fee F = 312 + 624 = 936 is levied ONCE: levySplit(936).operatorNet = 795, but the four own-fee bases sum to
- * 155 + 110 + 310 + 221. So the pro-rata formula lands one shilling of commission LOW for both recruits (30 / 61 against
- * 31 / 62), and the suite cannot pass by settling a stake-share market under the older law.
+ * the market's fee F = 312 + 624 = 936 is levied ONCE: the house keeps levySplit(936).operatorNet = 795. Split by own fee
+ * (largest remainder, exact): A 155 · C 110 · B 309 · D 221 = 795, so the recruits accrue 31 and 61. The two laws it must
+ * NOT be are both visibly different on this book: pro-rata by stake pays the winner 30; the first draft's
+ * levySplit(own fee) per position sums to 155 + 110 + 310 + 221 = 796 — one shilling the house never kept — and pays the
+ * loser 62.
  */
 async function book(marketId: string) {
   const a = await recruit(), b = await recruit(), c = await outsider(), d = await outsider();
@@ -157,8 +162,8 @@ console.log("\n§1 · loser-share: the pro-rata share of the market's levy-net f
     (await rowOf(m.id, x.pc)) === null && (await rowOf(m.id, x.pd)) === null && (await commissionRowsFor(m.id)).length === 2);
 }
 
-// ═══ §2 · stake-share — each position's own fee ══════════════════════════════════════════════════════════════════════
-console.log("\n§2 · stake-share: each recruit's base is the levy-net of the fee ITS OWN stake paid");
+// ═══ §2 · stake-share — ONE kept figure, split by each position's own fee ════════════════════════════════════════════
+console.log("\n§2 · stake-share: the house kept ONE figure, operatorNet(F); each recruit's base is its share of it by the fee ITS OWN stake paid");
 let shareGross: { a: number; b: number } = { a: NaN, b: NaN };
 {
   const m = await market("stake-share", "Agent attribution · stake-share");
@@ -171,31 +176,56 @@ let shareGross: { a: number; b: number } = { a: NaN, b: NaN };
     winners: [{ id: x.pa, stake: 1_400 }, { id: x.pc, stake: 1_000 }],
     losers: [{ id: x.pb, stake: 2_800 }, { id: x.pd, stake: 2_000 }],
   }, fresh.feeSnapshot);
-  const feeA = split.perWinner.get(x.pa).fee, feeB = split.perLoser.get(x.pb).fee;
+  const feeOf = (id: string): number => split.perWinner.get(id)?.fee ?? split.perLoser.get(id)?.fee;
+  const kept: number = P.levySplit(split.fee, fresh.feeSnapshot).operatorNet;
+  // The engine's own figure (pure, exported for exactly this) …
+  const bases: Map<string, number> = w.svc.stakeShareCommissionBases(split, fresh.feeSnapshot);
+  // … and an INDEPENDENT oracle: largest remainder of `kept` over the four own fees, in exact integers, ties by id.
+  const oracle = (() => {
+    const rows = [x.pa, x.pc, x.pb, x.pd].map((id) => ({ id, w: feeOf(id) }));
+    const sw = rows.reduce((s, r) => s + r.w, 0);
+    const parts = rows.map((r) => { const rem = (r.w * kept) % sw; return { id: r.id, q: (r.w * kept - rem) / sw, rem }; });
+    const left = kept - parts.reduce((s, p) => s + p.q, 0);
+    const order = [...parts].sort((p, q) => (q.rem !== p.rem ? q.rem - p.rem : p.id < q.id ? -1 : p.id > q.id ? 1 : 0));
+    const out = new Map(parts.map((p) => [p.id, p.q] as const));
+    for (let i = 0; i < left; i++) out.set(order[i].id, (out.get(order[i].id) ?? 0) + 1);
+    return out;
+  })();
   const settled = await resolveAndSettle(m.id, "YES");
   ok("2.1 · settleMarket settles it", settled.ok === true, j(settled));
-  const grossA = Math.floor(P.levySplit(feeA, fresh.feeSnapshot).operatorNet * RATE);
-  const grossB = Math.floor(P.levySplit(feeB, fresh.feeSnapshot).operatorNet * RATE);
+  ok("2.2 · fixture · own fees A 182 (winner) · C 130 · B 364 (loser) · D 260 — 13% of each stake — F = 936, and the house kept operatorNet(F) = 795",
+    feeOf(x.pa) === 182 && feeOf(x.pc) === 130 && feeOf(x.pb) === 364 && feeOf(x.pd) === 260 && split.fee === 936 && kept === 795,
+    j({ fees: [x.pa, x.pc, x.pb, x.pd].map(feeOf), F: split.fee, kept }));
+  const sumBases = [...bases.values()].reduce((s, v) => s + v, 0);
+  ok("2.3 · ★ the bases sum to levySplit(F).operatorNet EXACTLY (795) — never a shilling of a fee the house did not keep",
+    bases.size === 4 && sumBases === kept && sumBases === 795, j({ sumBases, kept, size: bases.size }));
+  const pinned = [x.pa, x.pc, x.pb, x.pd].map((id) => bases.get(id));
+  ok("2.4 · ★ …each is its largest-remainder share of 795 BY ITS OWN FEE, ties by id — A 155 · C 110 · B 309 · D 221 — and an independent integer oracle agrees",
+    j(pinned) === j([155, 110, 309, 221]) && [x.pa, x.pc, x.pb, x.pd].every((id) => oracle.get(id) === bases.get(id)),
+    j({ engine: pinned, oracle: [x.pa, x.pc, x.pb, x.pd].map((id) => oracle.get(id)) }));
+  const grossA = Math.floor((bases.get(x.pa) ?? NaN) * RATE);
+  const grossB = Math.floor((bases.get(x.pb) ?? NaN) * RATE);
   shareGross = { a: grossA, b: grossB };
-  ok("2.2 · fixture · the split charges A 182 (winner) and B 364 (loser) — 13% of each stake — and F = 936",
-    feeA === 182 && feeB === 364 && split.fee === 936, j({ feeA, feeB, F: split.fee }));
   const rows = new Map(((await w.mdal.positionStore.listForMarket(m.id)) as Any[]).map((p) => [p.id, p]));
   const ra = await rowOf(m.id, x.pa), rb = await rowOf(m.id, x.pb);
-  ok("2.3 · ★ the WINNING recruit accrues floor(20% × levySplit(182).operatorNet 155) = 31 — and its row states the fee it paid",
+  ok("2.5 · ★ the WINNING recruit accrues floor(20% × its base 155) = 31, on its own fee — and its row states that fee (182)",
     grossA === 31 && rowIs(ra, grossA) && (rows.get(x.pa) as Any)?.status === "WIN" && (rows.get(x.pa) as Any)?.feeTzs === 182,
     `${show(ra)} vs gross ${grossA} · position ${j(rows.get(x.pa) && { s: (rows.get(x.pa) as Any).status, fee: (rows.get(x.pa) as Any).feeTzs })}`);
-  ok("2.4 · ★ the LOSING recruit accrues floor(20% × levySplit(364).operatorNet 310) = 62 — paid nothing, its own fee funded us",
-    grossB === 62 && rowIs(rb, grossB) && (rows.get(x.pb) as Any)?.status === "LOSS" && (rows.get(x.pb) as Any)?.feeTzs === 364,
+  ok("2.6 · ★ the LOSING recruit accrues floor(20% × its base 309) = 61, on its own fee (364) — paid nothing, its fee funded us",
+    grossB === 61 && rowIs(rb, grossB) && (rows.get(x.pb) as Any)?.status === "LOSS" && (rows.get(x.pb) as Any)?.feeTzs === 364,
     `${show(rb)} vs gross ${grossB}`);
-  // The older law on the same book: its pro-rata share of operatorNet(F), which this model does NOT pay by.
-  const lev = P.levySplit(split.fee, fresh.feeSnapshot);
+  // ⛔ THE TWO LAWS IT MUST NOT BE, on the same book — each visibly different, so 2.5 / 2.6 can fail.
   const pool = fresh.yesPool + fresh.noPool;
-  const proA = Math.floor(((1_400 / pool) * lev.operatorNet) * RATE), proB = Math.floor(((2_800 / pool) * lev.operatorNet) * RATE);
-  ok("2.5 · CONTROL · the older pro-rata formula would accrue 30 / 61 on this book — so the rows above are the own-fee law",
-    proA === 30 && proB === 61 && proA !== grossA && proB !== grossB && ra?.grossAmountTzs !== proA && rb?.grossAmountTzs !== proB,
-    j({ proA, proB, operatorNetF: lev.operatorNet }));
-  ok("2.6 · the outsiders accrue nothing; the market holds exactly the two recruits' rows",
-    (await rowOf(m.id, x.pc)) === null && (await rowOf(m.id, x.pd)) === null && (await commissionRowsFor(m.id)).length === 2);
+  const proA = Math.floor(((1_400 / pool) * kept) * RATE);
+  ok("2.7 · CONTROL · pro-rata BY STAKE (the older models' formula) would pay the winner 30 — not what the row holds",
+    proA === 30 && ra?.grossAmountTzs !== proA, j({ proA }));
+  const draftSum = [x.pa, x.pc, x.pb, x.pd].reduce((s, id) => s + P.levySplit(feeOf(id), fresh.feeSnapshot).operatorNet, 0);
+  const draftB = Math.floor(P.levySplit(364, fresh.feeSnapshot).operatorNet * RATE);
+  ok("2.8 · CONTROL · the first draft's levySplit(own fee) per position sums to 796 — MORE than the 795 kept — and would pay the loser 62",
+    draftSum === 796 && draftSum > kept && draftB === 62 && rb?.grossAmountTzs !== draftB, j({ draftSum, kept, draftB }));
+  ok("2.9 · the outsiders' shares (110 + 221) exist and are never accrued — and never handed to a recruit: exactly the two recruits' rows",
+    (await rowOf(m.id, x.pc)) === null && (await rowOf(m.id, x.pd)) === null && (await commissionRowsFor(m.id)).length === 2
+      && (bases.get(x.pc) ?? 0) + (bases.get(x.pd) ?? 0) === 331);
 }
 
 // ═══ §3 · the winnings tax is never in the base ══════════════════════════════════════════════════════════════════════
@@ -212,13 +242,16 @@ console.log("\n§3 · ⛔ the winnings tax is never in the base");
     at(0.15).winningsTax === 626 && at(0.30).winningsTax === 1_253 && at(0.15).fee === 936 && at(0.30).fee === 936,
     j({ t15: at(0.15).winningsTax, t30: at(0.30).winningsTax }));
   const ra = await rowOf(m.id, x.pa), rb = await rowOf(m.id, x.pb);
-  ok("3.3 · ★ …and both recruits accrue EXACTLY what they accrued at 15% (31 / 62): the tax is not in the base",
-    rowIs(ra, 31) && rowIs(rb, 62) && shareGross.a === 31 && shareGross.b === 62, `${show(ra)} · ${show(rb)}`);
+  ok("3.3 · ★ …and both recruits accrue EXACTLY what they accrued at 15% (31 / 61): the tax is not in the base",
+    rowIs(ra, 31) && rowIs(rb, 61) && shareGross.a === 31 && shareGross.b === 61, `${show(ra)} · ${show(rb)}`);
   const rows = new Map(((await w.mdal.positionStore.listForMarket(m.id)) as Any[]).map((p) => [p.id, p]));
   const taxA = Number((rows.get(x.pa) as Any)?.winningsTaxTzs);
-  const taxed = Math.floor(P.levySplit(182 + taxA, fresh.feeSnapshot).operatorNet * RATE);
-  ok("3.4 · CONTROL · a base that let A's withheld tax in (182 + its tax) would accrue a different figure — so 3.3 can fail",
-    Number.isSafeInteger(taxA) && taxA > 0 && taxed !== 31, j({ taxA, taxed }));
+  const taxC = Number((rows.get(x.pc) as Any)?.winningsTaxTzs);
+  // A base that let the withheld tax in — the winners' weights fee + tax — would hand A a far larger share of the 795.
+  const taxedWeight = (182 + taxA) + (130 + taxC) + 364 + 260;
+  const taxedA = Math.floor(Math.floor((795 * (182 + taxA)) / taxedWeight) * RATE);
+  ok("3.4 · CONTROL · a base that let the winners' withheld tax into the weights would pay A a different figure — so 3.3 can fail",
+    Number.isSafeInteger(taxA) && taxA > 0 && Number.isSafeInteger(taxC) && taxC > 0 && taxedA !== 31, j({ taxA, taxC, taxedA }));
 }
 
 // ═══ §4 · a void claws back; a refund accrues nothing ════════════════════════════════════════════════════════════════

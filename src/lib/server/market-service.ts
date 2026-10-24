@@ -44,7 +44,7 @@ import { normaliseShortTitleSet, messageTitle, messageTitles } from "@/lib/marke
 import { shortTitlesInMessagesNow } from "./message-titles";
 import { normaliseCompetition } from "@/lib/markets/competitions";
 // FEE-TAX-2026-10 · R2b: `stakeShareSplit` is the one stake-share split settlement and the close-time disclosure pay by.
-import { payoutFor, settledPayoutFor, allocateWinnerPayouts, allocateFeeShares, winnersForAllocation, poolFee, levySplit, leanFor, resolveFeeModel, stakeShareSplit, rateBp, THIN_SMALLER_SIDE_SHARE, type FeeBreakdown, type FeeSnapshot, type StakeShareSplit } from "@/lib/payout";
+import { payoutFor, settledPayoutFor, allocateWinnerPayouts, allocateFeeShares, winnersForAllocation, poolFee, levySplit, leanFor, resolveFeeModel, stakeShareSplit, largestRemainder, rateBp, THIN_SMALLER_SIDE_SHARE, type FeeBreakdown, type FeeSnapshot, type StakeShareSplit } from "@/lib/payout";
 import type { FailureReason } from "@/lib/failure-reasons";
 import { exitWindowFacts } from "@/lib/exit-window";
 // House bots (build commit 2): the H0–H4 gates the bet path calls for a house stake, and the house
@@ -614,6 +614,35 @@ function stakeShareSettlementSplit(
     );
   }
   return split;
+}
+
+/**
+ * ⭐ THE AGENT-COMMISSION BASE UNDER `stake-share` — ONE FIGURE, SPLIT EXACTLY (FEE-TAX-2026-10, R2b).
+ * The house keeps levySplit(F).operatorNet of the market's fee F: the TRA and GBT levies are rounded ONCE, on F, exactly
+ * as they are booked. Each position's base is its largest-remainder share of THAT one figure, weighted by the fee the
+ * position itself paid (the split's `perWinner` / `perLoser` fee — the `feeTzs` its row carries), in exact integers with
+ * ties by id (`largestRemainder`). So Σ bases = operatorNet(F) EXACTLY, and each base stays proportional to its own fee.
+ * 🔴 NOT levySplit(own fee).operatorNet per position, the first draft: n independent roundings of the levies need not sum
+ * to the one rounding of the whole — on YES 1,400 / 1,000 against NO 2,800 / 2,000 the four own-fee bases come to 796
+ * against the 795 the house kept, and a commission priced on 796 shares out money the house never had (RULES §2.10,
+ * "never more than the house kept"; `onRecruitSettlement`).
+ * Every position still in the pool is weighted — winners WIN + OPEN and losers LOSS + OPEN, the split's own sets —
+ * house-marked positions INCLUDED: their fees are part of F, so their share of the base exists; it is simply never
+ * accrued (`onRecruitSettlement` returns on a house marker, as today) — and so it is never handed to a recruit either.
+ * ⛔ NEVER THE WINNINGS TAX: T is withheld from the prize for TRA; it is neither F nor any position's fee.
+ * Pure and deterministic over the split's sets, so a resumed settlement reproduces every base (`test:agent-settlement-attribution`).
+ */
+export function stakeShareCommissionBases(
+  split: Pick<StakeShareSplit, "fee" | "perWinner" | "perLoser">,
+  rates: { traTaxOnCommissionRate: number; gbtLevyOnCommissionRate: number },
+): Map<string, number> {
+  const kept = levySplit(split.fee, rates).operatorNet;
+  const rows = [
+    ...[...split.perWinner].map(([id, part]) => ({ id, weight: part.fee })),
+    ...[...split.perLoser].map(([id, part]) => ({ id, weight: part.fee })),
+  ];
+  if (kept <= 0 || rows.every((r) => r.weight === 0)) return new Map<string, number>(rows.map((r) => [r.id, 0]));
+  return largestRemainder(rows, kept, "the agent-commission base (the part of the fee the house kept)");
 }
 
 /**
@@ -4581,6 +4610,8 @@ export async function settleMarket(
   // ⭐ The stake-share split this settlement pays by (two-sided outcome only; null on VOID and under every older model) —
   // read by the payouts, the ledger groups, the position rows, the agent accruals and the `market.resolved` record.
   let shareSplit: StakeShareSplit | null = null;
+  // …and, with it, every position's agent-commission base: operatorNet(F) split exactly by own fee (`stakeShareCommissionBases`).
+  let shareBases: Map<string, number> | null = null;
 
   if (opts.outcome === "VOID") {
     // 🔴 E-94 · THE WALLET HISTORY IS A SURFACE, AND IT NAMED ONE REASON OUT OF FIVE.
@@ -4726,6 +4757,7 @@ export async function settleMarket(
     switch (settleCfg.feeModel) {
       case "stake-share":
         shareSplit = stakeShareSettlementSplit(m, allMarketPositions, opts.outcome, settleCfg, settleFee);
+        shareBases = stakeShareCommissionBases(shareSplit, settleCfg);
         payoutByPos = new Map([...shareSplit.perWinner].map(([id, part]) => [id, part.payout] as const));
         break;
       case "loser-share":
@@ -4967,18 +4999,20 @@ export async function settleMarket(
       // shares out money that already belongs to TRA and GBT. See the note at `settleLevies`.
       //
       // ⭐ UNDER `stake-share` (FEE-TAX-2026-10) EVERY POSITION PAID ITS OWN FEE — 13% of its own stake, winner and loser
-      // alike — so the base is exactly that: `levySplit(feeTzs).operatorNet`, the position's OWN fee net of the TRA and GBT
-      // levied on it. ⛔ NOT the pro-rata formula below: with F = Σ of per-side roundings and the levies rounded once for the
-      // market, `(stake / pool) × operatorNet(F)` is a fraction near — not equal to — what this position paid, and a
-      // commission must be priced on what was paid. ⛔ AND NEVER THE WINNINGS TAX: T is the state's money from the first
-      // shilling, withheld from the winners' prize — it is not a fee 50pick kept, so it can never enter the base
-      // (`test:agent-settlement-attribution`). The older models keep their formula, byte for byte.
+      // alike — so its base is ITS SHARE OF WHAT THE HOUSE KEPT, BY THAT FEE: operatorNet(F), the levies rounded once on
+      // the market's fee F exactly as booked, split by largest remainder over every position's own fee, ties by id
+      // (`stakeShareCommissionBases`, computed once with the split). Σ bases = operatorNet(F) EXACTLY.
+      // ⛔ NOT levySplit(own fee).operatorNet per position: n roundings of the levies need not sum to the one rounding of
+      // the whole, and their sum can exceed what the house kept (796 against 795 on the fixture of
+      // `test:agent-settlement-attribution`) — a share of money we never had (RULES §2.10). ⛔ NOT the pro-rata formula
+      // below either: `(stake / pool) × operatorNet(F)` weights by stake, not by the fee each position paid.
+      // ⛔ AND NEVER THE WINNINGS TAX: T is the state's money from the first shilling, withheld from the winners' prize —
+      // it is not a fee 50pick kept, so it can never enter the base. The older models keep their formula, byte for byte.
       if (shareSplit) {
-        const ownFee = shareSplit.perWinner.get(p.id)?.fee ?? shareSplit.perLoser.get(p.id)?.fee;
-        if (ownFee === undefined) throw new Error(`settle ${m.id}: the stake-share split names no fee for position ${p.id} — refusing to settle`);
-        const ownNetFee = levySplit(ownFee, settleCfg).operatorNet;
-        if (ownNetFee > 0) {
-          pendingReferralAccruals.push({ userId: p.userId, operatorNetFee: ownNetFee, positionId: p.id, houseBotId: p.houseBotId ?? null });
+        const base = shareBases?.get(p.id);
+        if (base === undefined) throw new Error(`settle ${m.id}: the stake-share commission base names no share for position ${p.id} — refusing to settle`);
+        if (base > 0) {
+          pendingReferralAccruals.push({ userId: p.userId, operatorNetFee: base, positionId: p.id, houseBotId: p.houseBotId ?? null });
         }
       } else if (settleFee.pool > 0 && settleLevies.operatorNet > 0) {
         const attributableNetFee = (p.stake / settleFee.pool) * settleLevies.operatorNet;
