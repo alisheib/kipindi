@@ -41,9 +41,31 @@
  *      losing pool and so is bounded by it by construction — which is why the ceiling is
  *      not carried forward rather than being merely retuned.
  *
- * ⛔ THE TWO MATHS NEVER MIX. The model is frozen per market in `feeSnapshot` at creation
+ *   ⏳ DECIDED, NOT IN FORCE — `stake-share`, polls and Up & Down (Ali's rulings of 2026-10-24,
+ *      programme FEE-TAX-2026-10, `docs/FEE-TAX-PLAN.md` §3). Every door that could freeze it
+ *      onto a new market reads `fee-law-gate.ts` and refuses until release R5:
+ *
+ *        "A fee on EVERY stake, and a tax on what the winners win."
+ *
+ *        f = platformFeeRate + operatorFeeRate, t = winningsTaxRate — both in WHOLE basis points
+ *        F = rhu(yesPool, f) + rhu(noPool, f)        the fee, per side, rounded half up
+ *        P = losingPool − (the losing side's fee)     the prize fund: the losers' NET stakes
+ *        T = rhu(P, t)                                the winnings tax, withheld for TRA
+ *        netPool = pool − F − T                       what the winners share
+ *        payout(i) = (stake − its fee share) + its share of (P − T)   largest remainder, ties by id
+ *
+ *      Σ payouts + T + F = pool EXACTLY, in whole shillings — `stakeShareSplit` asserts it and
+ *      leaves no dust and no residual. ⚠️ The fee now comes out of the WINNERS' stakes too, so on
+ *      a lopsided market a winner can be paid LESS than they staked (100,000 against 10,000 pays
+ *      94,395). That is ruling 1, deliberate, and warned before the bet; the floor under this
+ *      model is the NET stake (stake − its fee), never the stake.
+ *
+ * ⛔ THE MATHS NEVER MIX. The model is frozen per market in `feeSnapshot` at creation
  * and settlement reads only the snapshot. On production, 4,220 Up & Down rounds and 58
- * legacy polls still settle by the legacy arm. Do not "harmonise" history.
+ * legacy polls still settle by the legacy arm. Do not "harmonise" history. The same holds
+ * for `stake-share` from the day it switches on: a market frozen under `loser-share` or
+ * `capped-commission` settles by that law for ever, byte for byte (`test:loser-share-fee`,
+ * `test:fee-model` and `test:settlement-gate` pass UNCHANGED across this release — the proof).
  *
  * ── THE INVARIANTS (see scripts/money-invariants.test.mts) ─────────────────
  *
@@ -55,6 +77,11 @@
  *         - winning side SMALLER: fee <= (1/3)*winningPool ⇒ ratio >= 2/3 + L/W > 5/3
  *     `assertWinnerFloor` re-checks it at runtime and THROWS, because refusing to settle
  *     is safe and paying a winner less than he staked is not.
+ *     ⚠️ NOT under `stake-share` — and that is a ruling, not a regression (ruling 1, 2026-10-24).
+ *     There the fee is taken from every stake, the winners' included, so the floor is the NET
+ *     stake: payout ≥ stake − its fee, exactly (the prize share added on top is never negative).
+ *     `assertNetStakeFloor` enforces it; `assertWinnerFloor` stays, unchanged, for every market
+ *     frozen under the two older pool models, which is where it has always been true.
  *
  *  2. 🔴 OUTCOME-NEUTRALITY IS A PROPERTY OF THE LEGACY MODEL ONLY, AND THAT IS A
  *     DELIBERATE, RECORDED DECISION — not an oversight. `capped-commission` reads the two
@@ -67,6 +94,8 @@
  *     the GBT file. ⛔ Do not re-litigate it in code.
  *
  *  3. NO MINT / NO LEAK. sum(payouts) + fee == pool, to rounding dust.
+ *     `stake-share` holds it with NO dust at all: Σ payouts + winnings tax + fee == pool, in
+ *     whole shillings, asserted inside `stakeShareSplit` on every call.
  *
  *  4. BALANCED MARKET. yesPool == noPool ⇒ loser-share charges rate * half the pool
  *     (13% of 5,000 on a 10,000 book = 650); capped-commission charges commissionRate *
@@ -77,8 +106,15 @@
  *  5. ONE-SIDED. Under loser-share there is no losing pool; under capped-commission
  *     smaller == 0. Either way fee == 0 and everybody is refunded. It falls out of the
  *     maths under both; settlement keeps an explicit branch only for audit clarity.
+ *     ⛔ Under `stake-share` it does NOT fall out of the maths — a fee on every stake would
+ *     charge the funded side — so the refund is the CALLER's branch and the arithmetic is
+ *     never asked: settlement's one-sided branch and `chargedFee` refund in full at no fee
+ *     (ruling 2), `stakeShareSplit` refuses a side with no money, and a projection onto an
+ *     empty other side is the stake itself (`settledPayoutFor`'s one-sided mirror).
  *
  * Taxes (TRA/GBT) come out of OUR fee, never out of the player — see `levySplit`.
+ * ⚠️ The `stake-share` WINNINGS TAX is a different thing and the one exception: it is withheld
+ * from the winners' prize for TRA (ruling 3), never out of our fee, and never a levy on it.
  */
 
 // ── Rates ───────────────────────────────────────────────────────────────────
@@ -193,6 +229,19 @@ export const MAX_LOSER_SHARE_RATE = 1.0;
  * rate — the rate is `maswali.config.jackpotFeeRate` (admin-editable, frozen per week, RULES §2.12).
  */
 export const MAX_JACKPOT_FEE_RATE = 0.5;
+/**
+ * stake-share (FEE-TAX-2026-10): the highest fee on EVERY stake (platform + operator) any configuration may freeze. A BOUND,
+ * not the rate — the rate is `platformFeeRate + operatorFeeRate`, admin-set and frozen per market.
+ * ⚠️ Lower than `MAX_LOSER_SHARE_RATE` (100%) because the base is different: a share of the WHOLE pool comes out of the
+ * winners' stakes too, so the bound is what keeps "a winner can be paid below their stake" a lopsided-market event
+ * (ruling 1) rather than the rule.
+ */
+export const MAX_STAKE_FEE_RATE = 0.30;
+/**
+ * stake-share: the highest WINNINGS TAX any configuration may freeze — a bound, not the rate. The rate is
+ * `winningsTaxRate`, set only by an admin's audited save and frozen per market; no code default exists for it.
+ */
+export const MAX_WINNINGS_TAX_RATE = 0.50;
 /** Display-only. The fixed "possible winnings" shown pre-bet = stake × (1 + rate).
  *  Default 0.5 → a 1.5× headline. It is a marketing estimate, NOT the pari-mutuel
  *  payout, which is why the disclaimer is mandatory. */
@@ -226,8 +275,18 @@ export type Side = "YES" | "NO";
  * `negative` is GONE. A winning position can no longer be paid below its stake,
  * so the level that meant "you won but you lost money" is now unreachable. It was
  * deleted from the union deliberately so the compiler finds every consumer.
+ *
+ * ⭐ `below` IS BACK — FOR ONE MODEL, BY A RULING, AND IT IS NOT `negative`. Under
+ * `stake-share` (Ali, 2026-10-24, ruling 1) the fee comes out of every stake, so on a
+ * lopsided market a correct call CAN be paid less than it staked (100,000 against 10,000
+ * pays 94,395) and the bet screen must say so before the bet. `negative` was a lie about a
+ * bug; `below` is a true statement about a deliberate law. It is unreachable for a market
+ * frozen under `capped-commission` or `loser-share` (their floor holds, `assertWinnerFloor`),
+ * and it is added to the union for the same reason `negative` was taken out of it: so the
+ * compiler finds every consumer, and none of them can render the thin-upside copy ("you will
+ * never be paid less than you staked") over a figure that is below the stake.
  */
-export type LeanLevel = "fair" | "thin";
+export type LeanLevel = "below" | "thin" | "fair";
 
 /**
  * Which fee formula a poll uses. Frozen per poll so the two maths never mix:
@@ -242,11 +301,21 @@ export type LeanLevel = "fair" | "thin";
  *  - `jackpot-payout` (Maswali Millionea, MASWALI-BUILD S1; RULES §2.12): fee = `jackpotFeeRate` × the JACKPOT, taken
  *    only in a week with at least one 10/10 ticket, nothing in a no-winner week. It is NOT a pari-mutuel pool fee —
  *    `poolFee` refuses it, and the week's arithmetic is `maswali-money.ts`. The rate is frozen per week like every rate.
+ *  - `stake-share` (polls and Up & Down, FEE-TAX-2026-10 — DECIDED, NOT IN FORCE until `fee-law-gate.ts` opens):
+ *    fee = (platformFeeRate + operatorFeeRate) of EVERY stake, rounded half up per side; the losing side's net stakes
+ *    are the prize fund, and `winningsTaxRate` of it is withheld for TRA. Outcome-NEUTRAL in its fee (both sides pay
+ *    it), outcome-dependent in its tax (the tax is on whichever side lost). The arithmetic is `stakeShareSplit`; its
+ *    two rates and its tax are REQUIRED on a snapshot and refused when missing — never defaulted.
  */
-export type FeeModel = "capped-commission" | "loser-share" | "jackpot-payout";
+export type FeeModel = "capped-commission" | "loser-share" | "jackpot-payout" | "stake-share";
 
-/** Every fee model the code knows. `readRates` REFUSES any other value instead of coercing it (S1). */
-export const FEE_MODELS: readonly FeeModel[] = ["capped-commission", "loser-share", "jackpot-payout"];
+/**
+ * Every fee model the code knows. `readRates` REFUSES any other value instead of coercing it (S1).
+ * ⚠️ `stake-share` is listed because a snapshot that froze it must READ as itself — the refusal of an unknown model
+ * cannot be the gate, or the first stake-share market would be unpriceable. Whether a NEW market may freeze it is
+ * `fee-law-gate.ts`'s question, asked at every door, not this list's.
+ */
+export const FEE_MODELS: readonly FeeModel[] = ["capped-commission", "loser-share", "jackpot-payout", "stake-share"];
 
 /**
  * The rates the fee is made of. Everything money-side takes exactly this.
@@ -265,6 +334,12 @@ export interface FeeRates {
   operatorFeeRate?: number;
   /** jackpot-payout only: the share of the JACKPOT taken when a week pays (0.13 = 13%), frozen per week. */
   jackpotFeeRate?: number;
+  /**
+   * stake-share only: the WINNINGS TAX withheld from the prize fund for TRA (0.15 = 15%), frozen per market.
+   * ⛔ Present only on a `stake-share` snapshot, and REQUIRED there (`readRates` refuses one without it). There is no
+   * code default: the rate comes from `market.config`, saved by an admin, at the moment a market is stamped.
+   */
+  winningsTaxRate?: number;
 }
 
 /**
@@ -294,8 +369,10 @@ export interface FeeSnapshot extends FeeRates {
   /** Display-only (loser-share). Whether to show the pre-bet estimate at all. */
   showEstimatedWinnings: boolean;
   /** Schema version. `1` (or absent) = legacy `capped-commission`; `2` carries
-   *  `feeModel` + the loser-share/display fields. Old snapshots read as v1. */
-  v: 1 | 2;
+   *  `feeModel` + the loser-share/display fields. Old snapshots read as v1.
+   *  `3` = carries `stake-share` and its `winningsTaxRate` (FEE-TAX-2026-10). Only a
+   *  stake-share snapshot is v3: every other model keeps the version it always stamped. */
+  v: 1 | 2 | 3;
   /** ISO timestamp the snapshot was stamped. Audit only; never read by the math. */
   stampedAt: string;
 }
@@ -312,6 +389,8 @@ export type PollRates = Pick<
   FeeSnapshot,
   "commissionRate" | "feeCeilingRate" | "cashOutFeeRate" | "freeExitGraceMinutes" | "paidExitWindowMinutes" | "thinProfitRatio"
   | "feeModel" | "platformFeeRate" | "operatorFeeRate" | "estimatedWinningsRate" | "showEstimatedWinnings"
+  // stake-share only (optional on the snapshot): a projection onto a stake-share market needs it, and refuses without it.
+  | "winningsTaxRate"
 >;
 
 export interface FeeBreakdown {
@@ -325,14 +404,20 @@ export interface FeeBreakdown {
   commission: number;
   /** feeCeilingRate * smaller — the most we are ever allowed to take. */
   ceiling: number;
-  /** min(commission, ceiling) — what we actually take. */
+  /** min(commission, ceiling) — what we actually take. ⛔ OUR fee ONLY, under every model: never the winnings tax. */
   fee: number;
-  /** pool - fee — what is shared out among the winners. */
+  /** What is shared out among the winners: pool − fee under the older models; pool − fee − winningsTax under
+   *  `stake-share` (with no winning side there is no tax yet, so a stake-share preview reports pool − fee). */
   netPool: number;
   /** True when the ceiling bound (the poll is lopsided enough that 10% would bite the winners). */
   capped: boolean;
-  /** Our fee as a share of the LOSERS' money — the honest "house take". Caps at feeCeilingRate. */
+  /** Our fee as a share of the LOSERS' money — the honest "house take". Caps at feeCeilingRate.
+   *  (stake-share: the flat rate of every stake, which is also our take of the losers' stakes.) */
   shareOfLosers: number;
+  /** stake-share only, and only when the winning side is known: the tax withheld from the prize fund for TRA. */
+  winningsTax?: number;
+  /** stake-share only, and only when the winning side is known: P, the losing side's net stakes (before the tax). */
+  prizeFund?: number;
 }
 
 export interface PayoutResult {
@@ -342,7 +427,8 @@ export interface PayoutResult {
   net: number;
   /** This position's share of the winning pool. */
   share: number;
-  /** payout / stake. Guaranteed >= 1 for a winner (invariant 1). */
+  /** payout / stake. Guaranteed >= 1 for a winner (invariant 1) under the two older pool models;
+   *  under `stake-share` it can be below 1 on a lopsided market (ruling 1) — see `leanFor`'s `below`. */
   ratio: number;
   /** The fee maths this payout came out of — for disclosure UI and the ledger. */
   fee: FeeBreakdown;
@@ -370,25 +456,95 @@ interface ResolvedRates {
   feeModel: FeeModel;
   platformFeeRate: number;
   operatorFeeRate: number;
-  /** jackpot-payout only; 0 under the two pool models. */
+  /** jackpot-payout only; 0 under the pool models. */
   jackpotFeeRate: number;
+  /**
+   * stake-share only: the frozen winnings tax; 0 under every other model. `null` only on a TERMS read of a stake-share
+   * rate set that carries no tax — an Up & Down profile, whose tax comes from `market.config` when a round is stamped.
+   * ⛔ A PRICING read never returns null: it refuses instead.
+   */
+  winningsTaxRate: number | null;
 }
+
+/**
+ * What a read is FOR. `pricing` (the default) prices money, so it requires every rate the model reads; `terms` only
+ * names the model and its fee rate — a caption, a label, an outcome-neutral preview — and so lets a stake-share rate set
+ * without its tax through (a profile never carries one). Under every model but `stake-share` the two are identical.
+ */
+type ReadNeed = "pricing" | "terms";
 
 /**
  * Defensive read of the rates. A NaN/absent rate must never become a big fee.
  * CRUCIAL no-mix guarantee: an absent `feeModel` (every pre-2026-07-23 snapshot,
  * or a bare `{commissionRate}`) resolves to `capped-commission`, so old money
  * behaves exactly as before this change.
+ * ⛔ `stake-share` is read the OTHER way on purpose: its rates are never clamped and
+ * never defaulted (`readStakeShareRates`). The older models' defaults exist because
+ * snapshots predating a field had to keep pricing; no stake-share snapshot predates
+ * anything, so a missing rate there is a corrupt snapshot, and it is refused.
  */
-function readRates(rates: Partial<FeeRates> | undefined): ResolvedRates {
+function readRates(rates: Partial<FeeRates> | undefined, need: ReadNeed = "pricing"): ResolvedRates {
+  const feeModel = readFeeModel(rates?.feeModel);
+  if (feeModel === "stake-share") {
+    const s = readStakeShareRates(rates, need);
+    return {
+      commissionRate: clamp(rates?.commissionRate ?? DEFAULT_COMMISSION_RATE, 0, 1),
+      feeCeilingRate: clamp(rates?.feeCeilingRate ?? DEFAULT_FEE_CEILING_RATE, 0, MAX_FEE_CEILING_RATE),
+      feeModel,
+      platformFeeRate: s.platformFeeRate,
+      operatorFeeRate: s.operatorFeeRate,
+      jackpotFeeRate: 0,
+      winningsTaxRate: s.winningsTaxRate,
+    };
+  }
   return {
     commissionRate: clamp(rates?.commissionRate ?? DEFAULT_COMMISSION_RATE, 0, 1),
     feeCeilingRate: clamp(rates?.feeCeilingRate ?? DEFAULT_FEE_CEILING_RATE, 0, MAX_FEE_CEILING_RATE),
-    feeModel: readFeeModel(rates?.feeModel),
+    feeModel,
     platformFeeRate: clamp(rates?.platformFeeRate ?? DEFAULT_PLATFORM_FEE_RATE, 0, 1),
     operatorFeeRate: clamp(rates?.operatorFeeRate ?? DEFAULT_OPERATOR_FEE_RATE, 0, 1),
     jackpotFeeRate: readJackpotFeeRate(rates),
+    winningsTaxRate: 0,
   };
+}
+
+/** A finite rate in [0, hi]. */
+function isRateIn(v: unknown, hi: number): v is number {
+  return typeof v === "number" && Number.isFinite(v) && v >= 0 && v <= hi;
+}
+
+/**
+ * ⛔ A STAKE-SHARE RATE SET IS READ, NEVER COMPLETED (FEE-TAX-2026-10). Platform and operator must be frozen finite rates,
+ * each and together within `MAX_STAKE_FEE_RATE`; the winnings tax a frozen finite rate within `MAX_WINNINGS_TAX_RATE`.
+ * Anything else THROWS, exactly as `readJackpotFeeRate` refuses a week without its rate: pricing a stake-share market at a
+ * default would charge a law nobody froze. The sum is compared in basis points — the unit the arithmetic charges in — so
+ * 0.10 + 0.20 (which a float stores as 0.30000000000000004) is the 30% it means.
+ * A TERMS read (`need: "terms"`) lets a missing tax through as `null` — and only a missing one: a tax that is present and
+ * out of range is refused on every read.
+ */
+function readStakeShareRates(
+  rates: Partial<FeeRates> | undefined,
+  need: ReadNeed,
+): { platformFeeRate: number; operatorFeeRate: number; winningsTaxRate: number | null } {
+  const p: unknown = rates?.platformFeeRate;
+  const o: unknown = rates?.operatorFeeRate;
+  const t: unknown = rates?.winningsTaxRate;
+  if (!isRateIn(p, MAX_STAKE_FEE_RATE) || !isRateIn(o, MAX_STAKE_FEE_RATE) || rateBp(p + o) > rateBp(MAX_STAKE_FEE_RATE)) {
+    throw new Error(
+      `payout: a stake-share fee must be frozen as platform + operator rates within [0, ${MAX_STAKE_FEE_RATE}] ` +
+      `(got ${JSON.stringify(p)} + ${JSON.stringify(o)}) — refused, never defaulted`,
+    );
+  }
+  if (t === undefined || t === null) {
+    if (need === "pricing") {
+      throw new Error("payout: a stake-share snapshot must freeze its winnings tax rate — refused, never defaulted");
+    }
+    return { platformFeeRate: p, operatorFeeRate: o, winningsTaxRate: null };
+  }
+  if (!isRateIn(t, MAX_WINNINGS_TAX_RATE)) {
+    throw new Error(`payout: a stake-share winnings tax must be frozen within [0, ${MAX_WINNINGS_TAX_RATE}] (got ${JSON.stringify(t)})`);
+  }
+  return { platformFeeRate: p, operatorFeeRate: o, winningsTaxRate: t };
 }
 
 /**
@@ -423,9 +579,13 @@ function readJackpotFeeRate(rates: Partial<FeeRates> | undefined): number {
  * label a legacy poll as neither model — or, worse, hardcode one. That is precisely the
  * defect this exists to close: `/admin/updown` displayed a hardcoded
  * `capped-commission 13%` beside a value that had already moved to loser-share.
+ *
+ * A TERMS read: an Up & Down `stake-share` profile carries no winnings tax (it is stamped
+ * from `market.config`), and naming its model must not need one. Its fee rates are still
+ * refused when missing or out of range, exactly as a price would refuse them.
  */
 export function resolveFeeModel(rates: Partial<FeeRates> | undefined): FeeModel {
-  return readRates(rates).feeModel;
+  return readRates(rates, "terms").feeModel;
 }
 
 /**
@@ -442,7 +602,7 @@ export function resolveFeeModel(rates: Partial<FeeRates> | undefined): FeeModel 
  * ties the quoted rate back to a fee `poolFee` really charged, so the caption cannot drift.
  */
 export function describeFeeModel(rates: Partial<FeeRates> | undefined): { model: FeeModel; caption: string } {
-  const r = readRates(rates);
+  const r = readRates(rates, "terms");
   const pct = (n: number) => `${Number((n * 100).toFixed(2))}%`;
   if (r.feeModel === "loser-share") {
     // The SAME clamp `poolFee` applies to the summed slices — not the raw sum.
@@ -452,6 +612,9 @@ export function describeFeeModel(rates: Partial<FeeRates> | undefined): { model:
   // Maswali Millionea: the frozen jackpot share, taken at payout only ("13% at payout" — 13 characters, inside the
   // measured caption width; `test:fee-model-caption`).
   if (r.feeModel === "jackpot-payout") return { model: r.feeModel, caption: `${pct(r.jackpotFeeRate)} at payout` };
+  // stake-share (FEE-TAX-2026-10): the rate of EVERY stake, in the whole basis points the arithmetic charges — "13% of
+  // stakes", 13 characters; "12.75% of stakes" at the most decimals a basis point has, 16 (`test:fee-model-caption` §6).
+  if (r.feeModel === "stake-share") return { model: r.feeModel, caption: `${pct(stakeFeeBpOf(r) / 10_000)} of stakes` };
   return { model: r.feeModel, caption: `capped ${pct(r.commissionRate)}/${pct(r.feeCeilingRate)}` };
 }
 
@@ -461,9 +624,11 @@ export function describeFeeModel(rates: Partial<FeeRates> | undefined): { model:
  *
  * ⛔ NEVER `commissionRate`. On a loser-share poll `commissionRate` is a dormant legacy field that no fee reads, so a
  * sentence quoting it would name a rate the market does not charge.
+ * ⛔ AND `null` UNDER `stake-share` TOO: its fee is a share of every stake, not of the losing side, so a sentence built on
+ * this figure ("of the losing side") would misstate it. Its own figure is `stakeShareRate`.
  */
 export function loserShareRate(rates: Partial<FeeRates> | undefined): number | null {
-  const r = readRates(rates);
+  const r = readRates(rates, "terms");
   return r.feeModel === "loser-share" ? clamp(r.platformFeeRate + r.operatorFeeRate, 0, MAX_LOSER_SHARE_RATE) : null;
 }
 
@@ -475,6 +640,93 @@ export function loserShareRate(rates: Partial<FeeRates> | undefined): number | n
 export function loserSharePct(rates: Partial<FeeRates> | undefined): number | null {
   const rate = loserShareRate(rates);
   return rate === null ? null : Math.round(rate * 1000) / 10;
+}
+
+// ── stake-share figures (FEE-TAX-2026-10) ───────────────────────────────────
+// Every figure below is read through `readRates` and converted to the WHOLE BASIS POINTS the arithmetic charges in, so
+// a sentence quoting one can never name a rate the split does not apply. ⛔ None of them is a literal and none falls back
+// to a default: under any other model each is `null`, and a stake-share rate set that is malformed throws.
+
+/** A rate as whole basis points: round(rate × 10,000) — 0.13 → 1,300. The unit every stake-share figure is charged in. */
+export function rateBp(rate: number): number {
+  return Math.round(rate * 10_000);
+}
+
+/**
+ * ROUND HALF UP of `bp` basis points of a whole-shilling amount: floor((amount × bp + 5,000) / 10,000) — 13% of 1,005 is
+ * 130.65 → 131; 15% of 30,450 is 4,567.5 → 4,568. Exact integer arithmetic (the remainder is taken, never a float
+ * quotient floored), for any amount and rate whose product is a safe integer.
+ * ⛔ Refuses a fractional or negative amount, a fractional or negative rate, or a product past 2^53: money is whole
+ * shillings, and a figure this cannot compute exactly is a figure it does not guess.
+ */
+export function roundHalfUpBp(amount: number, bp: number): number {
+  if (!Number.isSafeInteger(amount) || amount < 0 || !Number.isSafeInteger(bp) || bp < 0) {
+    throw new Error(`payout: round-half-up needs a whole non-negative amount and rate (got ${amount} at ${bp} bp)`);
+  }
+  const n = amount * bp + 5_000;
+  if (!Number.isSafeInteger(n)) throw new Error(`payout: ${amount} at ${bp} bp is past exact arithmetic`);
+  return (n - (n % 10_000)) / 10_000;
+}
+
+/** The stake-share fee rate of resolved rates, in basis points. Internal: callers hold a stake-share `ResolvedRates`. */
+function stakeFeeBpOf(r: ResolvedRates): number {
+  return rateBp(r.platformFeeRate + r.operatorFeeRate);
+}
+
+/** The stake-share fee on every stake, in basis points (1,300 = 13%); `null` under any other model. */
+export function stakeFeeBp(rates: Partial<FeeRates> | undefined): number | null {
+  const r = readRates(rates, "terms");
+  return r.feeModel === "stake-share" ? stakeFeeBpOf(r) : null;
+}
+
+/**
+ * The stake-share winnings tax, in basis points (1,500 = 15%); `null` under any other model, and `null` for a stake-share
+ * rate set that carries no tax (an Up & Down profile — its tax is stamped from `market.config`).
+ */
+export function winningsTaxBp(rates: Partial<FeeRates> | undefined): number | null {
+  const r = readRates(rates, "terms");
+  return r.feeModel === "stake-share" && r.winningsTaxRate !== null ? rateBp(r.winningsTaxRate) : null;
+}
+
+/**
+ * THE STAKE-SHARE TOTAL a set of rates charges on every stake — `platformFeeRate + operatorFeeRate`, as the fraction the
+ * arithmetic applies (whole basis points); `null` under every other model. The `loserShareRate` of the new law.
+ */
+export function stakeShareRate(rates: Partial<FeeRates> | undefined): number | null {
+  const bp = stakeFeeBp(rates);
+  return bp === null ? null : bp / 10_000;
+}
+
+/**
+ * `{pct}` — the stake-share fee as copy prints it (13 · 12.5 · 12.75): a percentage to two decimals at most, because the
+ * arithmetic charges whole basis points and rounding the figure to one decimal would quote a rate it does not charge.
+ * `null` under every other model.
+ */
+export function stakeSharePct(rates: Partial<FeeRates> | undefined): number | null {
+  const bp = stakeFeeBp(rates);
+  return bp === null ? null : bp / 100;
+}
+
+/** `{pct}` — the stake-share winnings tax as copy prints it (15); `null` unless `stake-share` with a frozen tax. */
+export function winningsTaxPct(rates: Partial<FeeRates> | undefined): number | null {
+  const bp = winningsTaxBp(rates);
+  return bp === null ? null : bp / 100;
+}
+
+/**
+ * THE BREAK-EVEN LEAN under `stake-share` (ruling 1): the share of the pool on the SMALLER side below which a winner on
+ * the BIGGER side is paid less than their stake — f / (f + (1 − f)(1 − t)), ≈ 0.1495 (14.95%) at 13% and 15%
+ * (FEE-TAX-PLAN §3: "once the small side is under about 14.95% of the pool"). From the totals, ignoring the shilling
+ * rounding: the winner's ratio is (1 − f) + (1 − f)(1 − t)·L/W, which is 1 exactly there. A fraction in [0, 1]; `null`
+ * under every other model (their floor holds at every lean) and for a stake-share rate set that freezes no tax.
+ */
+export function stakeShareBreakEvenShare(rates: Partial<FeeRates> | undefined): number | null {
+  const feeBp = stakeFeeBp(rates);
+  const taxBp = winningsTaxBp(rates);
+  if (feeBp === null || taxBp === null) return null;
+  const f = feeBp / 10_000;
+  const keep = (1 - f) * (1 - taxBp / 10_000);
+  return f + keep > 0 ? f / (f + keep) : 1;
 }
 
 /**
@@ -516,6 +768,22 @@ export const FEE_CAPTION_MAX_CHARS = 17;
  * an alert keyed off a capped-commission concept went silent on loser-share polls for
  * three weeks. Never used to move money either way.
  *
+ * `stake-share` (FEE-TAX-2026-10, decided, gated by `fee-law-gate.ts`): the fee is a share
+ * of EVERY stake, rounded half up per side — the figures `stakeShareTotals` computes and
+ * `stakeShareSplit` settles with, so this arm cannot disagree with settlement. Its fee is
+ * known WITHOUT a side, so a preview with none reports F alone: `netPool` = pool − F, and no
+ * `winningsTax` or `prizeFund`, because the tax is a share of the LOSING side's net stakes and
+ * there is no loser yet. With a side it reports what settlement will do: `fee` = F,
+ * `prizeFund` = P, `winningsTax` = T, `netPool` = pool − F − T. Pools are whole shillings
+ * under this model; a fractional pool is refused, never rounded.
+ *
+ * ⚠️ THE CONTRACT, FOR EVERY READER (changed in FEE-TAX-2026-10 R2): `fee` is OUR fee and
+ * nothing else — never the winnings tax. What a stake-share market keeps back from its
+ * players is `fee + (winningsTax ?? 0)`; the tax goes to TRA and is not revenue. So "paid
+ * back = pool − fee" holds under the older models only, and `netPool` is the one figure
+ * that is right under all of them. ⛔ A one-sided pool and a VOID are refunds, never priced
+ * here: `chargedFee` and settlement's refund branch own them under every model.
+ *
  * ⛔ THIS PARAGRAPH USED TO SAY THE FEE WAS PREVIEWED AGAINST THE **SMALLER** POOL, AND
  * IT NEVER WAS. Twenty lines down, `losingPool` is `0` when the side is absent, and the
  * inline comment there has always said so — so the file contradicted itself, with the
@@ -527,17 +795,22 @@ export const FEE_CAPTION_MAX_CHARS = 17;
  * The winner floor holds under BOTH models (netPool ≥ winningPool ⇒ payout ≥ stake):
  * loser-share removes only a slice ≤ 100% of the losing pool, so netPool =
  * winningPool + losingPool·(1 − rate) ≥ winningPool.
+ * (Both OLDER models. Under `stake-share` netPool can fall below the winning pool on a
+ * lopsided market — ruling 1 — and the floor is the net stake: see `assertNetStakeFloor`.)
  *
  * Note `feeCeilingRate` is clamped to <= 100% here as well as in admin
  * validation. Two locks on the one thing invariant 1 depends on.
  */
 export function poolFee(yesPool: number, noPool: number, rates: Partial<FeeRates>, winningSide?: Side): FeeBreakdown {
-  const r = readRates(rates);
+  // A preview with no side is a TERMS read: a stake-share fee is known without the tax (`readRates`).
+  const r = readRates(rates, winningSide === undefined ? "terms" : "pricing");
   // ⛔ A Millionea week is not a pari-mutuel pool: its fee is a share of the JACKPOT, at payout only, computed by
   // `maswali-money.ts` from the week's frozen snapshot. Pricing it here would be a wrong figure, so it is refused.
   if (r.feeModel === "jackpot-payout") {
     throw new Error("poolFee: a jackpot-payout week is priced by maswali-money (RULES §2.12), never the pool fee");
   }
+  // stake-share (FEE-TAX-2026-10): the one stake-share arithmetic, never a variant of the two arms below.
+  if (r.feeModel === "stake-share") return stakeSharePoolFee(yesPool, noPool, r, rates, winningSide);
   const yes = Math.max(0, yesPool);
   const no = Math.max(0, noPool);
   const pool = yes + no;
@@ -583,6 +856,39 @@ export function poolFee(yesPool: number, noPool: number, rates: Partial<FeeRates
 }
 
 /**
+ * `poolFee`'s stake-share arm (FEE-TAX-2026-10), in three cases, in this order:
+ *   · ONE SIDE ONLY, OR NO MONEY AT ALL → what settlement does there (ruling 2): a full refund at no fee — `fee` 0, no
+ *     tax, `netPool` the whole pool. Under the two older pool models this falls out of their maths; under this one it
+ *     does not (a fee on every stake would charge the funded side), so it is a branch — and a preview can never print a
+ *     fee no settlement will take, the "phantom fee" `chargedFee` was built to stop readers counting.
+ *   · both sides funded, no winning side → F alone: the fee is known before the outcome, the tax is not (it is a share
+ *     of the LOSING side's net stakes) — `netPool` = pool − F, `winningsTax`/`prizeFund` absent;
+ *   · both sides funded, with a side → `stakeShareTotals`, the very figures settlement pays by.
+ * There is no ceiling and no cap in this model: `commission` and `ceiling` carry the fee itself, `capped` is false, and
+ * `shareOfLosers` is the flat rate (our take of the losers' stakes is that rate, as it is of every stake).
+ */
+function stakeSharePoolFee(yesPool: number, noPool: number, r: ResolvedRates, rates: Partial<FeeRates>, winningSide: Side | undefined): FeeBreakdown {
+  const yes = Math.max(0, yesPool);
+  const no = Math.max(0, noPool);
+  if (yes === 0 || no === 0) return stakeShareBreakdown(yes, no, 0, 0, yes + no);
+  const bp = stakeFeeBpOf(r);
+  if (winningSide === undefined) {
+    const fee = roundHalfUpBp(yes, bp) + roundHalfUpBp(no, bp);
+    return stakeShareBreakdown(yes, no, bp, fee, yes + no - fee);
+  }
+  const t = stakeShareTotals(yes, no, winningSide, rates);
+  return { ...stakeShareBreakdown(yes, no, bp, t.fee, t.netPool), winningsTax: t.winningsTax, prizeFund: t.prizeFund };
+}
+
+/** A stake-share figure laid out as a `FeeBreakdown` (no ceiling, no cap: `commission` and `ceiling` carry the fee). */
+function stakeShareBreakdown(yes: number, no: number, feeBp: number, fee: number, netPool: number): FeeBreakdown {
+  return {
+    pool: yes + no, smaller: Math.min(yes, no), larger: Math.max(yes, no),
+    commission: fee, ceiling: fee, fee, netPool, capped: false, shareOfLosers: feeBp / 10_000,
+  };
+}
+
+/**
  * THE FEE SETTLEMENT ACTUALLY DEBITS — for READERS only (landing v3 C1, the spec's §9 "phantom fee").
  *
  * 🔴 WHY THIS EXISTS. `poolFee(yes, no, rates, winner)` answers "what would the fee be on these pools if
@@ -603,6 +909,9 @@ export function poolFee(yesPool: number, noPool: number, rates: Partial<FeeRates
  * `test:charged-fee` drives the REAL settlement on every branch and pins this equal to what it debited.
  * ⭐ A MILLIONEA WEEK (S6) is handed in with `week`, as its settlement left it, and priced by its own model
  * (`jackpotCharged`); `test:maswali-reporting` pins that arm to what the real week settlement booked, on both stores.
+ * ⭐ A STAKE-SHARE MARKET (FEE-TAX-2026-10) takes the same refund branch first (ruling 2: one side only, or VOID, is
+ * refunded in full at no fee), and otherwise `stakeShareTotals` — `fee` = F, our fee only, with `winningsTax` = T and
+ * `prizeFund` = P beside it; what the market kept back from its players is fee + winningsTax (`test:charged-fee`).
  * ⛔ It is NOT on any money path: `poolFee` and settlement are untouched, and nothing may pay, book or
  * refund from this. On a refund every charge field is 0 and `netPool` is the whole pool (it all went back).
  */
@@ -645,6 +954,20 @@ export function chargedFee(
       pool, smaller: Math.min(yes, no), larger: Math.max(yes, no),
       commission: 0, ceiling: 0, fee: 0, netPool: pool, capped: false, shareOfLosers: 0,
       refunded: true,
+    };
+  }
+  // ⭐ stake-share (FEE-TAX-2026-10): what its settlement keeps back, from the two totals — `fee` is F ONLY (our fee) and
+  // the winnings tax T stands beside it, so staked − paid back = fee + winningsTax, and `netPool` is what the winners got.
+  // The same `stakeShareTotals` the split settles by, so a reader and the settlement cannot price two different laws.
+  // (Both pools empty — a market nobody backed — prices to zero; one side only never reaches here: refunded above.)
+  if (resolveFeeModel(rates) === "stake-share") {
+    const yes = Math.max(0, m.yesPool);
+    const no = Math.max(0, m.noPool);
+    const t = stakeShareTotals(yes, no, m.resolvedOutcome, rates);
+    return {
+      ...stakeShareBreakdown(yes, no, stakeFeeBp(rates) ?? 0, t.fee, t.netPool),
+      winningsTax: t.winningsTax, prizeFund: t.prizeFund,
+      refunded: false,
     };
   }
   return { ...poolFee(m.yesPool, m.noPool, rates, m.resolvedOutcome), refunded: false };
@@ -759,6 +1082,24 @@ export function assertWinnerFloor(payout: number, stake: number, ctx: string): v
   }
 }
 
+/**
+ * THE STAKE-SHARE FLOOR (FEE-TAX-2026-10, ruling 1). A `stake-share` winner may be paid less than its STAKE — the fee
+ * comes out of every stake — but never less than `floor`: its NET stake (stake − its fee share) in a settlement split,
+ * where it holds exactly; or, in a one-position projection, stake − rhu(stake) − 1, the one-shilling bound of a
+ * projection against the split's per-side rounding. Throws rather than pay below it, for the reason
+ * `assertWinnerFloor` gives: refusing to settle is safe, and an underpayment is gone once it is paid.
+ * ⛔ Never `assertWinnerFloor` on a stake-share market — that would refuse every lopsided market the ruling allows.
+ */
+export function assertNetStakeFloor(payout: number, floor: number, ctx: string): void {
+  if (payout < floor) {
+    throw new Error(
+      `[payout] NET-STAKE FLOOR BREACHED (${ctx}): a stake-share winner would be paid ${payout}, below its floor of ` +
+        `${floor} (its stake less its fee). The prize share added to a net stake is never negative, so this must be ` +
+        `impossible. Refusing to settle. Check the market's feeSnapshot.`,
+    );
+  }
+}
+
 // ── Payouts ─────────────────────────────────────────────────────────────────
 
 /**
@@ -771,6 +1112,9 @@ export function settledPayoutFor(
   opts: { yesPool: number; noPool: number; side: Side; stake: number },
   rates: Partial<FeeRates>,
 ): PayoutResult {
+  // stake-share (FEE-TAX-2026-10): its own projection — the per-side rounding, the net-stake floor and the one-sided
+  // mirror. Every older model takes the path below, byte for byte, and keeps `assertWinnerFloor`.
+  if (readFeeModel(rates?.feeModel) === "stake-share") return stakeShareSettledPayout(opts, rates);
   // The position's own side IS the winning side in the scenario this payout is for
   // ("if MY side wins"). For loser-share that fixes the loser = the opposite pool;
   // for capped-commission it is ignored (outcome-neutral).
@@ -792,6 +1136,48 @@ export function settledPayoutFor(
     share,
     ratio: payout / opts.stake,
     fee,
+  };
+}
+
+/**
+ * `settledPayoutFor` under `stake-share` — ONE position's payout if its side wins, from the final pools (which already
+ * hold its stake). It is `share × netPool`, netPool = pool − F − T from `stakeShareTotals` — the per-side rounding the
+ * split settles by — which is exactly the single-position form of the split: (stake − its share of F_w) + its share of
+ * (P − T) = stake × (W − F_w + P − T) / W. The split rounds the fee, the prize and the tax per winner by largest
+ * remainder and this rounds once, so the two agree to within a shilling or two — a PROJECTION; settlement pays the split.
+ *
+ * ⭐ THE ONE-SIDED MIRROR. If the OTHER side holds nothing, settlement refunds every stake in full at no fee (ruling 2),
+ * so the honest projection is the stake itself — never the 87% a fee on every stake would print. `payoutFor` adds the
+ * projected stake before it calls this, so the first bet on an empty market is quoted its own stake back. It is the ONE
+ * branch that answers a one-sided pool here: `stakeShareTotals` refuses one, so a projection that lost this line fails
+ * loudly instead of quoting 87% (`red:stake-share-fee` drops it and requires the suite to go red).
+ *
+ * ⛔ THE FLOOR IS THE NET STAKE, NOT THE STAKE (ruling 1): payout ≥ stake − rhu(stake) − 1, the projection's one-shilling
+ * bound against the split's rounding (`assertNetStakeFloor`). Proof: P ≥ T, so netPool ≥ W − F_w, and F_w ≤ f·W + ½; hence
+ * share × netPool ≥ stake − f·stake − ½, and its rounding is ≥ stake − rhu(stake) − 1. A below-stake figure is a true
+ * statement under this model, and `leanFor` names it `below`.
+ */
+function stakeShareSettledPayout(
+  opts: { yesPool: number; noPool: number; side: Side; stake: number },
+  rates: Partial<FeeRates>,
+): PayoutResult {
+  // A projection IS pricing: a malformed or incomplete stake-share rate set refuses here, whatever the pools.
+  const { feeBp } = stakeSharePricing(rates);
+  const yes = Math.max(0, opts.yesPool);
+  const no = Math.max(0, opts.noPool);
+  const winningPool = opts.side === "YES" ? yes : no;
+  const otherPool = opts.side === "YES" ? no : yes;
+  if (winningPool <= 0 || opts.stake <= 0) {
+    return { payout: 0, net: 0, share: 0, ratio: 0, fee: poolFee(yes, no, rates, opts.side) };
+  }
+  if (otherPool <= 0) return { payout: opts.stake, net: 0, share: opts.stake / winningPool, ratio: 1, fee: stakeShareBreakdown(yes, no, 0, 0, yes + no) };
+  const t = stakeShareTotals(yes, no, opts.side, rates);
+  const share = opts.stake / winningPool;
+  const payout = Math.max(0, Math.round(share * t.netPool));
+  assertNetStakeFloor(payout, opts.stake - roundHalfUpBp(opts.stake, feeBp) - 1, `projection, pools ${yes}/${no}, side ${opts.side}`);
+  return {
+    payout, net: payout - opts.stake, share, ratio: payout / opts.stake,
+    fee: { ...stakeShareBreakdown(yes, no, feeBp, t.fee, t.netPool), winningsTax: t.winningsTax, prizeFund: t.prizeFund },
   };
 }
 
@@ -945,6 +1331,210 @@ export function allocateFeeShares(
   return out;
 }
 
+// ── stake-share SETTLEMENT ARITHMETIC (FEE-TAX-2026-10) ─────────────────────
+//
+// ⭐ ONE ARITHMETIC for the settlement, the close-time disclosure and every reader: `stakeShareSplit` when the positions
+// are in hand, `stakeShareTotals` when only the two pools are (the same numbers — the split is built on them). In whole
+// shillings, rates in whole basis points, every rounding half up and every per-position part a largest-remainder share,
+// so a resumed settlement reproduces every shilling and the pool ends at exactly 0.
+//
+// ⛔ NEITHER PRICES A ONE-SIDED MARKET. Exactly one side funded is refunded in full at no fee (ruling 2) by the CALLER's
+// branch — settlement's, and `chargedFee`'s — before either is asked; both THROW if handed one, so a missing branch fails
+// loudly rather than charging the funded side. A market with no money on either side prices to zero.
+
+/** The market's figures under `stake-share`, all whole shillings (`stakeShareTotals`, and the head of every split). */
+export interface StakeShareTotals {
+  /** F = feeYes + feeNo — OUR fee, on every stake. ⛔ Never the winnings tax. */
+  fee: number;
+  /** rhu(yesPool, f) — the fee on the YES side's stakes, rounded half up once for the side. */
+  feeYes: number;
+  /** rhu(noPool, f) — the fee on the NO side's stakes. */
+  feeNo: number;
+  /** P = the losing pool less the losing side's fee: the losers' net stakes, the prize fund, BEFORE the tax. */
+  prizeFund: number;
+  /** T = rhu(P, t) — the winnings tax, withheld from the prize fund for TRA. Not revenue, and not a levy on our fee. */
+  winningsTax: number;
+  /** pool − F − T: what the winners share — their net stakes back plus the prize after tax. */
+  netPool: number;
+}
+
+/** One winner's part of a `stakeShareSplit`, in whole shillings. */
+export interface StakeShareWinnerPart {
+  /** fee_i — this stake's largest-remainder share of the WINNING side's fee, by stake. */
+  fee: number;
+  /** stake − fee: the NET stake. Paid back whatever the prize — the floor of a stake-share payout (ruling 1). */
+  net: number;
+  /** R_i — this stake's largest-remainder share of the prize fund AFTER the tax (P − T), by stake. */
+  prize: number;
+  /** tax_i — this stake's largest-remainder share of the winnings tax T, by stake. `prize + tax` = its GROSS winnings. */
+  tax: number;
+  /** net + prize — what the position is paid. */
+  payout: number;
+}
+
+/** `stakeShareSplit`'s answer: the totals, every winner's part and every loser's fee, keyed by position id. */
+export interface StakeShareSplit extends StakeShareTotals {
+  /** Every winner, in id order (a Map's iteration order is part of determinism: a shuffled input gives the same Map). */
+  perWinner: Map<string, StakeShareWinnerPart>;
+  /** Every loser's fee_j — its largest-remainder share of the LOSING side's fee, by stake; it is paid nothing. In id order. */
+  perLoser: Map<string, { fee: number }>;
+}
+
+/**
+ * The two stake-share rates in the whole basis points the arithmetic charges in — a PRICING read: an incomplete or
+ * out-of-range stake-share rate set THROWS (`readStakeShareRates`), and so does any other model, because this arithmetic
+ * prices nothing else.
+ */
+function stakeSharePricing(rates: Partial<FeeRates> | undefined): { feeBp: number; taxBp: number } {
+  const r = readRates(rates, "pricing");
+  if (r.feeModel !== "stake-share" || r.winningsTaxRate === null) {
+    throw new Error(`payout: the stake-share arithmetic prices only a stake-share snapshot with its winnings tax (got ${r.feeModel})`);
+  }
+  return { feeBp: stakeFeeBpOf(r), taxBp: rateBp(r.winningsTaxRate) };
+}
+
+/** Money under this model: a whole, non-negative, exactly representable number of shillings. */
+function isWholeTzs(n: unknown): n is number {
+  return typeof n === "number" && Number.isSafeInteger(n) && n >= 0;
+}
+
+/**
+ * LARGEST REMAINDER IN EXACT INTEGERS — the discipline of `allocateWinnerPayouts` and `allocateFeeShares` (floor every
+ * exact share; hand the leftover shillings to the largest remainders; ties by id ascending), with the comparison made
+ * on the EXACT remainder, (weight × total) mod Σ weights, in BigInt.
+ * ⚠️ WHY NOT THOSE TWO'S CODE. They compare FLOAT fractional parts, and two shares that are equal in exact arithmetic can
+ * differ in their last bit — which would let a float, not the id, decide a tie the id tie-break was written for. Under
+ * `stake-share` every part of every winner is a largest-remainder share, so the remainder is computed exactly. Those two
+ * are left as they are: they settle every market frozen under the older models, byte for byte.
+ * Requires whole positive weights and a whole non-negative total; asserts the parts sum to the total; returns the Map
+ * in id order.
+ */
+function largestRemainder(rows: ReadonlyArray<{ id: string; weight: number }>, total: number, what: string): Map<string, number> {
+  if (!isWholeTzs(total)) throw new Error(`payout: ${what} must be a whole, non-negative number of shillings (got ${total})`);
+  const out = new Map<string, number>();
+  if (rows.length === 0) {
+    if (total !== 0) throw new Error(`payout: ${what} of ${total} has nobody to be shared among`);
+    return out;
+  }
+  const sumW = BigInt(rows.reduce((s, r) => s + r.weight, 0));
+  const bigTotal = BigInt(total);
+  const parts = rows.map((r) => {
+    const exact = BigInt(r.weight) * bigTotal;
+    return { id: r.id, floor: Number(exact / sumW), rem: exact % sumW };
+  });
+  const byId = (a: { id: string }, b: { id: string }) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+  const left = total - parts.reduce((s, p) => s + p.floor, 0); // in [0, rows.length) — Σ exact shares = total
+  const extra = new Set([...parts].sort((a, b) => (a.rem !== b.rem ? (a.rem > b.rem ? -1 : 1) : byId(a, b))).slice(0, left).map((p) => p.id));
+  for (const p of [...parts].sort(byId)) out.set(p.id, p.floor + (extra.has(p.id) ? 1 : 0));
+  let sum = 0;
+  for (const v of out.values()) sum += v;
+  if (left < 0 || left >= rows.length || sum !== total) throw new Error(`payout: ${what} did not share out exactly (${sum} of ${total})`);
+  return out;
+}
+
+/**
+ * THE STAKE-SHARE TOTALS from the two pools alone — for readers that hold no positions (`chargedFee`, a report, the
+ * close-time figure). The SAME numbers `stakeShareSplit` settles with: the split is built on this function.
+ *   F_YES = rhu(yesPool, f), F_NO = rhu(noPool, f), F = F_YES + F_NO;  P = losingPool − F_losing;  T = rhu(P, t);
+ *   netPool = pool − F − T.
+ * ⛔ Whole shillings only (refused otherwise, never rounded); a stake-share rate set only, complete (`stakeSharePricing`);
+ * a one-sided pool REFUSED (see the section note). Both pools 0 → all zeros.
+ */
+export function stakeShareTotals(yesPool: number, noPool: number, outcome: Side, rates: Partial<FeeRates>): StakeShareTotals {
+  const { feeBp, taxBp } = stakeSharePricing(rates);
+  if (!isWholeTzs(yesPool) || !isWholeTzs(noPool)) {
+    throw new Error(`payout: stake-share pools must be whole shillings (got ${yesPool} / ${noPool})`);
+  }
+  if (outcome !== "YES" && outcome !== "NO") throw new Error(`payout: a stake-share market is priced for YES or NO only (got ${String(outcome)})`);
+  if (yesPool === 0 && noPool === 0) return { fee: 0, feeYes: 0, feeNo: 0, prizeFund: 0, winningsTax: 0, netPool: 0 };
+  if (yesPool === 0 || noPool === 0) {
+    throw new Error("payout: a one-sided stake-share market is refunded in full at no fee (ruling 2) — never priced");
+  }
+  const feeYes = roundHalfUpBp(yesPool, feeBp), feeNo = roundHalfUpBp(noPool, feeBp);
+  const fee = feeYes + feeNo;
+  const prizeFund = outcome === "YES" ? noPool - feeNo : yesPool - feeYes;
+  const winningsTax = roundHalfUpBp(prizeFund, taxBp);
+  return { fee, feeYes, feeNo, prizeFund, winningsTax, netPool: yesPool + noPool - fee - winningsTax };
+}
+
+/**
+ * ⭐ THE STAKE-SHARE SETTLEMENT SPLIT — every winner's and every loser's part, to the shilling (FEE-TAX-2026-10).
+ *
+ *   per winner i (stake s_i):  fee_i = LR(F_w by s_i);  R_i = LR(P − T by s_i);  tax_i = LR(T by s_i);
+ *                              payout_i = (s_i − fee_i) + R_i;   gross winnings_i = R_i + tax_i
+ *   per loser j:               fee_j = LR(F_l by s_j); paid nothing
+ * LR = largest remainder in exact integers, ties by id (`largestRemainder`) — deterministic, so a resumed settlement
+ * reproduces every shilling, and a shuffled input gives the same Maps in the same order.
+ *
+ * ⛔ IT REFUSES, LOUDLY, EVERY INPUT IT CANNOT SETTLE EXACTLY — the E-200 lesson: a winner set that did not sum to the
+ * winning pool once short-paid thirteen winners in silence, because the arithmetic absorbed the error instead of naming
+ * it. So: the winners' stakes must sum to the winning pool and the losers' to the losing pool; every stake a whole
+ * positive number of shillings; every id unique across both sides; a stake-share rate set, complete; never a one-sided
+ * market (refunded by the caller, ruling 2). And it asserts its own result: Σ payout + T + F = pool EXACTLY (no dust, no
+ * residual — the pool ends at 0), and every winner's payout ≥ its net stake (`assertNetStakeFloor`, ruling 1 — NOT the
+ * stake: a winner on a lopsided market is paid less than they staked, 94,395 on 100,000 against 10,000).
+ * The document's worked example (FEE-TAX-PLAN §3): YES 1,000 / 3,000 / 5,000 against NO 10,000 / 20,000 / 5,000, YES
+ * wins → F 5,720, P 30,450, T 4,568, payouts 3,746 / 11,237 / 18,729 (`test:stake-share-fee` pins every figure).
+ */
+export function stakeShareSplit(
+  input: {
+    yesPool: number;
+    noPool: number;
+    outcome: Side;
+    winners: Array<{ id: string; stake: number }>;
+    losers: Array<{ id: string; stake: number }>;
+  },
+  rates: Partial<FeeRates>,
+): StakeShareSplit {
+  const { yesPool, noPool, outcome, winners, losers } = input;
+  const totals = stakeShareTotals(yesPool, noPool, outcome, rates); // refuses a bad rate set, fractional or one-sided pools
+  const winningPool = outcome === "YES" ? yesPool : noPool;
+  const losingPool = outcome === "YES" ? noPool : yesPool;
+  const ids = new Set<string>();
+  for (const p of [...winners, ...losers]) {
+    if (typeof p.id !== "string" || p.id === "" || ids.has(p.id)) throw new Error(`payout: stake-share split — position id ${JSON.stringify(p.id)} is missing or not unique`);
+    ids.add(p.id);
+    if (!isWholeTzs(p.stake) || p.stake === 0) throw new Error(`payout: stake-share split — position ${p.id} has stake ${p.stake}; a stake is a whole positive number of shillings`);
+  }
+  const sumWinners = winners.reduce((s, w) => s + w.stake, 0);
+  const sumLosers = losers.reduce((s, l) => s + l.stake, 0);
+  if (sumWinners !== winningPool || sumLosers !== losingPool) {
+    throw new Error(
+      `payout: stake-share split — the positions do not make the pools (winners ${sumWinners} vs winning pool ${winningPool}, ` +
+      `losers ${sumLosers} vs losing pool ${losingPool}). Refusing to settle on a wrong set (E-200).`,
+    );
+  }
+  const feeWinning = outcome === "YES" ? totals.feeYes : totals.feeNo;
+  const feeLosing = outcome === "YES" ? totals.feeNo : totals.feeYes;
+  const w = winners.map((p) => ({ id: p.id, weight: p.stake }));
+  const fees = largestRemainder(w, feeWinning, "the winning side's fee");
+  const prizes = largestRemainder(w, totals.prizeFund - totals.winningsTax, "the prize after tax");
+  const taxes = largestRemainder(w, totals.winningsTax, "the winnings tax");
+  const loserFees = largestRemainder(losers.map((p) => ({ id: p.id, weight: p.stake })), feeLosing, "the losing side's fee");
+
+  const stakeOf = new Map(winners.map((p) => [p.id, p.stake]));
+  const perWinner = new Map<string, StakeShareWinnerPart>();
+  let paid = 0;
+  for (const [id, fee] of fees) {
+    const net = (stakeOf.get(id) as number) - fee;
+    const prize = prizes.get(id) as number;
+    const payout = net + prize;
+    assertNetStakeFloor(payout, net, `stake-share split, position ${id}, pools ${yesPool}/${noPool}, ${outcome} won`);
+    perWinner.set(id, { fee, net, prize, tax: taxes.get(id) as number, payout });
+    paid += payout;
+  }
+  const perLoser = new Map<string, { fee: number }>();
+  for (const [id, fee] of loserFees) perLoser.set(id, { fee });
+
+  if (paid !== totals.netPool || paid + totals.winningsTax + totals.fee !== yesPool + noPool) {
+    throw new Error(
+      `payout: stake-share split does not conserve the pool — paid ${paid} + tax ${totals.winningsTax} + fee ${totals.fee} ` +
+      `against a pool of ${yesPool + noPool}. Refusing to settle.`,
+    );
+  }
+  return { ...totals, perWinner, perLoser };
+}
+
 /**
  * PROJECTION for a bet not yet placed: the stake is added to the chosen side
  * first, then the settlement function runs on the resulting pools. Same maths,
@@ -1037,8 +1627,16 @@ export function payoutViewFor(
  *
  * There is no `negative` any more — the honest message on a lopsided poll is
  * "your upside is thin because the other side is small", NEVER "you may lose".
+ *
+ * ⭐ `below` (FEE-TAX-2026-10, ruling 1) — a projected payout UNDER the stake. Reachable only under `stake-share`, where
+ * the fee comes out of every stake: a correct call on a lopsided market is paid less than it staked, and the bet screen
+ * must say so before the bet. Under the two older pool models a winner's ratio is ≥ 1 (`assertWinnerFloor` throws
+ * before anything lower exists), so for every market frozen under them this returns exactly what it always did.
+ * ⚠️ A ratio of 0 is NOT `below`: it is `settledPayoutFor`'s answer when there is no position to project (no stake, or
+ * no money on the side), not a payout — and it keeps the level it always had, so no older surface changes.
  */
 export function leanFor(ratio: number, thinRatio: number = THIN_PROFIT_RATIO): LeanLevel {
+  if (ratio > 0 && ratio < 1) return "below";
   return ratio < thinRatio ? "thin" : "fair";
 }
 
@@ -1072,8 +1670,18 @@ export function levySplit(
  * to 1 from ABOVE and never crosses it. We sweep numerically anyway rather than
  * trusting the algebra, because this is the check that stops a bad config
  * reaching production.
+ *
+ * ⭐ `stake-share` (FEE-TAX-2026-10): the same sweep, and an answer BELOW 1 by design (ruling 1). The fee comes out of the
+ * winners' stakes too, so the ratio is (1 − f) + (1 − f)(1 − t)·L/W, which tends to 1 − f from ABOVE as L/W → 0 —
+ * ≈ 0.871 at the sweep's 99.9/0.1 for 13% and 15%. Under this model the answer is a WARNING for the officer, never a
+ * refusal (`market-config.ts → validate`); `stakeShareBreakEvenShare` names the lean where it crosses 1.
+ * ⚠️ A stake-share rate set that freezes no tax — an Up & Down profile, whose tax is stamped from `market.config` — is
+ * swept at `MAX_WINNINGS_TAX_RATE`, the highest a snapshot may freeze: the worst case, and it never throws for want of it.
  */
 export function worstCaseWinnerRatio(rates: Partial<FeeRates>): { ratio: number; atYes: number; atNo: number } {
+  const swept: Partial<FeeRates> = resolveFeeModel(rates) === "stake-share" && winningsTaxBp(rates) === null
+    ? { ...rates, winningsTaxRate: MAX_WINNINGS_TAX_RATE }
+    : rates;
   const POOL = 1_000_000;
   let worst = Number.POSITIVE_INFINITY;
   let atYes = POOL / 2;
@@ -1088,7 +1696,7 @@ export function worstCaseWinnerRatio(rates: Partial<FeeRates>): { ratio: number;
       if (winningPool <= 0) continue;
       // Pass `side` as the winning side so loser-share is swept honestly across
       // BOTH outcomes (its fee depends on which side loses); capped ignores it.
-      const { netPool } = poolFee(yes, no, rates, side);
+      const { netPool } = poolFee(yes, no, swept, side);
       const ratio = netPool / winningPool; // stake-independent
       if (ratio < worst) {
         worst = ratio;

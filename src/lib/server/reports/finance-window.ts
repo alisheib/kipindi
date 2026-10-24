@@ -176,6 +176,10 @@ export async function buildFinanceWindow(
         (fees.byModel["jackpot-payout"].count > 0
           ? " A Millionea week that paid is listed with its jackpot as its pool and the fee its own frozen rate takes of it."
           : "") +
+        // FEE-TAX-2026-10 · a stake-share poll's fee is OUR fee only; the winnings tax beside it is not a fee (R3 reports it).
+        (fees.byModel["stake-share"].count > 0
+          ? " A stake-share poll's fee is its share of every stake; the winnings tax withheld from its winners is not a fee and is not in this table."
+          : "") +
         // ⛔ S6 · a resulted week whose record could not price its fee is named, and the total says it is incomplete.
         (fees.unread
           ? ` The fee of ${fees.unread.length === 1 ? "one Millionea week" : `${fees.unread.length} Millionea weeks`} is not in the total — not zero: ${unreadFeesText(fees.unread)}.`

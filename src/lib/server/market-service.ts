@@ -33,7 +33,7 @@ import { rateCheck } from "./rate-limit";
 // caller that skipped the action's validation cannot write the English into a
 // translation column, which is the F8 shape this whole finding must not recreate.
 import { normaliseCriterionTranslation } from "../localized";
-import { getEffectiveConfig, getEffectiveResolutionMode, snapshotFromConfig, snapshotOrLegacy, type RateConfig } from "./market-config";
+import { getEffectiveConfig, getEffectiveResolutionMode, readMarketConfigFresh, RatesRefused, snapshotFromConfig, snapshotOrLegacy, type RateConfig } from "./market-config";
 import { stakeBoundsForUpDownMarket } from "./updown-config";
 import { localizedText } from "@/lib/localized";
 import { dict } from "@/lib/i18n-dict";
@@ -830,6 +830,15 @@ export async function createMarket(input: CreateMarketInput, tx?: Parameters<typ
   // `rateOverrides` (the Up & Down chain profile) layers on top of live config, then
   // the WHOLE thing is frozen through the one snapshot function — so a second product
   // can price differently without a second freezing mechanism.
+  // ⛔ FROM A FRESH READ, OR NOT AT ALL (FEE-TAX-2026-10). The config is re-read from its row first and replaces this
+  // container's cache, so the snapshot below freezes what is stored NOW — never what this container booted with, which
+  // a save on another container may have moved (a stale fee model, a missing winnings tax). A read that fails creates
+  // nothing (`RatesRefused`; Up & Down's `openRound` turns it into a soft refusal). `snapshotFromConfig` refuses an
+  // incomplete — or, while `fee-law-gate.ts` is shut, any — stake-share stamp the same way.
+  const freshRates = await readMarketConfigFresh();
+  if (!freshRates.ok) {
+    throw new RatesRefused(`The platform's rates could not be read, so nothing was created. Please try again. (${freshRates.error})`);
+  }
   const feeSnapshot = snapshotFromConfig({
     ...(await getEffectiveConfig(id)),
     ...(input.rateOverrides ?? {}),
@@ -2453,7 +2462,10 @@ export async function notifySelectionClosedForMarket(marketId: string): Promise<
   const worstWinnerRatio = ratios.length ? Math.min(...ratios) : 0;
   const smallerShare = closeFee.pool > 0 ? closeFee.smaller / closeFee.pool : 0;
   const oneSided = closeFee.smaller === 0;
-  const thinUpside = ratios.length > 0 && leanFor(worstWinnerRatio, rates.thinProfitRatio) === "thin";
+  // ⚠️ `!== "fair"`, not `=== "thin"` (FEE-TAX-2026-10): under stake-share the worst case is `below` — a winner paid less
+  // than their stake — and an equality on "thin" would let the WORSE case pass in silence. Unchanged for the older
+  // models, where `leanFor` never answers `below` for a winner.
+  const thinUpside = ratios.length > 0 && leanFor(worstWinnerRatio, rates.thinProfitRatio) !== "fair";
   const lopsidedBook = !oneSided && smallerShare < THIN_SMALLER_SIDE_SHARE;
   if (oneSided || thinUpside || lopsidedBook) {
     audit({
@@ -4641,15 +4653,22 @@ export async function settleMarket(
       outcome: opts.outcome,
       yesPool: m.yesPool, noPool: m.noPool,
       // The model this poll FROZE at creation, so the chain records which maths paid.
-      payoutModel: settleCfg.feeModel === "loser-share" ? "whole-pool-loser-share" : "whole-pool-capped-fee",
+      // ⛔ Every model named (FEE-TAX-2026-10): a stake-share market must never be recorded as the capped fee it is not.
+      payoutModel: settleCfg.feeModel === "loser-share" ? "whole-pool-loser-share"
+        : settleCfg.feeModel === "stake-share" ? "whole-pool-stake-share"
+        : "whole-pool-capped-fee",
       // The whole fee arithmetic, in the tamper-evident chain. An inspector (or a
       // player who disputes a payout) can recompute the fee from these numbers:
       //  - capped-commission: fee = min(commissionRate·pool, feeCeilingRate·smaller), outcome-neutral.
       //  - loser-share: fee = (platformFeeRate+operatorFeeRate)·losingPool, where the
       //    loser is the side opposite `outcome`.
+      //  - stake-share: fee = rhu(each side's pool, platformFeeRate+operatorFeeRate), and the winnings tax =
+      //    rhu(the losing side's net stakes, winningsTaxRate) — `payout.ts → stakeShareTotals`. R2b: the split itself.
       rates: settleCfg.feeModel === "loser-share"
         ? { feeModel: "loser-share", platformFeeRate: settleCfg.platformFeeRate, operatorFeeRate: settleCfg.operatorFeeRate }
-        : { feeModel: "capped-commission", commissionRate: settleCfg.commissionRate, feeCeilingRate: settleCfg.feeCeilingRate },
+        : settleCfg.feeModel === "stake-share"
+          ? { feeModel: "stake-share", platformFeeRate: settleCfg.platformFeeRate, operatorFeeRate: settleCfg.operatorFeeRate, winningsTaxRate: settleCfg.winningsTaxRate ?? null }
+          : { feeModel: "capped-commission", commissionRate: settleCfg.commissionRate, feeCeilingRate: settleCfg.feeCeilingRate },
       grossPool: settleFee.pool,
       smallerSide: settleFee.smaller,
       commissionUncapped: Math.round(settleFee.commission),

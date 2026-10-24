@@ -24,8 +24,9 @@ import { withLock, afterCommit } from "./locks";
 import { publishOracleBar } from "./updown-terminal-vendor";
 import { marketStore } from "./market-dal";
 import { createMarket, settleMarket } from "./market-service";
+import { isRatesRefused } from "./market-config";
 import {
-  getUpDownConfig, rateProfileFor, stakeBoundsFor, boundaryAfter, marginBpsForChain, computeTargets,
+  getUpDownConfig, rateProfileForStamping, stakeBoundsFor, boundaryAfter, marginBpsForChain, computeTargets,
   retryDelaySeconds, abandonAfterSeconds, refusalCostsAnAttempt, lateCloseDecision,
   type UpDownConfig,
 } from "./updown-config";
@@ -741,7 +742,11 @@ export async function openRound(
     return { ok: false, error: `Round ${roundNumber - 1} already covers ${clockUtc(closeIso)}.` };
   }
 
-  const [profile, bounds] = await Promise.all([rateProfileFor(chain), stakeBoundsFor(chain)]);
+  // ⛔ The profile this round freezes, read FRESH (FEE-TAX-2026-10): a chain's own from its row, else the product default
+  // from the stored config — never this container's boot-time copy. A read that fails opens nothing, SOFTLY (§7.4 above).
+  const [freshProfile, bounds] = await Promise.all([rateProfileForStamping(chain), stakeBoundsFor(chain)]);
+  if (!freshProfile.ok) return { ok: false, error: `No round opened at ${clockUtc(openBoundaryIso)}: ${freshProfile.error}` };
+  const profile = freshProfile.profile;
 
   // The frozen winning boundaries: base ± (base × marginBps/10000). Null if the boundary
   // wasn't confirmed at open (no openPrice) — such a round falls back at close and voids.
@@ -752,7 +757,10 @@ export async function openRound(
   // The money row. `rateOverrides` is how the chain's frozen fee profile
   // (capped-commission @ 13%) reaches the poll snapshot through the SAME
   // snapshotFromConfig path every long-form poll uses — one freezing mechanism.
-  const market = await createMarket({
+  // ⛔ `createMarket` REFUSES — it does not crash — when the rates cannot be read fresh or a stake-share stamp is
+  // incomplete (`RatesRefused`, FEE-TAX-2026-10). Here that refusal must stay soft, for the reason §7.4 records above: a
+  // throw out of this function is what once turned one bad boundary into a permanent outage. Anything else still throws.
+  const made = await createMarket({
     titleEn: roundTitle(asset, chain.durationMinutes, "en"),
     titleSw: roundTitle(asset, chain.durationMinutes, "sw"),
     titleZh: roundTitle(asset, chain.durationMinutes, "zh"),
@@ -784,7 +792,15 @@ export async function openRound(
     proposedBy: "system_updown",
     productLine: "UPDOWN",
     rateOverrides: profile,
-  });
+  }).then(
+    (m) => ({ ok: true as const, m }),
+    (e: unknown) => {
+      if (isRatesRefused(e)) return { ok: false as const, error: e.message };
+      throw e;
+    },
+  );
+  if (!made.ok) return { ok: false, error: `No round opened at ${clockUtc(openBoundaryIso)}: ${made.error}` };
+  const market = made.m;
 
   const now = new Date().toISOString();
   const round: StoredRound = {

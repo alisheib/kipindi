@@ -162,6 +162,10 @@ export async function settlementFeesByPoll(period: Window = "28d"): Promise<Sett
     "capped-commission": { count: 0, fee: 0 },
     // ⭐ S6 · a Millionea week that paid, priced by its own model (below).
     "jackpot-payout": { count: 0, fee: 0 },
+    // FEE-TAX-2026-10 · a stake-share market: `chargedFee`'s `fee` is OUR fee only (13% of every stake) and the levies
+    // are on it, as on every fee. ⛔ Its winnings tax is NOT a fee and is not counted here — it is withheld for TRA, not
+    // revenue (R3 reports it as its own line).
+    "stake-share": { count: 0, fee: 0 },
   };
   for (const m of markets) {
     if (!m.settledAt) continue; // adjudicated but not yet settled → no fee booked

@@ -25,9 +25,11 @@
  */
 import { audit } from "./audit";
 import { randomId } from "./crypto";
-import { configChanges, loadConfigResult, saveConfig } from "./config-store";
+import { configChanges, createConfigIfAbsent, loadConfigResult, replaceConfigIfValue } from "./config-store";
+import { hasDatabase } from "./prisma";
 import { isSourceTrusted, normalizeDomain } from "./source-registry";
 import { validateRateConfig } from "./market-config";
+import { newFeeLawRefusal } from "@/lib/fee-law-gate";
 import { PLATFORM_MIN_STAKE, PLATFORM_MAX_STAKE, resolveFeeModel, describeFeeModel, type FeeModel } from "@/lib/payout";
 import type { RefusalReason } from "./updown-oracle";
 // The money lives on the market row, never in the Up & Down tables — the source lock needs
@@ -348,8 +350,8 @@ const UPDOWN_CONFIG_VERSION = 5;
 /**
  * Forward-reconcile a config persisted under an older UPDOWN_CONFIG_VERSION.
  *
- * `saveConfig` writes the WHOLE blob, so a value that was merely the OLD default freezes
- * in the DB and shadows a new code default forever. This bumps ONLY values still sitting
+ * A save writes the WHOLE blob (since FEE-TAX-2026-10 the blob as stored, by compare-and-swap — `writeUpDownConfig`),
+ * so a value that was merely the OLD default freezes in the DB and shadows a new code default forever. This bumps ONLY values still sitting
  * on a known legacy default, so a deliberate operator choice is never overwritten.
  *
  * ⛔ Pure and EXPORTED on purpose. It used to be four lines inside `ensureHydrated`,
@@ -426,25 +428,151 @@ async function hydrateUpDownNow(): Promise<void> {
   // "no database" and "the read FAILED" alike, so this gate closed on a read that never
   // landed and pinned the container on DEFAULT_UPDOWN_CONFIG for its whole life, with no
   // retry. Every Up & Down round opened in that window freezes those defaults onto itself.
-  const res = await loadConfigResult<Partial<UpDownConfig> & { v?: number }>(UPDOWN_CONFIG_KEY);
+  const res = await loadConfigResult<StoredUpDownConfig>(UPDOWN_CONFIG_KEY);
   if (!res.ok) return; // gate stays DOWN — the next read retries
   const stored = res.value;
   // Merge OVER the defaults, so a newly-added field gets its default rather than
   // undefined on a deployment whose persisted blob predates it.
   if (stored) {
-    globalThis.__50PICK_UPDOWN_CONFIG = { ...DEFAULT_UPDOWN_CONFIG, ...stored };
     // One-time forward migration: bump default stake bounds still on the legacy defaults
     // (a deliberate custom value is untouched). Self-heals on first read after deploy.
-    const storedVersion = stored.v ?? 1;
-    if (storedVersion < UPDOWN_CONFIG_VERSION) {
-      const { config, changed } = reconcileUpDownDefaults(globalThis.__50PICK_UPDOWN_CONFIG, storedVersion);
-      globalThis.__50PICK_UPDOWN_CONFIG = config;
-      void saveConfig(UPDOWN_CONFIG_KEY, { ...config, v: UPDOWN_CONFIG_VERSION });
-      if (changed) console.log(`[updown-config] reconciled v${storedVersion} → v${UPDOWN_CONFIG_VERSION}: stake bounds now ${config.defaultMinStake}/${config.defaultMaxStake}`);
+    const row = upDownFromRow(stored);
+    globalThis.__50PICK_UPDOWN_CONFIG = row.config;
+    upDownGen++;
+    if (row.migrated) {
+      // Written back by COMPARE-AND-SWAP against the row just read (FEE-TAX-2026-10) — it was a blind `saveConfig` of
+      // this container's copy, which could land over a save another container made in between.
+      void replaceConfigIfValue(UPDOWN_CONFIG_KEY, stored, { ...row.config, v: UPDOWN_CONFIG_VERSION })
+        .catch((err) => console.error("[updown-config] reconcile write-back failed:", (err as Error)?.message ?? err));
+      if (row.changed) console.log(`[updown-config] reconciled v${row.storedVersion} → v${UPDOWN_CONFIG_VERSION}: stake bounds now ${row.config.defaultMinStake}/${row.config.defaultMaxStake}`);
     }
   }
   // ⛔ LAST, not first: only a read that actually landed may close the gate.
   globalThis.__50PICK_UPDOWN_CONFIG_HYDRATED = true;
+}
+
+/** The Up & Down row as stored: the config's fields, flat, beside its schema version. */
+type StoredUpDownConfig = Partial<UpDownConfig> & { v?: number };
+
+/** The four store calls the writer, the fresh read and the apply act make. */
+type UpDownConfigStoreDeps = {
+  hasDatabase: typeof hasDatabase;
+  loadConfigResult: typeof loadConfigResult;
+  replaceConfigIfValue: typeof replaceConfigIfValue;
+  createConfigIfAbsent: typeof createConfigIfAbsent;
+};
+const REAL_UD_STORE: UpDownConfigStoreDeps = { hasDatabase, loadConfigResult, replaceConfigIfValue, createConfigIfAbsent };
+let udStore: UpDownConfigStoreDeps = REAL_UD_STORE;
+
+/**
+ * ⚠️ TEST SEAM ONLY — `test:updown-config` swaps the store the writer and the fresh read talk to, so the compare-and-swap
+ * is driven against a row that moves, a read that fails and a stale cache without a database. `null` restores the real
+ * store. ⛔ Refused in production; never called from application code.
+ */
+export function __setUpDownConfigStoreForTest(deps: Partial<UpDownConfigStoreDeps> | null): void {
+  if (process.env.NODE_ENV === "production") throw new Error("updown-config: the store seam is refused in production");
+  udStore = deps ? { ...REAL_UD_STORE, ...deps } : REAL_UD_STORE;
+}
+
+/**
+ * ⭐ Moves on every change THIS process makes to the cache, so a fresh read that started before one cannot land after
+ * it and put the older value back (`readUpDownConfigFresh`). Process-local on purpose.
+ */
+let upDownGen = 0;
+
+/** A stored row, as the cache holds it: merged over the defaults, reconciled to `UPDOWN_CONFIG_VERSION`, `v` dropped. */
+function upDownFromRow(stored: StoredUpDownConfig): { config: UpDownConfig; migrated: boolean; changed: boolean; storedVersion: number } {
+  const { v, ...fields } = stored;
+  const storedVersion = v ?? 1;
+  const merged: UpDownConfig = { ...DEFAULT_UPDOWN_CONFIG, ...fields };
+  if (storedVersion >= UPDOWN_CONFIG_VERSION) return { config: merged, migrated: false, changed: false, storedVersion };
+  const { config, changed } = reconcileUpDownDefaults(merged, storedVersion);
+  return { config, migrated: true, changed, storedVersion };
+}
+
+/** Two stored values compared by VALUE, key order ignored (a jsonb round trip does not keep it). */
+function sameStoredValue(a: unknown, b: unknown): boolean {
+  const canon = (x: unknown): string =>
+    x && typeof x === "object" && !Array.isArray(x)
+      ? `{${Object.keys(x as object).sort().map((k) => `${JSON.stringify(k)}:${canon((x as Record<string, unknown>)[k])}`).join(",")}}`
+      : Array.isArray(x) ? `[${x.map(canon).join(",")}]` : JSON.stringify(x ?? null);
+  return canon(a) === canon(b);
+}
+
+/**
+ * ⭐ THE UP & DOWN SETTINGS, READ FRESH FROM THE ROW (FEE-TAX-2026-10) — for stamping a round whose chain inherits the
+ * product default (`rateProfileForStamping`), and for `applyFeeProfileToEveryChain`. Read, merged and reconciled exactly as
+ * hydration would, and it REPLACES the cache. ⛔ Fails closed: a read that could not ask answers `ok: false` and the
+ * caller refuses. An absent row answers the defaults; with no database the cache IS the store. A save THIS process made
+ * while the read was in flight cannot be ordered against it: the read answers only when the two agree.
+ */
+export async function readUpDownConfigFresh(): Promise<{ ok: true; config: UpDownConfig } | { ok: false; error: string }> {
+  await ensureHydrated();
+  if (!udStore.hasDatabase()) return { ok: true, config: { ...cfgStore() } };
+  const genAtStart = upDownGen;
+  const res = await udStore.loadConfigResult<StoredUpDownConfig>(UPDOWN_CONFIG_KEY);
+  if (!res.ok) return { ok: false, error: res.error };
+  const next = res.value ? upDownFromRow(res.value).config : { ...DEFAULT_UPDOWN_CONFIG };
+  if (upDownGen !== genAtStart) {
+    return sameStoredValue(next, cfgStore())
+      ? { ok: true, config: { ...cfgStore() } }
+      : { ok: false, error: "The Up & Down settings changed while they were being read. Try again." };
+  }
+  globalThis.__50PICK_UPDOWN_CONFIG = next;
+  upDownGen++;
+  return { ok: true, config: { ...next } };
+}
+
+/**
+ * ⭐ THE ONE WRITER — read-modify-write against a FRESH row, by COMPARE-AND-SWAP, read back before "saved"
+ * (FEE-TAX-2026-10; `market-config.ts → writeMarketConfig` is its twin, and its docblock records what it replaced).
+ * `change` is handed the row as stored NOW and returns the whole next config, or a refusal; `record` writes the audit
+ * row once the write has landed. With no database the cache IS the store.
+ */
+async function writeUpDownConfig(
+  change: (fresh: UpDownConfig) => { ok: true; next: UpDownConfig } | { ok: false; error: string },
+  record: (before: UpDownConfig, after: UpDownConfig) => void,
+): Promise<{ ok: true; next: UpDownConfig } | { ok: false; error: string }> {
+  await ensureHydrated();
+  if (!udStore.hasDatabase()) {
+    const before = { ...cfgStore() };
+    const c = change({ ...before });
+    if (!c.ok) return c;
+    globalThis.__50PICK_UPDOWN_CONFIG = c.next;
+    upDownGen++;
+    record(before, c.next);
+    return c;
+  }
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const res = await udStore.loadConfigResult<StoredUpDownConfig>(UPDOWN_CONFIG_KEY);
+    if (!res.ok) return { ok: false, error: "The current Up & Down settings could not be read, so nothing was changed. Please try again." };
+    const fresh = res.value ? upDownFromRow(res.value).config : { ...DEFAULT_UPDOWN_CONFIG };
+    const c = change({ ...fresh });
+    if (!c.ok) return c;
+    const row = { ...c.next, v: UPDOWN_CONFIG_VERSION };
+    let landed: boolean;
+    try {
+      landed = res.value
+        ? await udStore.replaceConfigIfValue(UPDOWN_CONFIG_KEY, res.value, row)
+        : (await udStore.createConfigIfAbsent(UPDOWN_CONFIG_KEY, row)) === "created";
+    } catch (err) {
+      console.error("[updown-config] save failed:", (err as Error)?.message ?? err);
+      return { ok: false, error: "The save could not be completed, so it is not reported as saved. Reload the page and check the settings before trying again." };
+    }
+    if (!landed) continue; // another save moved the row between the read and the swap — read it again
+    globalThis.__50PICK_UPDOWN_CONFIG = c.next;
+    upDownGen++;
+    record(fresh, c.next);
+    const back = await udStore.loadConfigResult<StoredUpDownConfig>(UPDOWN_CONFIG_KEY);
+    if (!back.ok) {
+      return { ok: false, error: "The change was written but could not be read back to confirm it. Reload the page and check the settings before saving again." };
+    }
+    if (!back.value || !sameStoredValue(back.value, row)) {
+      return { ok: false, error: "The change was written, but another save changed the settings straight after. Reload the page to see what is in force now." };
+    }
+    return c;
+  }
+  return { ok: false, error: "The Up & Down settings kept changing while this save was being made, so nothing was changed. Please try again." };
 }
 
 /**
@@ -531,11 +659,9 @@ export async function setUpDownConfig(
       return { ok: false, error: "Each retry backoff must be 5-600 seconds. Below 5s the paid price source would be re-dialled on every tick." };
     }
   }
-  if (updates.defaultMinStake !== undefined || updates.defaultMaxStake !== undefined) {
-    const lo = updates.defaultMinStake ?? cfgStore().defaultMinStake;
-    const hi = updates.defaultMaxStake ?? cfgStore().defaultMaxStake;
-    if (!Number.isFinite(lo) || lo < PLATFORM_MIN_STAKE || lo > PLATFORM_MAX_STAKE) return { ok: false, error: `Minimum stake must be between TZS ${PLATFORM_MIN_STAKE.toLocaleString("en-GB")} and TZS ${PLATFORM_MAX_STAKE.toLocaleString("en-GB")} — the platform bounds are a rule, not a setting.` };
-    if (!Number.isFinite(hi) || hi < lo || hi > PLATFORM_MAX_STAKE) return { ok: false, error: `Maximum stake must be between the minimum and TZS ${PLATFORM_MAX_STAKE.toLocaleString("en-GB")}.` };
+  {
+    const stakes = stakeDefaultsProblem(updates, cfgStore());
+    if (stakes) return { ok: false, error: stakes };
   }
   if (updates.defaultMarginBps !== undefined) {
     const m = updates.defaultMarginBps;
@@ -569,24 +695,63 @@ export async function setUpDownConfig(
 
   let warn: string | undefined;
   if (updates.defaultRateProfile !== undefined) {
-    // THE SAME validator global config uses — including the winner-floor guardrail.
-    const v = validateRateConfig(updates.defaultRateProfile);
+    // THE SAME validator global config uses — including the winner-floor guardrail. As a PROFILE (FEE-TAX-2026-10): it
+    // may be stake-share once `fee-law-gate.ts` is open, never carries a winnings tax, and needs the platform's saved.
+    const v = validateRateConfig(updates.defaultRateProfile, { scope: "profile" });
     if (!v.ok) return { ok: false, error: v.reason };
     warn = v.warn;
   }
 
-  const before = { ...cfgStore() };
-  globalThis.__50PICK_UPDOWN_CONFIG = { ...before, ...updates };
-  void saveConfig(UPDOWN_CONFIG_KEY, { ...cfgStore(), v: UPDOWN_CONFIG_VERSION });
-  audit({
-    category: "ADMIN",
-    action: "updown.config.updated",
-    actorId: officerId,
-    targetType: "UpDownConfig",
-    targetId: "global",
-    payload: { before, after: cfgStore(), changes: configChanges(before, cfgStore()), warn: warn ?? null },
-  });
-  return { ok: true, config: { ...cfgStore() }, warn };
+  // ⭐ Read-modify-write against the row as stored NOW, by compare-and-swap, read back before "saved" (FEE-TAX-2026-10):
+  // a stale container can no longer write its old default profile — or any other field — back over a newer save.
+  const w = await writeUpDownConfig(
+    (fresh) => {
+      const stakes = stakeDefaultsProblem(updates, fresh);
+      if (stakes) return { ok: false, error: stakes };
+      // ⛔ THE DEFAULT'S FEE MODEL MOVES ONLY WITH EVERY CHAIN, IN ONE ACT (`applyFeeProfileToEveryChain`). Moving the
+      // default alone is the half-migration A2 had to be driven out of — the board on two laws, the console unable to
+      // say which a new chain freezes (`boardFeeSummary`). Its RATES may still be tuned here, under the same model.
+      if (updates.defaultRateProfile !== undefined && profileModel(updates.defaultRateProfile) !== profileModel(fresh.defaultRateProfile)) {
+        return {
+          ok: false,
+          error: "The default fee model can only change together with every chain, in one act (\"Apply to every chain\"). Nothing was changed.",
+        };
+      }
+      return { ok: true, next: { ...fresh, ...updates } };
+    },
+    (before, after) => audit({
+      category: "ADMIN",
+      action: "updown.config.updated",
+      actorId: officerId,
+      targetType: "UpDownConfig",
+      targetId: "global",
+      payload: { before, after, changes: configChanges(before, after), warn: warn ?? null },
+    }),
+  );
+  if (!w.ok) return { ok: false, error: w.error };
+  return { ok: true, config: { ...w.next }, warn };
+}
+
+/** The product default stake bounds a save would leave, checked against the platform rule; null when they hold. */
+function stakeDefaultsProblem(updates: Partial<UpDownConfig>, base: UpDownConfig): string | null {
+  if (updates.defaultMinStake === undefined && updates.defaultMaxStake === undefined) return null;
+  const lo = updates.defaultMinStake ?? base.defaultMinStake;
+  const hi = updates.defaultMaxStake ?? base.defaultMaxStake;
+  if (!Number.isFinite(lo) || lo < PLATFORM_MIN_STAKE || lo > PLATFORM_MAX_STAKE) return `Minimum stake must be between TZS ${PLATFORM_MIN_STAKE.toLocaleString("en-GB")} and TZS ${PLATFORM_MAX_STAKE.toLocaleString("en-GB")} — the platform bounds are a rule, not a setting.`;
+  if (!Number.isFinite(hi) || hi < lo || hi > PLATFORM_MAX_STAKE) return `Maximum stake must be between the minimum and TZS ${PLATFORM_MAX_STAKE.toLocaleString("en-GB")}.`;
+  return null;
+}
+
+/**
+ * The fee model a profile resolves to — `resolveFeeModel`'s answer, or "unreadable" for a stored profile it refuses (a
+ * corrupt row): an unreadable profile never equals a model, so it is always treated as one that differs.
+ */
+function profileModel(profile: Partial<RateConfig> | null | undefined): FeeModel | "unreadable" {
+  try {
+    return resolveFeeModel(profile ?? undefined);
+  } catch {
+    return "unreadable";
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -1030,7 +1195,11 @@ export async function getChain(id: string): Promise<StoredChain | null> {
   return chainStore.get(id);
 }
 
-export async function createChain(input: ChainInput, officerId: string): Promise<ServiceResult<StoredChain>> {
+/**
+ * ⭐ `opts.allowFeeModelOverride` (FEE-TAX-2026-10): a chain freezes the product default's fee MODEL unless the caller
+ * says otherwise in so many words — see `feeModelMismatch`. No form posts it; only a caller written to do so.
+ */
+export async function createChain(input: ChainInput, officerId: string, opts?: { allowFeeModelOverride?: boolean }): Promise<ServiceResult<StoredChain>> {
   const asset = await assetStore.get(input.assetId);
   if (!asset) return { ok: false, error: "Asset not found." };
   if (!ALLOWED_DURATIONS.includes(input.durationMinutes)) {
@@ -1076,15 +1245,23 @@ export async function createChain(input: ChainInput, officerId: string): Promise
   const existing = (await chainStore.list({ assetId: input.assetId })).find((c) => c.durationMinutes === input.durationMinutes);
   if (existing) return { ok: false, error: `${asset.key} already has a ${input.durationMinutes}-minute chain.` };
 
-  const cfg = await getUpDownConfig();
+  // ⛔ The default this chain would copy is read FRESH (FEE-TAX-2026-10): after `applyFeeProfileToEveryChain` on another
+  // container, this one's cache still holds the old default — and a chain created from it would start on the old law.
+  const freshCfg = await readUpDownConfigFresh();
+  if (!freshCfg.ok) return { ok: false, error: "The Up & Down settings could not be read, so no chain was created. Please try again." };
+  const cfg = await getUpDownConfig(); // the row just read, with the stake floor applied
   const lo = input.minStake ?? cfg.defaultMinStake;
   const hi = input.maxStake ?? cfg.defaultMaxStake;
   if (!Number.isFinite(lo) || lo < PLATFORM_MIN_STAKE || lo > PLATFORM_MAX_STAKE) return { ok: false, error: `Minimum stake must be between TZS ${PLATFORM_MIN_STAKE.toLocaleString("en-GB")} and TZS ${PLATFORM_MAX_STAKE.toLocaleString("en-GB")} — the platform bounds are a rule, not a setting.` };
   if (!Number.isFinite(hi) || hi < lo || hi > PLATFORM_MAX_STAKE) return { ok: false, error: `Maximum stake must be between the minimum and TZS ${PLATFORM_MAX_STAKE.toLocaleString("en-GB")}.` };
 
   const profile = input.rateProfile ?? cfg.defaultRateProfile;
-  const v = validateRateConfig(profile);
+  const v = validateRateConfig(profile, { scope: "profile" });
   if (!v.ok) return { ok: false, error: v.reason };
+  if (!opts?.allowFeeModelOverride) {
+    const mismatch = feeModelMismatch(profile, cfg);
+    if (mismatch) return { ok: false, error: mismatch };
+  }
   const marginErr = checkMarginBps(input.marginBps);
   if (marginErr) return { ok: false, error: marginErr };
 
@@ -1117,14 +1294,19 @@ export async function createChain(input: ChainInput, officerId: string): Promise
   return { ok: true, data: row };
 }
 
+/** `opts.allowFeeModelOverride`: as `createChain` — a profile on another model than the default's is refused without it. */
 export async function updateChain(
   id: string,
   updates: { minStake?: number | null; maxStake?: number | null; rateProfile?: Partial<RateConfig> | null; marginBps?: number | null },
   officerId: string,
+  opts?: { allowFeeModelOverride?: boolean },
 ): Promise<ServiceResult<StoredChain>> {
   const cur = await chainStore.get(id);
   if (!cur) return { ok: false, error: "Chain not found." };
 
+  // The default a `null` profile copies, and the model a new profile is held to, are read FRESH (as `createChain`).
+  const freshCfg = await readUpDownConfigFresh();
+  if (!freshCfg.ok) return { ok: false, error: "The Up & Down settings could not be read, so the chain was not changed. Please try again." };
   const cfg = await getUpDownConfig();
   const lo = updates.minStake !== undefined ? (updates.minStake ?? cfg.defaultMinStake) : (cur.minStake ?? cfg.defaultMinStake);
   const hi = updates.maxStake !== undefined ? (updates.maxStake ?? cfg.defaultMaxStake) : (cur.maxStake ?? cfg.defaultMaxStake);
@@ -1136,8 +1318,12 @@ export async function updateChain(
   if (updates.maxStake !== undefined) patch.maxStake = updates.maxStake;
   if (updates.rateProfile !== undefined) {
     const profile = updates.rateProfile ?? cfg.defaultRateProfile;
-    const v = validateRateConfig(profile);
+    const v = validateRateConfig(profile, { scope: "profile" });
     if (!v.ok) return { ok: false, error: v.reason };
+    if (!opts?.allowFeeModelOverride) {
+      const mismatch = feeModelMismatch(profile, cfg);
+      if (mismatch) return { ok: false, error: mismatch };
+    }
     patch.rateProfile = profile as Record<string, unknown>;
   }
   if (updates.marginBps !== undefined) {
@@ -1406,6 +1592,33 @@ export async function rateProfileFor(chain: StoredChain): Promise<Partial<RateCo
   return rateProfileOf(chain, await getUpDownConfig());
 }
 
+/**
+ * ⭐ The profile a round is STAMPED with (FEE-TAX-2026-10; `updown-service.ts → openRound`): `rateProfileOf`, with the
+ * product default read FRESH from its row when the chain carries no profile of its own — never this container's boot
+ * copy, which a save elsewhere may have moved. ⛔ Fails closed: a read that cannot be made opens no round.
+ * (A round's winnings tax is not here: a profile never carries one — `createMarket` stamps it from `market.config`.)
+ */
+export async function rateProfileForStamping(chain: StoredChain): Promise<{ ok: true; profile: Partial<RateConfig> } | { ok: false; error: string }> {
+  if (chain.rateProfile) return { ok: true, profile: chain.rateProfile as Partial<RateConfig> };
+  const fresh = await readUpDownConfigFresh();
+  if (!fresh.ok) return { ok: false, error: "the Up & Down settings could not be read, so no round was opened." };
+  return { ok: true, profile: rateProfileOf(chain, fresh.config) };
+}
+
+/**
+ * ⛔ ONE LAW ACROSS THE BOARD (FEE-TAX-2026-10): the reason a chain profile is REFUSED when its fee MODEL is not the product
+ * default's — or null when they agree. `createChain` / `updateChain` refuse on it unless their caller passes an explicit
+ * `allowFeeModelOverride`, and AI arming (`updown-proposal.ts`, which has no override) refuses to start a chain that
+ * differs. Rates within one model may differ chain by chain; a model may not, silently — the half-migrated board A2 was
+ * driven out of. The way to move every chain is `applyFeeProfileToEveryChain`, in one act.
+ */
+export function feeModelMismatch(profile: Partial<RateConfig> | null | undefined, cfg: Pick<UpDownConfig, "defaultRateProfile">): string | null {
+  const want = profileModel(cfg.defaultRateProfile);
+  const got = profileModel(profile ?? cfg.defaultRateProfile);
+  if (got === want) return null;
+  return `This fee profile is ${got}, but Up & Down chains run on ${want}. A chain on another fee model needs an explicit override; to move every chain, apply the profile to every chain in one act.`;
+}
+
 /** What `/admin/updown`'s fee tile shows, and why. */
 export interface BoardFeeSummary {
   /** The profile a fee preview should be priced through. */
@@ -1442,15 +1655,155 @@ export interface BoardFeeSummary {
  *
  * Executed by `npm run test:fee-model-caption` §3.
  */
-export function boardFeeSummary(chains: Pick<StoredChain, "rateProfile">[], cfg: UpDownConfig): BoardFeeSummary {
+export function boardFeeSummary(
+  chains: Pick<StoredChain, "rateProfile">[],
+  cfg: UpDownConfig,
+  platform?: { winningsTaxRate?: number },
+): BoardFeeSummary {
   const profiles = chains.map((c) => rateProfileOf(c, cfg));
   const models = [...new Set([...profiles, cfg.defaultRateProfile].map(resolveFeeModel))];
   const split = models.length > 1;
-  const profile = split ? cfg.defaultRateProfile : (profiles[0] ?? cfg.defaultRateProfile);
+  const named = split ? cfg.defaultRateProfile : (profiles[0] ?? cfg.defaultRateProfile);
+  // FEE-TAX-2026-10 · a stake-share profile carries no tax — a round takes the PLATFORM's when it is stamped — so a preview
+  // priced with a side needs the platform's laid beside it, exactly as the stamp does. ⛔ Never a default: with none
+  // saved it stays absent, and pricing refuses rather than invent one. R2c: the console's stake-share preview.
+  const profile = resolveFeeModel(named) === "stake-share" && platform?.winningsTaxRate !== undefined
+    ? { ...named, winningsTaxRate: platform.winningsTaxRate }
+    : named;
+  // ⛔ Every model NAMED (FEE-TAX-2026-10): this mapped everything that was not loser-share to "capped", so a board split
+  // between loser-share and stake-share would have been captioned with a law no chain runs. `jackpot-payout` is never
+  // an Up & Down profile; it is named rather than mislabelled if one ever appears.
   const caption = split
-    ? `split · ${models.map((m) => (m === "loser-share" ? "loser-share" : "capped")).join(" + ")}`
+    ? `split · ${models.map((m) => (m === "capped-commission" ? "capped" : m)).join(" + ")}`
     : describeFeeModel(profile).caption;
   return { profile, models, split, caption };
+}
+
+/** What `applyFeeProfileToEveryChain` did — or, in its dry run, would do. */
+export type FeeProfileApplyCounts = {
+  /** The fee model every chain is on afterwards. */
+  model: FeeModel;
+  /** Every chain, in any state. */
+  total: number;
+  /** The chains whose model differed and were (dry run: would be) given the profile. */
+  moved: number;
+  /** The same two counts for each chain state. */
+  byState: Record<ChainState, { total: number; moved: number }>;
+  /** True when nothing was written. */
+  dryRun: boolean;
+};
+
+const CHAIN_STATES: readonly ChainState[] = ["RUNNING", "PAUSED", "STOPPED", "ARCHIVED"];
+
+function applyCounts(all: StoredChain[], moved: StoredChain[], model: FeeModel, dryRun: boolean): FeeProfileApplyCounts {
+  const movedIds = new Set(moved.map((c) => c.id));
+  const byState = Object.fromEntries(CHAIN_STATES.map((s) => [s, { total: 0, moved: 0 }])) as Record<ChainState, { total: number; moved: number }>;
+  for (const c of all) {
+    const row = byState[c.state] ?? (byState[c.state] = { total: 0, moved: 0 });
+    row.total++;
+    if (movedIds.has(c.id)) row.moved++;
+  }
+  return { model, total: all.length, moved: movedIds.size, byState, dryRun };
+}
+
+/**
+ * ⭐ THE ONE ACT THAT MOVES UP & DOWN TO A FEE MODEL — the product default AND every chain, together (FEE-TAX-2026-10; R5's
+ * "Up & Down" save, FEE-TAX-PLAN §5).
+ *
+ * 🔴 WHY ONE ACT. Every chain carries its OWN profile and `rateProfileOf` prefers it, so moving the default alone changes
+ * nothing a player sees — and moving chains one by one leaves the board on two laws for as long as it takes. Both
+ * half-states happened in A2 (2026-08-14: `ops:updown-loser-share`, sixteen audited rows). So this sets
+ * `defaultRateProfile` and gives `profile` to EVERY chain whose model differs — RUNNING, PAUSED, STOPPED and ARCHIVED alike
+ * (a stopped or archived chain freezes its profile onto the first round it opens when restarted), a chain with no profile
+ * of its own included — in ONE transaction (`chainStore.applyProfileToChains`), re-counts inside it and rolls everything
+ * back if any chain would still differ, and writes ONE audit row with the counts and the reason. A chain already on the
+ * profile's model keeps its own rates: this moves a model, not a chain's tuning.
+ * Rounds already open keep the snapshot they froze; each chain's NEXT round freezes the new profile (and, for
+ * `stake-share`, the platform's winnings tax — a profile never carries one).
+ *
+ * ⛔ GATED by `fee-law-gate.ts` — refused, dry run included, until release R5. The profile is validated as every profile is
+ * (`validateRateConfig`, scope "profile") and must NAME its model. `{ dryRun: true }` returns the counts by state and
+ * writes nothing.
+ */
+export async function applyFeeProfileToEveryChain(
+  profile: Partial<RateConfig>,
+  officerId: string,
+  reason: string,
+  opts?: { dryRun?: boolean },
+): Promise<ServiceResult<FeeProfileApplyCounts>> {
+  const shut = newFeeLawRefusal();
+  if (shut) return { ok: false, error: shut };
+  const model = profile.feeModel;
+  if (model !== "capped-commission" && model !== "loser-share" && model !== "stake-share") {
+    return { ok: false, error: "The profile must name its fee model: capped-commission, loser-share or stake-share." };
+  }
+  const why = typeof reason === "string" ? reason.trim() : "";
+  if (why.length < 10) return { ok: false, error: "Say why, in a sentence — the reason goes on the audit record." };
+  const v = validateRateConfig(profile, { scope: "profile" });
+  if (!v.ok) return { ok: false, error: v.reason };
+
+  // The config being replaced, read FRESH: it is what the chains are judged against, and the transaction's
+  // compare-and-swap refuses if it moves before the act commits.
+  await ensureHydrated();
+  let expected: StoredUpDownConfig | null = null;
+  let cfgBefore: UpDownConfig;
+  if (udStore.hasDatabase()) {
+    const res = await udStore.loadConfigResult<StoredUpDownConfig>(UPDOWN_CONFIG_KEY);
+    if (!res.ok) return { ok: false, error: "The Up & Down settings could not be read, so nothing was changed. Please try again." };
+    expected = res.value;
+    cfgBefore = res.value ? upDownFromRow(res.value).config : { ...DEFAULT_UPDOWN_CONFIG };
+  } else {
+    cfgBefore = { ...cfgStore() };
+  }
+  const cfgAfter: UpDownConfig = { ...cfgBefore, defaultRateProfile: { ...profile } };
+  const differs = (c: StoredChain) => profileModel(rateProfileOf(c, cfgBefore)) !== model;
+  const stillDiffers = (c: StoredChain) => profileModel(rateProfileOf(c, cfgAfter)) !== model;
+
+  if (opts?.dryRun) {
+    const all = await chainStore.list();
+    return { ok: true, data: applyCounts(all, all.filter(differs), model, true) };
+  }
+
+  const row = { ...cfgAfter, v: UPDOWN_CONFIG_VERSION };
+  let outcome: { moved: StoredChain[]; after: StoredChain[] };
+  try {
+    outcome = await chainStore.applyProfileToChains({
+      config: { key: UPDOWN_CONFIG_KEY, expected, next: row },
+      profile: { ...profile } as Record<string, unknown>,
+      differs,
+      stillDiffers,
+    });
+  } catch (err) {
+    return { ok: false, error: `Nothing was changed: ${(err as Error)?.message ?? String(err)}. Please try again.` };
+  }
+  // Committed: the default and every chain moved together. This container's cache follows the row.
+  globalThis.__50PICK_UPDOWN_CONFIG = cfgAfter;
+  upDownGen++;
+  const counts = applyCounts(outcome.after, outcome.moved, model, false);
+  audit({
+    category: "ADMIN",
+    action: "updown.fee_profile.applied_everywhere",
+    actorId: officerId,
+    targetType: "UpDownConfig",
+    targetId: "global",
+    payload: {
+      reason: why,
+      model,
+      before: cfgBefore.defaultRateProfile,
+      after: profile,
+      counts: { total: counts.total, moved: counts.moved, byState: counts.byState },
+      moved: outcome.moved.map((c) => ({ id: c.id, state: c.state, from: c.rateProfile })),
+      warn: v.warn ?? null,
+      note: "Rounds already open keep the rates they froze; each chain's next round freezes this profile.",
+    },
+  });
+  if (udStore.hasDatabase()) {
+    const back = await udStore.loadConfigResult<StoredUpDownConfig>(UPDOWN_CONFIG_KEY);
+    if (!back.ok || !back.value || !sameStoredValue(back.value, row)) {
+      return { ok: false, error: "The profile was applied to every chain, but the settings could not be read back to confirm it. Reload the page and check them." };
+    }
+  }
+  return { ok: true, data: counts };
 }
 
 /**

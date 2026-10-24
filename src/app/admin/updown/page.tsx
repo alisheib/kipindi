@@ -5,6 +5,7 @@ import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-she
 import { EmptyState } from "@/components/ui/empty-state";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { listAssets, listChains, getUpDownConfig, getStoredUpDownStakeDefaults, ALLOWED_DURATIONS, resolveScheduledMarginBps, boardFeeSummary } from "@/lib/server/updown-config";
+import { getGlobalConfig } from "@/lib/server/market-config";
 // E-46: the Add-asset form is driven by the catalogue, so a symbol/category pair that
 // cannot work is not offerable. The server enforces the same rule in `createAsset`.
 import { SYMBOL_CATALOGUE, symbolReadiness, readinessMark, findSymbol } from "@/lib/server/updown-symbols";
@@ -266,7 +267,9 @@ async function AdminUpDownContent({ searchParams }: UpDownProps) {
   // `boardFeeSummary` reads every configured chain through the same resolver the engine
   // freezes with, and derives the caption from the same profile the number came out of.
   // Executed by `npm run test:fee-model-caption` §3.
-  const boardFee = boardFeeSummary(chains, cfg);
+  // FEE-TAX-2026-10 · the platform's saved winnings tax, laid beside a stake-share profile so the priced preview can run
+  // (a profile never carries one); `undefined` until an admin saves it, and nothing is defaulted. R2c rebuilds this tile.
+  const boardFee = boardFeeSummary(chains, cfg, { winningsTaxRate: (await getGlobalConfig()).winningsTaxRate });
   // Balanced pools, so the winning side is immaterial to the figure — but loser-share is
   // outcome-DEPENDENT and `poolFee` charges NOTHING when it is not told a winner, so one
   // must be passed here or the preview would read TZS 0 on the current model.

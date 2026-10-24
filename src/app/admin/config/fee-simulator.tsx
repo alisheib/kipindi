@@ -43,8 +43,13 @@ export function FeeSimulator({ config }: { config: RateConfig }) {
   const stake = num(stakeRaw);
 
   const isLoserShare = config.feeModel === "loser-share";
+  // FEE-TAX-2026-10 · `stake-share` is NOT simulated by the grids below: they speak the two older laws, and its
+  // arithmetic takes whole shillings only. It gets the plain statement at the foot of the hooks instead — never the
+  // capped-commission branch. R2c: the stake-share simulator arrives with the Fees & taxes card.
+  const isStakeShare = config.feeModel === "stake-share";
 
   const sim = useMemo(() => {
+    if (isStakeShare) return null;
     // Pass the winning side: loser-share charges the LOSING pool, so its fee depends
     // on the outcome. Capped-commission ignores the side (outcome-neutral).
     const fee = poolFee(yesPool, noPool, config, side);
@@ -76,12 +81,24 @@ export function FeeSimulator({ config }: { config: RateConfig }) {
       /** The pool the loser-share fee is actually a percentage OF. */
       losingPool: side === "YES" ? noPool : yesPool,
     };
-  }, [yesPool, noPool, stake, side, config]);
+  }, [yesPool, noPool, stake, side, config, isStakeShare]);
 
   const worst = useMemo(
     () => worstCaseWinnerRatio(config),
     [config],
   );
+
+  if (isStakeShare || !sim) {
+    return (
+      <Callout tone="info" title="Stake-share — not simulated on this screen yet">
+        New polls charge {Number(((config.platformFeeRate + config.operatorFeeRate) * 100).toFixed(2))}% of every stake, on
+        both sides, and withhold{" "}
+        {config.winningsTaxRate === undefined ? "a winnings tax (none saved yet)" : `${Number((config.winningsTaxRate * 100).toFixed(2))}%`}{" "}
+        of the losing side&apos;s net stakes for TRA. A winner on a lopsided market can be paid back less than their stake —
+        at these rates the worst case is {worst.ratio.toFixed(3)}× of the stake.
+      </Callout>
+    );
+  }
 
   return (
     <div className="space-y-4">

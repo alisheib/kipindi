@@ -22,7 +22,7 @@
 import { Fragment } from "react";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { formatTzs, pctNum } from "@/lib/utils";
-import { poolFee, resolveFeeModel } from "@/lib/payout";
+import { poolFee, resolveFeeModel, stakeShareRate } from "@/lib/payout";
 import type { RateConfig } from "@/lib/server/market-config";
 
 /** Every live number the two documents quote. ⛔ Nothing here may be typed by hand. */
@@ -57,7 +57,15 @@ export type RulesRates = {
  * headline rate, and a return to it needs the prose rewritten first.
  */
 function losingSideRate(cfg: RateConfig): number {
-  return resolveFeeModel(cfg) === "loser-share" ? poolFee(0, 0, cfg).shareOfLosers : cfg.commissionRate;
+  const model = resolveFeeModel(cfg);
+  if (model === "stake-share") {
+    // FEE-TAX-2026-10 · the rate of EVERY stake, as the arithmetic charges it — never `poolFee(0, 0, …)`, which refunds an
+    // empty pool and would quote 0%, nor the dormant `commissionRate`. ⚠️ The documents' prose ("of the losing side") is
+    // false under this model: release R5 rewrites both rulebooks in the same commit that opens `fee-law-gate.ts`, and
+    // until then no saved config can hold it.
+    return stakeShareRate(cfg) ?? 0;
+  }
+  return model === "loser-share" ? poolFee(0, 0, cfg).shareOfLosers : cfg.commissionRate;
 }
 
 export function ratesFrom(cfg: RateConfig): RulesRates {

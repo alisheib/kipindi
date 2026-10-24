@@ -517,6 +517,9 @@ async function toBoardRound(
       downPool: m.noPool,
       // Exactly the five fields `poolFee` reads — nothing else about the poll's fees crosses
       // to the browser. Frozen per round, so a retune cannot reprice a bet already placed.
+      // FEE-TAX-2026-10 · a stake-share round's projection also needs its frozen `winningsTaxRate`, which is not sent:
+      // `payoutFor` then REFUSES and `updown-pricing` shows no figure — never a figure priced without the tax, nor one
+      // below the stake with no warning. R2c: widen `UpDownRates` and add the below-stake warning together.
       rates: {
         feeModel: rates.feeModel,
         commissionRate: rates.commissionRate,

@@ -36,8 +36,10 @@ import type { MarketCategory } from "./market-service";
 import {
   getAsset, listChains, createChain, updateChain, setChainState, updateAsset,
   getUpDownConfig, checkMarginBps, ALLOWED_DURATIONS, resolveScheduledMarginBps,
+  readUpDownConfigFresh, feeModelMismatch,
   type Duration, type UpDownConfig,
 } from "./updown-config";
+import type { RateConfig } from "./market-config";
 import { hostMatchesDomain } from "./updown-feed";
 import type { StoredAsset } from "./updown-dal";
 
@@ -894,6 +896,18 @@ export async function armProposal(id: string, opts: { officerId: string }): Prom
   const { reasons } = await validateProposal(p);
   if (reasons.length > 0) {
     return { ok: false, error: `Cannot arm — this is no longer valid: ${reasons.join(", ")}.` };
+  }
+
+  // ⛔ ONE LAW ACROSS THE BOARD (FEE-TAX-2026-10). Arming STARTS a chain, and it has no override to give: it refuses to
+  // start an existing chain whose fee model is not the product default's (a chain the one act has not reached — or left
+  // on another model by an explicit override), checked against the settings read FRESH, before anything is written.
+  // A chain it creates takes the default, which `createChain` holds to the same rule.
+  {
+    const fresh = await readUpDownConfigFresh();
+    if (!fresh.ok) return { ok: false, error: "Cannot arm — the Up & Down settings could not be read. Nothing was changed; try again." };
+    const current = (await listChains({ assetId: asset.id })).find((c) => c.durationMinutes === p.durationMinutes);
+    const mismatch = current ? feeModelMismatch(current.rateProfile as Partial<RateConfig> | null, fresh.config) : null;
+    if (mismatch) return { ok: false, error: `Cannot arm — ${mismatch}` };
   }
 
   // 1 · Point the asset at the link the AI verified, if it differs. Through updateAsset, so

@@ -139,7 +139,10 @@ export default async function HelpPage() {
           {t.help.faqTitle}
         </h2>
         <div>
-          {FAQ_ITEMS.map(({ key, glyph }) => {
+          {/* FEE-TAX-2026-10 · under stake-share the fee question (faq1) is left out rather than answered with the capped or
+              loser-share words: its answer is written by release R5, in the same commit that opens `fee-law-gate.ts`,
+              and until then no saved config can hold the model. */}
+          {FAQ_ITEMS.filter(({ key }) => !(key === "faq1" && cfg.feeModel === "stake-share")).map(({ key, glyph }) => {
             const Glyph = I[glyph];
             const own = journey ? JOURNEY_FAQ[key] : undefined;
             return (

@@ -255,7 +255,31 @@ export interface ChainStore {
    *  `marketStore.stamp` exists to prevent). */
   patch(id: string, fields: Partial<StoredChain>): Promise<void>;
   delete(id: string): Promise<void>;
+  /**
+   * ⭐ ONE TRANSACTION for `applyFeeProfileToEveryChain` (FEE-TAX-2026-10): swap the Up & Down config row (compare-and-swap
+   * against `config.expected`; created when that is null), give `profile` to every chain `differs` picks — in ANY state,
+   * a NULL profile included — then re-read every chain and THROW, rolling all of it back, if `stillDiffers` finds one.
+   * Returns the chains moved (as they were) and every chain after.
+   * ⚠️ The memory twin moves the chains only: with no database the caller's in-memory config IS the store.
+   */
+  applyProfileToChains(input: ApplyProfileInput): Promise<{ moved: StoredChain[]; after: StoredChain[] }>;
 }
+
+/** What `ChainStore.applyProfileToChains` is given. */
+export type ApplyProfileInput = {
+  /** The Up & Down config row: replaced only while it still holds `expected` (null = it must not exist yet). */
+  config: { key: string; expected: unknown; next: unknown };
+  /** The profile every moved chain is given. */
+  profile: Record<string, unknown>;
+  /** Which chains move — judged against the default being REPLACED. */
+  differs: (c: StoredChain) => boolean;
+  /** Which chains would still be off the new law after the move — judged against the NEW default. One rolls it all back. */
+  stillDiffers: (c: StoredChain) => boolean;
+};
+
+/** The order every chain list is read in (asset, then duration) — one definition for the two twins. */
+const byAssetThenDuration = (a: StoredChain, b: StoredChain): number =>
+  a.assetId.localeCompare(b.assetId) || a.durationMinutes - b.durationMinutes;
 
 export interface RoundStore {
   get(id: string): Promise<StoredRound | null>;
@@ -434,6 +458,21 @@ const memoryChains: ChainStore = {
     if (cur) memChains.set(id, { ...cur, ...fields, updatedAt: new Date().toISOString() });
   },
   async delete(id) { memChains.delete(id); },
+  async applyProfileToChains({ profile, differs, stillDiffers }) {
+    const saved = new Map(memChains);
+    const moved = [...memChains.values()].sort(byAssetThenDuration).filter(differs);
+    const now = new Date().toISOString();
+    for (const c of moved) memChains.set(c.id, { ...c, rateProfile: { ...profile }, updatedAt: now });
+    const after = [...memChains.values()].sort(byAssetThenDuration);
+    const left = after.filter(stillDiffers);
+    if (left.length > 0) {
+      // The memory twin of a rollback: every chain back as it was.
+      memChains.clear();
+      for (const [id, c] of saved) memChains.set(id, c);
+      throw new Error(`${left.length} chain(s) would still be on another fee model (${left.map((c) => c.id).join(", ")})`);
+    }
+    return { moved, after };
+  },
 };
 
 /**
@@ -656,6 +695,32 @@ const prismaChains: ChainStore = {
     }
     if (Object.keys(data).length === 0) return;
     await pc().upDownChain.update({ where: { id }, data });
+  },
+  async applyProfileToChains({ config, profile, differs, stillDiffers }) {
+    // ⛔ ALL OR NOTHING: the default and every chain move together, or nothing moves — a half-applied act is the split
+    // board A2 had to be driven out of. Any throw below rolls the whole transaction back.
+    return pc().$transaction(async (tx) => {
+      if (config.expected === null) {
+        await tx.systemConfig.create({ data: { key: config.key, value: config.next as never } });
+      } else {
+        const swapped = await tx.systemConfig.updateMany({
+          where: { key: config.key, value: { equals: config.expected as never } },
+          data: { value: config.next as never },
+        });
+        if (swapped.count !== 1) throw new Error("the Up & Down settings changed while the profile was being applied");
+      }
+      const order = [{ assetId: "asc" as const }, { durationMinutes: "asc" as const }];
+      const moved = (await tx.upDownChain.findMany({ orderBy: order })).map(toChain).filter(differs);
+      for (const c of moved) {
+        await tx.upDownChain.update({ where: { id: c.id }, data: { rateProfile: profile as never } });
+      }
+      const after = (await tx.upDownChain.findMany({ orderBy: order })).map(toChain);
+      const left = after.filter(stillDiffers);
+      if (left.length > 0) {
+        throw new Error(`${left.length} chain(s) would still be on another fee model (${left.map((c) => c.id).join(", ")})`);
+      }
+      return { moved, after };
+    });
   },
   /* ⛔ NO `.catch(() => {})` HERE, AND THAT IS THE POINT (S-18, scan #1, 2026-08-28).
    *
