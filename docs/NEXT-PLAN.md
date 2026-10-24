@@ -166,7 +166,7 @@ against each other within a daily budget, may fetch their own price, and the ros
 | **Where** | Release and live readback: [`docs/HOUSE-BOTS.md`](HOUSE-BOTS.md) §§12.20–12.21; current programme status: [`plans/house-bots/RESUME-HERE.md`](../plans/house-bots/RESUME-HERE.md) §0e; management and admin instructions: `docs/50pick-house-bots-desk-guide.pdf`. |
 | **Next** | Read [`plans/house-bots/RESUME-HERE.md`](../plans/house-bots/RESUME-HERE.md) §0e — never this cell |
 
-## ▶ 0i · MASWALI MILLIONEA — the third product, a weekly jackpot — `MASWALI-BUILD` · 🔨 **S1–S7 on `main` and the development is complete (the polish release `21b246e5f`, 2026-10-23); rollout ACTIVE on production since 2026-10-22 23:32 UTC — nothing sells until an admin pays the guarantee in and a week opens; S8 is Ali's list in MASWALI-PLAN §6.1 (the first public week is the drive). ▶ Resume: MASWALI-PLAN §0** · 12/13 sessions ✅
+## ▶ 0i · MASWALI MILLIONEA — the third product, a weekly jackpot — `MASWALI-BUILD` · 🔨 **S1–S7 on `main` and the development is complete (the polish release `21b246e5f`, 2026-10-23); rollout ACTIVE on production since 2026-10-22 23:32 UTC — nothing sells until an admin pays the guarantee in and a week opens; S8 is Ali's list in MASWALI-PLAN §6.1 (the first public week is the drive), and since 2026-10-24 the first public week is HELD until the fee change's Millionea switch is read back (row 0k; §6.1 lines 8 and 9 re-opened). ▶ Resume: MASWALI-PLAN §0** · 12/13 sessions ✅
 
 Ali, 2026-10-16: *"disregard any august rulgint he enw paln is final ruling"* · *"th enew pd is rveewd by management and
 update dlatly so any old ruels repalc ehtem if lost y those fomr the new pdf"* · *"we need to be very creative in how we
@@ -198,6 +198,23 @@ pages are cretaed we tlel them impelemtn on any new pages rth ephosphor plan"*.
 | **Where** | The parked branches `phosphor-2d-v2` and `phosphor-3-v2` on origin (the tracker's §0 says how to resume on any machine); the programme's session pushes its own verified releases to `main` (the header's exception, Ali 2026-10-17: "until live") |
 | **Next** | Read it from the tracker's §0, never from this cell |
 | **Rule** | Every session rewrites the tracker's §0 and ticks §1 in its own commit, and **updates this row's count in the same commit** — `npm run test:phosphor-plan` asserts the two agree |
+
+## ▶ 0k · FEE & TAX CHANGE — 13% of every stake, a 15% winnings tax, Millionea's fee on the ticket, any admin at any step — `FEE-TAX-2026-10` · 🔨 **R0 (the records) 2026-10-24 · decided, NOT in force until the switch** · 0/6 releases ✅
+
+Ali, 2026-10-24, sharing the *"Peer-to-Peer Prediction Pool — Business & Revenue Model Plan"* and the Millionea sheet:
+*"the plan today is completely financial … how taxation would change in 50pick … add the right fields at the level of
+admin and reflect the changes wherever needed"*; and *"I want any admin to do anything … they are very limited in
+quantity and trusted"*. Plan approved the same day.
+**▶ Work order and tracker: [`FEE-TAX-PLAN.md`](FEE-TAX-PLAN.md). Say "continue the fee/tax plan": open it at §0
+(RESUME AT), then §1 (the board).**
+
+| | |
+|---|---|
+| **What** | Polls and Up & Down: 13% of every stake, a 15% winnings tax withheld from each winner's share of the losing side, TRA 10% and GBT 5% of all fees; a winner may get back less than their stake. Millionea: 130 of every 1,000 ticket every week, 870 to a jackpot of at least 1,000,000 before tax. Second-officer checks off for every staff account; own-account checks kept |
+| **In force** | Only from the switch — R5 and an admin's three audited saves read back. Until then RULES.md §1/§2 are the law, unchanged; the Millionea first public week is held (MASWALI-PLAN §0) |
+| **Who pushes `main`** | This programme's session pushes its own verified releases (Ali, 2026-10-24, approving the plan), rebased on `origin/main` immediately before, with AGENTS.md §4's checklist |
+| **Next** | Read it from the tracker's §0, never from this cell |
+| **Rule** | Every session rewrites the tracker's §0 and ticks §1 in its own commit, and updates this row's count in the same commit |
 
 ## 0e · MONEY DOORS — `MONEY-DOORS` · 🏁 **DONE 2026-10-07, LIVE** · Phase A `c9b17053` (14:46 EAT) · Phase B `012cccbc` (17:34 EAT)
 

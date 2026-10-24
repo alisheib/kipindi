@@ -38,6 +38,17 @@ does") and a week opens (the earliest Monday 00:00 EAT). The licence basis needs
 Ali's ruling of 2026-10-23 (LICBASIS, below). ✅ The deadlines are met: S6's Millionea rules page (`/legal/rules/millionea`) and its Terms section, and S7 and
 S6's notices, tax-report lines and payout-float check, are live with `c5dede03d` (2026-10-23).
 
+**⛔ 2026-10-24 — THE S8 HOLD: no public week opens before Millionea's new fee is live (Ali's rulings of 2026-10-24,
+COMPLIANCE-DECISIONS § "2026-10-24 · The fee becomes 13% of every stake, a 15% winnings tax on every win, Millionea's fee
+moves to the ticket, and any admin may do any step …").** Millionea's fee moves from 13% of the jackpot at payout to 13% of
+every ticket at sale (130 of each 1,000; 870 to the jackpot) in every week, with a 15% winnings tax on every share and the
+1,000,000 floor counted before that tax. A week freezes its fee model when it opens, so the first public week waits until
+the new model (`ticket-share`) is live and switched on: programme `FEE-TAX-2026-10`, releases R4 and R5, tracker
+[`FEE-TAX-PLAN.md`](FEE-TAX-PLAN.md). From that programme's R1 the code refuses to open a public week that would freeze
+the old model. §6.1 lines 8 (the tax treatment) and 9 (the figures verified on production) are re-opened by these rulings.
+Paying the guarantee in and funding the float are unaffected and can go ahead. Ali's same rulings let any admin do any
+step: the second-reader attestation (MB-79) and the other second-officer checks go behind an Owner setting.
+
 **✅ 2026-10-23 — the polish release on `main`: the Millionea development is complete (the Claude session asheib-f3 on
 OMEGA; Ali: "push live everything and clean up perfectly and end progress").**
 - **HUB-2B** (`claude/maswali-s5-r2-hub`): the hub's round 2 — its loading drawing in GhostWords (every static text its
@@ -153,18 +164,20 @@ order you think is perfect … give me the pdf … mark progress done").**
   margins and an undrawn chart) — measured directly on fresh servers of both commits: identical (the reading container
   1080px at x100 with 100px margins, the chart not yet drawn on either).
 
-**State (2026-10-23):** the Millionea development is complete. S1–S7 are on `main` (12/13 sessions ✅) and Millionea
+**State (2026-10-24):** the Millionea development is complete. S1–S7 are on `main` (12/13 sessions ✅) and Millionea
 is ACTIVE on production (Ali's ruling of 2026-10-23): every player surface with both 10/10 rounds, the rules page and
 Terms, the notices, the tax lines, the payout-float check, the hardening and the admin guide. Nothing sells until an
-admin pays the guarantee in and a week opens (the earliest Monday 00:00 EAT). Only S8 remains — Ali's list.
+admin pays the guarantee in and a week opens. Only S8 remains — Ali's list — and its first public week is held for
+the fee change of 2026-10-24 (the S8 hold above).
 
 **Next:** S8 — the launch, which Ali gave on 2026-10-23 (COMPLIANCE-DECISIONS § "2026-10-23 · Maswali Millionea — Ali's
 launch-gate answers …"), in order: (1) an admin pays the guarantee in (§6.1 line 2: Pools → the Owner card → Guarantee:
 the amount and the bank reference → Pay in; the admin guide on Ali's Desktop shows each step); (2) Finance funds the
 Selcom payout float and confirms it in writing (line 3); (3) line 7's last sub-items — the measures view's launch date and
-the Vodacom lane's note; (4) then an admin opens the first public week (the earliest Monday 00:00 EAT) and the agent terms
-branch `claude/maswali-agent-terms` goes live with it; that week is the drive (Ali, 2026-10-22) and its record closes S8
-(line 12). Also on Ali's list: rotate every Railway variable (the incident); revoke the Cloudflare token used for the
+the Vodacom lane's note; (4) then — only once the fee change's Millionea switch has been read back (the S8 hold above,
+lines 8 and 9) — an admin opens the first public week (a Monday 00:00 EAT) and the agent terms branch
+`claude/maswali-agent-terms` goes live with it (merged by the fee change's R5); that week is the drive (Ali, 2026-10-22)
+and its record closes S8 (line 12). Also on Ali's list: rotate every Railway variable (the incident); revoke the Cloudflare token used for the
 email setting; QL.1 after the first week.
 
 ## §0a · Historical handovers (superseded by §0 above)
@@ -1831,10 +1844,18 @@ ticked, and is ✅ only when that one is too.
    - VODACOM-PLAN §0 notified through the Vodacom lane, not edited by this lane.
    2026-10-23: the dated ruling is recorded (COMPLIANCE-DECISIONS § "2026-10-23 · Maswali Millionea — Ali's launch-gate answers …", item 2) and the filter is live; owed — the
    launch date on the measures view and the Vodacom lane's note.
-8. ☑ **Tax treatment ruled (OD-08)** and the reconciling lines live. Otherwise the first no-winner week jams locking and filing of the **whole** book. Withholding tax on winnings confirmed by Finance/TRA (MB-77). *(2026-10-21: Finance's confirmation of both is recorded on Ali's word — COMPLIANCE-DECISIONS § "2026-10-21 · Maswali Millionea — …"; the box ticks when S6's reconciling lines are live.)*
+8. ☐ **Tax treatment ruled (OD-08)** and the reconciling lines live. Otherwise the first no-winner week jams locking and filing of the **whole** book. Withholding tax on winnings confirmed by Finance/TRA (MB-77). *(2026-10-21: Finance's confirmation of both is recorded on Ali's word — COMPLIANCE-DECISIONS § "2026-10-21 · Maswali Millionea — …"; the box ticks when S6's reconciling lines are live.)*
    Met 2026-10-23: S6's reconciling lines are live with `3ec32bb72` (e2e:tax-report 20/0 at its gate), on Finance's
    confirmation recorded on Ali's word on 2026-10-21.
-9. ☑ **RULES §5 step 6** verified on production (database and screen). Both PDFs regenerated and rasterised.
+   **Re-opened 2026-10-24** by Ali's rulings (COMPLIANCE-DECISIONS § "2026-10-24 · The fee becomes 13% of every stake …"):
+   the fee moves to 13% of every ticket in every week and a 15% winnings tax applies to every share, so OD-08's filing
+   basis and MB-77's "no withholding" are superseded for weeks opened after the switch. Met again when the fee change's
+   R4 reporting lines (the fee filed for every settled week, k = 0 included; the winnings tax withheld in Report 3) are
+   live, Finance confirms the new basis with TRA, and the switch is read back (`FEE-TAX-PLAN.md` §5).
+9. ☐ **RULES §5 step 6** verified on production (database and screen). Both PDFs regenerated and rasterised.
+   **Re-opened 2026-10-24:** the figures read below change at the fee change's switch (13% of each ticket, 870 to the
+   jackpot, the 15% winnings tax, the floor before tax). Met again when production is read back after the switch and both
+   PDFs are regenerated with the new figures.
    Met 2026-10-23 (COMPLIANCE-DECISIONS § "2026-10-23 · Maswali Millionea — Ali's launch-gate answers …"): no `maswali.config` row is stored on production, so the ruled figures are in force —
    TZS 1,000 a ticket, a TZS 1,000,000 floor, a 13% fee, 10 tickets a week — and the live rules page states them; the
    operator guide and the rates PDF were regenerated and read page by page.

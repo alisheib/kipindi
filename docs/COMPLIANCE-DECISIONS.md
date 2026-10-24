@@ -8,6 +8,78 @@
 
 ---
 
+## 2026-10-24 · The fee becomes 13% of every stake, a 15% winnings tax on every win, Millionea's fee moves to the ticket, and any admin may do any step (owner rulings; in force from the switch)
+
+**Context.** Ali shared two documents and asked for a plan: *"Peer-to-Peer Prediction Pool — Business & Revenue Model
+Plan"* (22 Oct 2026, prepared for management review; every pool game) — a 13% platform fee deducted from every stake,
+the losing side's net stakes as the prize fund, a 15% winning tax withheld from it, TRA 10% and GBT 5% of GGR (= all
+fees) — and the Millionea sheet (jackpot 1,000,000; ticket 1,000; "our fees 13% = 130"; "to be added in jackpot = 870";
+"we will now take from stake not winnings"). He asked that the settings exist at admin level and that every surface follow,
+"some changes only at the level of Millionea and others for all 50pick games". Asked the open questions (2026-10-24), he
+answered each; the plan built on them was approved the same day. Programme `FEE-TAX-2026-10`, tracker
+[`FEE-TAX-PLAN.md`](FEE-TAX-PLAN.md).
+
+**The rulings.**
+1. **A winner may get back less than their stake — "exactly as the document".** The fee is 13% of every stake whatever the
+   books look like; on a lopsided market the winners on the bigger side can be paid less than they staked (100,000
+   against 10,000 pays them 94,395). Every bet screen must say so before the bet. The winner floor (`assertWinnerFloor`,
+   "Invariant 1") stays only for markets frozen under the older models.
+2. **A void, a one-sided market and the 5-minute free cancel refund in full, with no fee** — as today.
+3. **The 15% winnings tax applies to every win, Maswali Millionea included.** Finance confirms the legal basis with TRA
+   (the statute, the base, the per-winner return).
+4. **The Millionea jackpot is at least TZS 1,000,000**: J = max(floor, carried money + 870 of each ticket); the guarantee
+   fills a shortfall only in a week with a winner; a week with no winner carries its 870s.
+5. **The floor is before the tax**: one winner of a 1,000,000 jackpot receives 850,000 and 150,000 goes to TRA.
+6. **Any admin may do any step — "no more second-person checks"**, for every staff account: every check that a different
+   or second officer must act, or that only the same officer may act, on another person's case is removed from use.
+   Role areas stay as they are (ADMIN accounts already reach every screen), and every act stays audited under the
+   person's name.
+   - **6b. Checks on an officer's OWN account stay** (Ali: "keep own-account checks"): approving one's own identity,
+     source of funds or held money, unfreezing one's own wallet, approving one's own proposal prize, acting on one's own
+     agent standing. They never block work on another person's case.
+   - The rules that a staff account may not play (buy a Millionea ticket, be a desk or agent account) protect players and
+     are not admin powers; they stay.
+7. **Start: "as soon as it is ready".** This is a **deliberate departure from Terms §10**, which promises players written
+   notice in the app at least 14 days before a material change. The change is adverse to players (a bigger fee on
+   balanced markets, a tax on winnings, a winner who can be paid below their stake). 50pick will not give that notice: the
+   only notice is the site banner, switched on immediately before the switch. Risk accepted by Ali: a player may contest
+   that the earlier terms govern a bet placed after the switch. Under §10's own sentence, continued use after a change is
+   acceptance. Markets, rounds and weeks opened before the switch keep the law they froze.
+
+**In force from the switch, not from this entry.** The new law takes effect only when R5 of the programme has shipped and
+an admin's three audited saves (the polls' model and the tax; Up & Down; Millionea) have been read back. Until then
+today's RULES.md §1 and §2 stand everywhere and nothing in this entry is live behaviour. At the switch it supersedes:
+- RULES §2.1's `loser-share` (13% of the losing side; § 2026-07-23 for polls, § 2026-08-14 for Up & Down) for every
+  market created after the switch;
+- RULES §2.2 and §2.8 — "taxes are only ever on our commission", "a player is never taxed", "no withholding tax" — the
+  ruling of 2026-07-15. ⛔ The 15% tax DELETED on 2026-07-14 was a withholding on WITHDRAWALS that taxed a player's own
+  deposit; it stays deleted. The new tax is on winnings only;
+- the Government Tax Report's filing model of 2026-10-03 (Commission = 13% × Payout) for rounds frozen under the new model;
+  each round files under the model it froze;
+- Millionea's fee at payout (RULES §2.12, § 2026-10-16) and its filing basis OD-08, for weeks opened after the switch.
+
+**Second-officer checks.** R1 puts the twelve checks named in `FEE-TAX-PLAN.md` §4 behind one Owner setting, "Second-officer
+checks". While the setting is absent, they behave as today. The Owner turns it OFF as an audited act straight after R1
+is read back. Unlike a code default, that act carries a name and a time. The two-officer approval switch for resolutions
+(`resolution.policy.requireTwoOfficer`) is already OFF and stays OFF. Two published statements describe checks being
+removed:
+- the Millionea binding rules' objection section — reworded in R5;
+- the Gaming Board technical report's "separation of duties" section — Ali informs the Board.
+
+**The Millionea S8 hold.** A week freezes its fee model when it opens. So **no public Millionea week opens until the
+Millionea switch has been read back** (MASWALI-PLAN §0 and §6.1, lines 8 and 9 re-opened). From R1 the code refuses to
+open a public week that would freeze the old model. No ticket has been sold, so nobody is re-priced.
+
+**Errors in the document, recorded so nobody copies them.**
+- The per-player table applied rounded shares (11/33/56%).
+- It rounded both the tax and the distributable amount up, which accounts for 44,001 of a 44,000 pool.
+- Its tax base is worded three ways.
+
+50pick pays the worked example exactly — 3,746 / 11,237 / 18,729, tax 4,568, fee 5,720, TRA 572, GBT 286, net GGR 4,862
+— on the worked example's base (15% of each winner's share of the losing side's net stakes).
+
+---
+
 ## 2026-10-23 · Maswali Millionea — Ali's launch-gate answers: the production checks, OD-22 recorded, the agent terms at launch, rollback understood, QL.1 by hand, two-line bell titles, and the launch word (owner)
 
 **Context.** Asked every open launch-gate decision at once (the build lead, the session asheib-f3), Ali answered each
