@@ -15,6 +15,10 @@
  *   HOUSE:AGGREGATOR         — the payment gateway's slice of the withdrawal fee
  *   HOUSE:TRA_LEVY           — TRA tax, levied on our commission
  *   HOUSE:GBT_LEVY           — GBT gaming board levy, levied on our commission
+ *   HOUSE:WINNINGS_TAX       — ⭐ FEE-TAX-2026-10 (decided, gated off until release R5): the winnings tax withheld from a
+ *                              `stake-share` winner's prize, HELD AND OWED TO TRA. A liability, never revenue, never in
+ *                              the levy base, and a different tax from both of the two above (they are 10% / 5% of OUR
+ *                              fee) and from HOUSE:TAX below (the agent programme's VAT and withholding).
  *   SYSTEM:BONUS             — bonus issuance source
  *   SYSTEM:ADJUSTMENT        — admin adjustments
  *   SYSTEM:VOID              — expired/cancelled bonus sink
@@ -188,6 +192,22 @@ export const acct = {
   aggregator: "HOUSE:AGGREGATOR" as const,
   traLevy: "HOUSE:TRA_LEVY" as const,
   gbtLevy: "HOUSE:GBT_LEVY" as const,
+  /**
+   * ⭐ THE WINNINGS TAX WITHHELD FOR TRA (FEE-TAX-2026-10, Ali's ruling 3; `docs/FEE-TAX-PLAN.md` §3) — under the
+   * `stake-share` model a winner's prize carries a tax, withheld at settlement out of the POOL, never out of a player
+   * account, and held here until it is remitted. It needs its own account for three reasons, each of them a way the
+   * books would lie without it:
+   *   · ⛔ NOT `HOUSE:TRA_LEVY`. That is 10% of OUR fee, read by `leviesBooked` and every levy report; a winnings tax there
+   *     would be filed as a levy on revenue we never earned, and Report 1's levy line would stop matching `levySplit`.
+   *   · ⛔ NOT `HOUSE:TAX`. That holds the agent programme's VAT and 5% withholding (`agentCommissionEntries`), which the
+   *     clawback reverses in proportion — a third tax mixed into it would be reversed with them.
+   *   · ⛔ NOT left in `POOL:{marketId}`. A tax that never left the pool is a residual every group and the trial balance
+   *     accept (the self-cancelling shape that hid the 2026-08-11 commission defect): the pool must end at exactly 0.
+   * Only `settlementPayoutEntries` credits it, under `SETTLEMENT_WINNINGS_TAX`. It is players' tax and the state's money:
+   * a free-cash figure must subtract it as a liability (`house-book.ts` — release R3's line), and no fee, GGR or levy
+   * base may include it.
+   */
+  winningsTax: "HOUSE:WINNINGS_TAX" as const,
   bonus: "SYSTEM:BONUS" as const,
   adjustment: "SYSTEM:ADJUSTMENT" as const,
   void: "SYSTEM:VOID" as const,
@@ -286,6 +306,10 @@ export function depositEntries(opts: {
  * "naïve" — including money a player had deposited and never bet. Deposit
  * 100,000, place no bet, withdraw, receive 85,000. Ali's decision: taxes are only
  * ever on OUR commission, never on the player. That function is deleted.
+ * ⚠️ That sentence is true of a WITHDRAWAL under every fee model, and stays true. The one tax a player bears is the
+ * `stake-share` WINNINGS tax (FEE-TAX-2026-10, decided, gated off until release R5): withheld at SETTLEMENT from a
+ * winner's prize, out of the pool, into `HOUSE:WINNINGS_TAX` (`settlementPayoutEntries`) — never at withdrawal, and never
+ * from money a player deposited.
  *
  * A player now pays exactly one thing on a withdrawal: `withdrawalFeeRate` — 1.5% on
  * production today, and config-driven, so read it rather than restating it here.
@@ -348,10 +372,22 @@ export function stakeEntries(opts: {
 /**
  * Settlement payout: market pool → player wallet + house accounts.
  *
- * The fee is now ONE number — `min(commissionRate × pool, feeCeilingRate ×
- * smallerSide)` — not four rate-slices of the pool. So this books the winner's
- * proportional share of that single fee to HOUSE:COMMISSION, and the TRA/GBT
- * levies out of it.
+ * The fee is ONE number for the whole market — the frozen model's figure (`payout.ts → poolFee`): under the legacy
+ * `capped-commission` `min(commissionRate × pool, feeCeilingRate × smallerSide)`, under `loser-share` 13% of the
+ * losing pool, under `stake-share` 13% of every stake — not four rate-slices of the pool. So this books THIS winner's
+ * share of that single fee to HOUSE:COMMISSION, and the TRA/GBT levies out of it. The losers have no group: their
+ * stakes leave the pool through the winners' groups, which is why every winner's group carries a share of the WHOLE fee.
+ *
+ * ⭐ AND, UNDER `stake-share` ONLY (FEE-TAX-2026-10, decided, gated off until release R5), THE WINNER'S WINNINGS TAX:
+ * `winningsTaxAmount` is booked POOL → HOUSE:WINNINGS_TAX under `SETTLEMENT_WINNINGS_TAX`, on top of the payout. It is
+ * what the player never received, so it comes out of the POOL — ⛔ never out of the PLAYER account, whose ledger must
+ * keep matching the wallet line for line (`computeTrialBalance`), and ⛔ never into HOUSE:TRA_LEVY or HOUSE:TAX (see
+ * `acct.winningsTax`). `payout` is then the NET — the very amount the wallet is credited — and the gross winnings are
+ * `payout − net stake + winningsTaxAmount`.
+ * ⚠️ So "taxes come only out of our commission" is TRUE OF THE LEVIES UNDER EVERY MODEL (they are levied on the fee and
+ * debited from HOUSE:COMMISSION, never from a player) and FALSE of a stake-share winner's prize, which bears the winnings
+ * tax by Ali's ruling 3. Under `capped-commission` and `loser-share` no winnings tax exists and none is ever booked:
+ * the line is absent unless the caller passes one, and settlement passes one only for a stake-share market.
  *
  * HOUSE:TAX / HOUSE:RESERVE / HOUSE:AGGREGATOR are no longer credited at
  * settlement: taxRate, reserveRate and aggregatorRate are gone. The accounts
@@ -359,7 +395,7 @@ export function stakeEntries(opts: {
  * books must still add up — they are simply never credited again.
  *
  * Conservation: each GROUP sums to exactly zero — pool debit == player credit +
- * commission + levies. That is the property `postLedgerEntries` enforces, and a
+ * commission + levies (+ the winnings tax under stake-share). That is the property `postLedgerEntries` enforces, and a
  * group that failed it would be REJECTED and silently dropped, so it matters.
  *
  * Rounding: the caller passes the whole poll's `fee` and this books only THIS
@@ -371,6 +407,9 @@ export function stakeEntries(opts: {
  * line are the SAME `payout` value, so a player is never paid a different amount
  * than the books say. Bounded and asserted in scripts/money-invariants.test.mts
  * (GLOBAL conservation, dust ≤ winners + markets + 2).
+ * ⭐ Under `stake-share` there is NO dust: every part is a whole-shilling largest-remainder share (`stakeShareSplit`),
+ * Σ payouts + Σ winnings tax + Σ commission shares = the pool exactly, and the POOL account ends at 0
+ * (`test:winnings-tax-ledger`, `test:money-invariants` §1b).
  */
 export function settlementPayoutEntries(opts: {
   groupId: string;
@@ -417,8 +456,27 @@ export function settlementPayoutEntries(opts: {
    */
   traLevyAmount?: number;
   gbtLevyAmount?: number;
+  /**
+   * ⭐ STAKE-SHARE ONLY (FEE-TAX-2026-10): THIS WINNER'S WINNINGS TAX, pre-allocated — `stakeShareSplit`'s `tax_i`, so
+   * every winner's line sums to EXACTLY the market's T. Booked POOL → HOUSE:WINNINGS_TAX; the pool debit grows by it.
+   * ⛔ A whole, non-negative number of shillings or the group is REFUSED (thrown — inside settlement's transaction that
+   * rolls the whole settlement back): this figure is never rounded here, because a rounding the split did not do is a
+   * tax nobody withheld. Absent ⇒ no line, exactly the group every older model has always booked.
+   */
+  winningsTaxAmount?: number;
+  /**
+   * The BET_PAYOUT transaction this group settles. Stamped on the winnings-tax line ONLY, so a TRA schedule can tie each
+   * withheld shilling to its payout row without a join through the group id. ⛔ The older lines keep the shape they have
+   * always had (no `txnId`): every legacy group is byte-for-byte what it was.
+   */
+  txnId?: string;
   rates: { traTaxOnCommissionRate: number; gbtLevyOnCommissionRate: number };
 }): LedgerLine[] {
+  // ⛔ The winnings tax is validated FIRST and never rounded (see the parameter): refusing here is the safe direction.
+  const taxAmt = opts.winningsTaxAmount ?? 0;
+  if (!Number.isSafeInteger(taxAmt) || taxAmt < 0) {
+    throw new Error(`[ledger] settlement ${opts.groupId}: a winnings tax must be a whole, non-negative number of shillings (got ${opts.winningsTaxAmount})`);
+  }
   // The pre-allocated share when the caller computed one (always, from settleMarket).
   // The derived form remains only so an older caller cannot silently book ZERO fee.
   const share = opts.winningPool > 0 ? opts.stake / opts.winningPool : 0;
@@ -435,13 +493,20 @@ export function settlementPayoutEntries(opts: {
     : Math.round(commAmt * opts.rates.gbtLevyOnCommissionRate);
 
   const netPayout = opts.payout;
-  // The pool gives up the player's payout plus his share of our fee. Nothing else.
-  const totalCredits = netPayout + commAmt;
+  // The pool gives up the player's payout plus his share of our fee — and, under stake-share only, the winnings tax
+  // withheld from his prize. Nothing else.
+  const totalCredits = netPayout + commAmt + taxAmt;
 
   const lines: LedgerLine[] = [
     { account: acct.pool(opts.marketId), entryType: "PAYOUT_CREDIT", amount: -totalCredits, userId: opts.userId, marketId: opts.marketId, memo: `Settlement debit` },
     { account: acct.player(opts.userId), entryType: "PAYOUT_CREDIT", amount: netPayout, userId: opts.userId, marketId: opts.marketId, memo: `Payout` },
   ];
+
+  if (taxAmt > 0) {
+    // ⭐ The winner's withheld tax, owed to TRA. ⛔ The counterpart is the POOL debit above — never the PLAYER line, which
+    // stays exactly the wallet credit — and the account is its own (not a levy, not HOUSE:TAX). `userId` names whose tax.
+    lines.push({ account: acct.winningsTax, entryType: "SETTLEMENT_WINNINGS_TAX", amount: taxAmt, txnId: opts.txnId, userId: opts.userId, marketId: opts.marketId, memo: `Winnings tax withheld` });
+  }
 
   if (commAmt > 0) {
     lines.push({ account: acct.commission, entryType: "SETTLEMENT_COMMISSION", amount: commAmt, marketId: opts.marketId, memo: `Commission` });
@@ -1142,12 +1207,17 @@ export async function trialBalance(): Promise<TrialBalanceReport> {
  * 🔴 WHY THIS EXISTS. `/admin/finance` accrued its statutory-levy tile as
  * `GGR × (TRA + GBT)`. Those rates are defined throughout this codebase as a fraction OF OUR
  * FEE — `levySplit` applies them to the settlement fee, the agent waterfall applies them to the
- * gross fee — and the house standard is explicit that taxes are only ever on 50pick's
+ * gross fee — and the house standard is explicit that the LEVIES are only ever on 50pick's
  * commission, never on a player's money. GGR is not commission: it is stakes minus payouts
  * minus refunds, so while positions are still open it also contains money that has not been
  * earned and may yet be paid back out. Measured against production over September 2026 EAT:
  * GGR 803,675 against 50,045 of commission actually booked, with 8,796 of TRA+GBT actually
  * booked — the tile was overstating the levy by roughly fourteen times.
+ * ⭐ WHAT IS TRUE PER MODEL (FEE-TAX-2026-10). Under every model the two levies are a fraction of OUR fee and nothing
+ * else. Under `stake-share` (decided, gated off until release R5) there is ALSO a tax a player bears — the winnings tax
+ * withheld from a winner's prize, booked to `HOUSE:WINNINGS_TAX` — and it moves in this read beside the levies (every
+ * `HOUSE:%` account does). ⛔ It is not a levy and not revenue: a caller summing "taxes" must name the account it means,
+ * and a levy figure must never include it (`leviesBooked` reads the two levy accounts only).
  * ⛔ Read-only, and parameterised (`$1`/`$2`) rather than interpolated.
  */
 export async function houseAccountMovement(
