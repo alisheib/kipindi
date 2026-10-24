@@ -117,7 +117,7 @@ async function AdminConfigContent({ searchParams }: ConfigProps) {
               label="Winning tax"
               sw="Kodi ya ushindi"
               value={config.winningsTaxRate === undefined ? "—" : `${Number((config.winningsTaxRate * 100).toFixed(2))}%`}
-              delta={config.winningsTaxRate === undefined ? "none saved — no poll can be created" : "of the prize, to TRA"}
+              delta={config.winningsTaxRate === undefined ? "none saved yet" : "of the prize · TRA"}
             />
           ) : null}
           <AdminKpi label="Commission"        sw="Faida"   value={`${(config.commissionRate * 100).toFixed(1)}%`} delta="of the whole pool" />
