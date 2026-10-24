@@ -39,16 +39,27 @@ position always wins); the S8 hold in code (`openWeek` refuses a public week tha
 - Read back: `?dpl=f12eb06cd` on the three hosts after 533 s; `qa:chunks-prod` on both origins; production `qa:live`
   358/0.
 - The operator guide's PDF has been regenerated (B3: any officer attests while the checks are off) and read page by page.
+✅ R2 — the fee engine, settlement, ledger, safe config and the bet screens, all GATED OFF — is LIVE at `abbee1fa1`
+(2026-10-24; pushed on Ali's word "push live now … continue testing, fix and repush"): lane a (the `stake-share` engine
+in `payout.ts`, the fee-law gate, the config's gated doors and compare-and-swap writers with the form baseline, the fresh
+read at stamping, the one act that moves every chain, the fee-model census — reviewed twice), lane b (settlement by the
+split, the `HOUSE:WINNINGS_TAX` ledger line, the additive schema, the close-time disclosure under the market lock) and
+lane c (projections, the bet screens' below-stake warning and standing line, the admin Fees & taxes card and simulator).
+- Gate on GitHub's runners: typecheck, build, `qa:first-load`, the house-bot bundle, the browser gates, `e2e:money`,
+  `e2e:fault` and `e2e:card` each on a fresh scratch PostgreSQL, and the red twins of `stake-share-fee`,
+  `winnings-tax-ledger`, `fee-model-caption` and `maswali-law` — all green at `774f333e7`. `test:all` named twelve suites:
+  five guards R2 moved (the census, the budgeted-lock and commit-lag lists, Ruling 232's line pins — each nine-line write
+  SHA-checked, D19a), fixed in `abbee1fa1`; seven of lane c's (two suites the merge left unloadable, the below-stake
+  body through the notice keep, one inverted spacing key, two pins), fixed in `44528b54d`. Each fix re-run green on the
+  runner at its exact commit.
+- Read back: `?dpl=abbee1fa1` on the three hosts after 1081 s; `qa:chunks-prod` on both origins; production `qa:live`
+  358/0. Production (read-only): both R2 migrations applied (`Position.feeTzs` / `winningsTaxTzs`,
+  `SETTLEMENT_WINNINGS_TAX`); the polls and Up & Down still on `loser-share`, no tax, no switch record — the law is off.
 Today's money law is still in force everywhere; the fee change is not switched on.
-R2 is being integrated on branch `feetax-r2int`: lane a (the `stake-share` engine in `payout.ts`, the fee-law gate,
-the config's gated doors and compare-and-swap writers with the form baseline, the fresh read at stamping, the one act
-that moves every chain, the fee-model census — reviewed twice, every finding fixed) and lane b (settlement by the split,
-the `HOUSE:WINNINGS_TAX` ledger line, the additive schema, the close-time disclosure under the market lock) are merged,
-and lane c (projections, the bet screens' below-stake warning and standing line, the admin Fees & taxes card and
-simulator, fresh-read forms posting their baseline) too. All of it gated off.
 
-**Next:** R2 — the `stake-share` engine (lane a, reviewed twice, its fixes in hand), settlement and ledger (lane b) and
-the projections, screens and admin card (lane c): merge them, run the gate, push gated-off, read back. Then R3.
+**Next:** R3 (lanes a: the tax report and books; b: receipts and notices), R4 (Millionea `ticket-share`) and R5 (lane a:
+every binding word; lane b: the one-time audited switch at boot — `fee-law-switch.ts`, its record, `/api/health`'s
+`feeLaw`) — written in parallel, each merged, gated and pushed as it lands; R5 last, as the switch.
 
 **Blocked on Ali:** nothing for R0–R5 (he delegated every remaining decision on 2026-10-24: "keep going until all
 perfectly done and pushed live … you take decisions based on what is better for the platform"). Before the switch, on
@@ -67,7 +78,7 @@ tracker is its copy and supersedes it.
 |---|---|---|---|
 | R0 | The records: rulings, this tracker, the RULES row, the board row, the S8 hold | ✅ | `82c16ec20`, live and read back 2026-10-24 (docs only) |
 | R1 | Any admin can do any step + the Millionea open lock | ✅ | `f12eb06cd`, live and read back 2026-10-24: the Owner setting and its /admin/system card, live OFF by Ali's word (nothing stored = OFF; a failed read = ON; a stored position wins); the twelve checks gated (check 11 frees an officer's own payout hold on a market they hold no money in — a case on their own stake stays refused, ruling 6b); the bulk-resolve staged-row words follow the two-officer switch; the S8 hold in `openWeek`; `test:second-officer-switch`, `test:maswali-open-lock`, `red:second-officer-switch` |
-| R2 | Fee engine, settlement, ledger, safe config — gated off | 🔨 | integrating on `feetax-r2int`: lanes a (+ review fixes), b and c merged; the gate next |
+| R2 | Fee engine, settlement, ledger, safe config — gated off | ✅ | `abbee1fa1`, live and read back 2026-10-24 (gated off: nothing a player sees changed); lane c's gate fixes `44528b54d` |
 | R3 | Reports and money around settlement (polls + Up & Down) | ⬜ | |
 | R4 | Millionea `ticket-share` — engine, money, records, reports, figures — gated off | ⬜ | |
 | R5 | Every binding word in one commit, the gate flipped, the release's one-time switch under Ali's ruling | ⬜ | the switch |

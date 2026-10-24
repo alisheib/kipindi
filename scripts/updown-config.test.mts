@@ -847,6 +847,7 @@ let goldId = "";
   } finally {
     UCm.__setUpDownConfigStoreForTest(null);
   }
+}
 
 // ── §12 · FEE-TAX-2026-10 (R2c) — the Fees & taxes card's Up & Down path: the profile it sends, the counts it shows ──
 // `/admin/config`'s card builds the profile from the officer's model and two rates over the product's CURRENT default

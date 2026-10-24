@@ -33,7 +33,7 @@ import { judNotice, judNoticeEitherSide } from "../src/lib/journey/updown-arm.ts
 import { parseSheetSeed } from "../src/lib/journey/sheet-seed.ts";
 import { estimateFor } from "../src/lib/markets/estimate.ts";
 import { HouseLeanWarning } from "../src/components/markets/house-lean-warning.tsx";
-import { dict } from "../src/lib/i18n-dict.ts";
+import { dict, DEFAULT_LOCALE } from "../src/lib/i18n-dict.ts";
 
 let pass = 0, fail = 0;
 const ok = (label: string, cond: boolean, detail = "") => {
@@ -211,19 +211,20 @@ section("§3 · every bet screen's source calls the view model and draws the war
 // ═══ §4 · THE WORDS, RENDERED ══════════════════════════════════════════════════════════════════════════════════════════
 section("§4 · the warning's words — amber, exact, the figures as amounts; the never-paid-less promise never under stake-share");
 {
-  const en = dict.en.market;
+  // The words as RENDERED: outside a provider `useT` speaks the default locale (Swahili), so §4 reads that dictionary.
+  const shown = dict[DEFAULT_LOCALE].market;
   const render = (props: Parameters<typeof HouseLeanWarning>[0]) => safe(() => renderToStaticMarkup(createElement(HouseLeanWarning, props)));
   const below = render({ level: "below", stakeShare: true, below: { side: "NDIYO", payout: 9_440, stake: 10_000 } });
   ok("4.1 · ★ the below warning renders its title and BOTH figures as amounts",
     typeof below === "string" && below.includes("TZS 9,440") && below.includes("TZS 10,000") && /class="amount"/.test(below) && below.includes("NDIYO"),
     typeof below === "string" ? below.slice(0, 200) : j(below));
   const plain = (s: string) => s.replace(/<[^>]+>/g, "").replace(/[ ⁠]/g, " ");
-  ok("4.2 · …in the warning family's box, under the dictionary's own title", typeof below === "string" && /warning/.test(below) && plain(below).includes(en.ssBelowTitle.split(" ")[0]),
+  ok("4.2 · …in the warning family's box, under the dictionary's own title", typeof below === "string" && /warning/.test(below) && plain(below).includes(shown.ssBelowTitle.split(" ")[0]),
     typeof below === "string" ? plain(below).slice(0, 120) : "");
   const sideOnly = render({ level: "below", stakeShare: true, below: { side: "UP" } });
   ok("4.3 · with the side alone (the two-way controls) it names the side and states no figure",
     typeof sideOnly === "string" && sideOnly.includes("UP") && !/TZS/.test(sideOnly), typeof sideOnly === "string" ? plain(sideOnly).slice(0, 160) : j(sideOnly));
-  const promise = en.thinUpsideNote.split(" — ")[0].split(". ")[1] ?? "never be paid less";
+  const promise = shown.thinUpsideNote.split(" — ")[0].split(". ")[1] ?? "never be paid less";
   const thinSS = render({ level: "thin", stakeShare: true });
   const thinLegacy = render({ level: "thin" });
   ok("4.4 · ★ a stake-share `thin` lean draws the title alone — never \"you will never be paid less than you staked\"",

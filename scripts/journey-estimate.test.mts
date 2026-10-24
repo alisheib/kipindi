@@ -221,9 +221,9 @@ async function run(impl: Impl, log: (l: string) => void): Promise<string[]> {
     est({ yesPool: 1_000_000, noPool: 5_000 }, "YES", 10_000)?.lean !== "below");
   const noTax = est(DODOMA, "YES", 1_000, { ...SS13, winningsTaxRate: undefined });
   const off = est(DODOMA, "YES", 1_000, { ...SS13, showEstimatedWinnings: false });
-  const bad = est(DODOMA, "YES", 1_000, { ...SS13, platformFeeRate: 0.5 });
+  const badRate = est(DODOMA, "YES", 1_000, { ...SS13, platformFeeRate: 0.5 });
   ok("i.hidden · a stake-share set with no frozen tax, the display switch off, and a rate the engine refuses print NO figure — and never throw",
-    noFig(noTax) && noFig(off) && noFig(bad) && noTax?.feePct === 13 && bad?.feePct === null, j({ noTax, off, bad }));
+    noFig(noTax) && noFig(off) && noFig(badRate) && noTax?.feePct === 13 && badRate?.feePct === null, j({ noTax, off, badRate }));
   const ssHow = howFor(SS13);
   const ssHowWant = payoutFor({ yesPool: 24_825, noPool: 50_462, side: "YES", stake: 1_000 }, SS13).payout;
   ok("i.how-to · the How to Play example priced at stake-share rates is that law's figure (payoutFor), and the cold-start example is untouched",
