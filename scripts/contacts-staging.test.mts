@@ -50,6 +50,9 @@ import type { ParsedContactsFile } from "../src/lib/contacts/parsed-file.ts";
 import { eraseMarketingFor } from "../src/lib/server/marketing/erase.ts";
 import { marketingDsarView } from "../src/lib/server/marketing/dsar.ts";
 import { parseTzNumber } from "../src/lib/tz-msisdn.ts";
+// FEE-TAX R1 · the Owner's "Second-officer checks", through the setting's own store seam (ruling 6 of 2026-10-24): X18's
+// creator-only rule below is held as built under the Owner's stored ON (the run, at the foot of this file); O5b moves it.
+import { holdSecondOfficerChecksOn, withSecondOfficerChecks, withSecondOfficerChecksOff } from "./lib/second-officer-seam.mts";
 
 const PROVE_RED = process.argv.includes("--prove-red");
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -218,6 +221,7 @@ const L = {
   o3: "O3 · ⭐ THE SAME DIGEST ADOPTS: the same officer opening the same file again gets the SAME run (adopted, nextFrom where staging left off, still one run) — and a different file is refused unfinished_run carrying the open run's server figures",
   o4: "O4 · the same file read differently (another row count) is refused read_differently, never adopted onto misaligned ordinals",
   o5: "O5 · X18 · another officer opening the same file gets a run of their OWN; a non-admin cannot see, stage or discard the first officer's run (not_yours, shown nothing) — and an ADMIN can view and stage it, the view naming who started it",
+  o5b: "O5b · FEE-TAX R1 · O5's creator-only rule is the Owner's second-officer checks: with a stored OFF a non-admin officer views and stages another officer's run (any officer with the contacts role may continue it), the view naming who started it; with nothing stored — the Owner's ruling, OFF — they view it too; and back under the stored ON they are refused again",
   o6: "O6 · two tabs opening one file AT ONCE end on ONE run: both answers carry the same id, one adopted, and the officer holds one open run",
   t1: "T1 · ⭐ THE SERVER DERIVES THE KEY: 0712 345 678 stages as 255712345678 whatever msisdn, verdict or outcome the row carried; a 064 number and an empty phone keep no key; every row lands unsettled",
   t2: "T2 · ⛔ A FIELD OVER ITS LIMIT IS REPORTED, NEVER CLIPPED (X20): a 1,001-character note is stored whole with a notes problem naming the limit, and a malformed email is kept with an email problem that never quotes it",
@@ -347,6 +351,19 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
       && adminView !== null && !adminView.mine && adminView.createdBy === OFFICER
       && adminPush.ok && adminPush.view.stagedThrough === 2 && !adminPush.view.mine && notYours.length === 2,
       `peek ${peek === null ? "null" : "SEEN"} · push ${reasonOf(push)} · admin ${adminPush.ok ? adminPush.view.stagedThrough : adminPush.reason}`];
+  });
+
+  await fresh(L.o5b, async () => {
+    const id = await open(OFFICER, { totalRows: 10 });
+    const off = await withSecondOfficerChecksOff(async () => ({
+      peek: await contactImportView(OTHER, id, deps),
+      push: await stageContactRows(OTHER, stageBody(id, 1, rowsFrom(2, 2)), deps),
+    }));
+    const none = await withSecondOfficerChecks("absent", () => contactImportView(OTHER, id, deps));
+    const backOn = await contactImportView(OTHER, id, deps);
+    return [off.peek !== null && !off.peek.mine && off.peek.createdBy === OFFICER && off.push.ok && off.push.view.stagedThrough === 2 && !off.push.view.mine
+      && none !== null && !none.mine && none.createdBy === OFFICER && backOn === null,
+      `off peek ${off.peek === null ? "null" : "SEEN"} · off push ${reasonOf(off.push)} · nothing stored ${none === null ? "null" : "SEEN"} · back on ${backOn === null ? "null" : "SEEN"}`];
   });
 
   await fresh(L.o6, async () => {
@@ -859,6 +876,10 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
 }
 
 /* ═══ THE RUN — and, with --prove-red, every plant on its own assertion ═══════════════════════════════════════════ */
+
+// ⭐ FEE-TAX R1 · nothing stored reads OFF (the Owner's ruling is the default), and X18's creator-only rule is asserted here
+// as it was built: the Owner's stored ON for the whole run. O5b moves the setting for one act and puts the stored ON back.
+await holdSecondOfficerChecksOn();
 
 if (!PROVE_RED) {
   await runAssertions(REAL, "");

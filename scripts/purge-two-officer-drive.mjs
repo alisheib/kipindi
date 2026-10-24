@@ -14,6 +14,7 @@
 import { chromium } from "playwright";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
+import { moveSecondOfficerChecks, readSecondOfficerCard } from "./lib/second-officer-card.mjs";
 
 const BASE = process.env.BASE || "http://localhost:3001";
 const OUT = join(process.cwd(), "docs", "shots-scan-2026-08-28");
@@ -80,6 +81,18 @@ const startOnArchived = await A.getByRole("button", { name: /^Start$/ }).count()
 ok("🔴 S-16b — no Generate round on an archived chain", genOnArchived === 0, `${genOnArchived} found`);
 ok("🔴 S-16b — no Start on an archived chain", startOnArchived === 0, `${startOnArchived} found`);
 ok("⭐ CONTROL — Restore IS still offered", (await A.getByRole("button", { name: /^Restore$/ }).count()) > 0);
+
+/* ── FEE-TAX R1 · the two-officer purge is the Owner's "Second-officer checks", ON ─────────────────────────
+   Nothing stored reads OFF — the Owner's ruling of 24 October 2026, under which one officer completes a purge alone — so
+   officer A, an ADMIN (the Owner, by the stored role), turns the checks ON on his card first: a reason and a confirm, an
+   audited act. The ceremony below is then the one this drive has always walked. */
+const soNow = await readSecondOfficerCard(A, { base: BASE });
+if (soNow.position !== "on") {
+  const so = await moveSecondOfficerChecks(A, { base: BASE, turnOn: true, reason: "Drive: second-officer checks on, for the two-officer purge." });
+  ok("FEE-TAX R1 · the Owner turns second-officer checks ON on his card (the confirm dead until a reason is written)", so.before === "off" && so.gated && so.flipped, `${so.before} · ${so.sourceBefore}`);
+} else {
+  ok("FEE-TAX R1 · second-officer checks already read ON on this server", soNow.position === "on", `${soNow.position} · ${soNow.source}`);
+}
 
 /* ── Stage 1 — officer A ──────────────────────────────────────────────────── */
 await A.goto(BASE + "/admin/retention", { waitUntil: "domcontentloaded", timeout: 60000 });

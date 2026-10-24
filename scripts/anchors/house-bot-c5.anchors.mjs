@@ -961,9 +961,11 @@ export const MUTATIONS = [
   },
   {
     name: "c5-s4:S4-M76 · 🔴 UNGUARDED UNTIL NOW · a \"use server\" module under /admin/kyc/[id] exports a house figure reader",
+    /* RE-ANCHORED 2026-10-24 (FEE-TAX R1): the high-risk maker-checker moved into kyc-risk.ts (`kycApprovalMakerChecker`),
+     * so the action imports that one name. Same plant, same site: a house-figure export right after the kyc-risk import. */
     file: KYC_ACTIONS,
-    from: "import { kycRiskScore, getApprovalRecommendation, KYC_MAKER_CHECKER_THRESHOLD } from \"@/lib/server/kyc-risk\";",
-    to: "import { kycRiskScore, getApprovalRecommendation, KYC_MAKER_CHECKER_THRESHOLD } from \"@/lib/server/kyc-risk\";\nexport async function houseFigures(f: { houseBetCount: number }) { return f.houseBetCount; }",
+    from: "import { kycApprovalMakerChecker } from \"@/lib/server/kyc-risk\";",
+    to: "import { kycApprovalMakerChecker } from \"@/lib/server/kyc-risk\";\nexport async function houseFigures(f: { houseBetCount: number }) { return f.houseBetCount; }",
     expect: "0.197.2 · ⛔ OWNER RULING D20 · not one module under src/app/admin/kyc/ — every file walked from disk, client component, \"use server\" action and page alike — names a house figure",
     suite: "reports-mem",
   },

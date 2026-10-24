@@ -119,7 +119,7 @@ const PAGES: { name: string; html: string }[] = [
     cta: { href: "https://www.50pick.tz/admin/desk/hb_a1b2c3d4e5f6a7b8c9d0e1f2", label: "Open in the console" },
   }) },
   // 2026-10-10 · `idMasked` (any of the four documents), the routing reasons in the officer's words, the workstation link.
-  { name: "kycSubmittedAdminHtml", html: E.kycSubmittedAdminHtml({ reference: "kyc_41ab77cd", phoneMasked: "+2557••••5678", name: "Asha Mwakalinga", idMasked: "•••• 1234", submittedAt: "2026-07-31T09:00:00.000Z", reviewUrl: "https://www.50pick.tz/admin/kyc/u1", reasons: ["Risk score at or above the two-officer threshold", "Possible same person as a restricted account"] }) },
+  { name: "kycSubmittedAdminHtml", html: E.kycSubmittedAdminHtml({ reference: "kyc_41ab77cd", phoneMasked: "+2557••••5678", name: "Asha Mwakalinga", idMasked: "•••• 1234", submittedAt: "2026-07-31T09:00:00.000Z", reviewUrl: "https://www.50pick.tz/admin/kyc/u1", reasons: ["Risk score at or above the high-risk threshold", "Possible same person as a restricted account"] }) },
   { name: "sofSubmittedHtml", html: E.sofSubmittedHtml() },
   { name: "sofDecisionHtml", html: E.sofDecisionHtml({ status: "ACCEPTED", note: "Payslips accepted" }) },
   { name: "amlReviewAdminHtml", html: E.amlReviewAdminHtml({ amount: 2_500_000, kind: "WITHDRAWAL", reference: "wdr_95e5cddab0fb" }) },

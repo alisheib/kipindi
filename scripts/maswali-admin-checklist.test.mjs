@@ -4,7 +4,9 @@ import { fileURLToPath } from "node:url";
 import { checkOpenChecklist } from "./maswali-admin-checklist.mjs";
 
 // The open's checklist in the service's own words (S6-ADMIN: words, never a programme code — DESIGN_AUTHORITY §M8a item 29).
-const attestation = "A second reader has not attested that English, Swahili and Chinese agree.";
+// FEE-TAX R1 · the attestation line names the step, not who takes it (`openProblems`): who may attest is the Owner's
+// "Second-officer checks" setting, so "a second reader" is no longer always true.
+const attestation = "The translations have not been attested: no officer has recorded that English, Swahili and Chinese agree.";
 // One of the open's three licence refusals (`maswali-licence.ts`; `test:maswali-licence-gate` §1.12 checks all three).
 const licence = "The Owner recorded None for the licence basis; the ruling of 23 October 2026 does not override that. No week opens until the Owner records a basis.";
 const guarantee = "The guarantee holds TZS 0; TZS 1,000,000 is needed to open.";
@@ -54,7 +56,13 @@ const hasHardWeekReviews = (source) => {
   return (attest.match(/confirmDialog\([^,]+, `Attest \$\{driveCode\}'s three languages\?`/g) ?? []).length === 2
     && (attest.match(/word: "ATTEST", confirm: "Record the attestation", alert: \(dlg\) => dlg\.getByRole\("alert"\)/g) ?? []).length === 2
     && attest.includes('ownReview.gated && !ownReview.closed') && attest.includes('await ownReview.cancel();')
-    && attest.includes('secondReview.gated && !!attested')
+    // FEE-TAX R1 · nothing stored reads OFF (the Owner's ruling), so the drafter's refusal is walked after the Owner turns
+    // the checks ON on his card, and the second attestation is the drafter's own after he turns them OFF again.
+    && attest.includes('offReview.gated && !!attested')
+    && attest.indexOf('await setSecondOfficerChecks(true, "4.0"') > -1
+    && attest.indexOf('await setSecondOfficerChecks(true, "4.0"') < attest.indexOf('ownReview.gated && !ownReview.closed')
+    && attest.indexOf('await setSecondOfficerChecks(false, "4.1c"') > attest.indexOf('await ownReview.cancel();')
+    && attest.indexOf('await setSecondOfficerChecks(false, "4.1c"') < attest.indexOf('offReview.gated && !!attested')
     // S5-FIX-SRV · three moves: the refused late one, the earlier one, and one more whose audit row is lost (5.3).
     && (move.match(/confirmDialog\([^,]+, `Move \$\{driveCode\}'s sales close\?`/g) ?? []).length === 3
     && (move.match(/word: "MOVE CLOSE", confirm: "Move the close", alert: \(dlg\) => dlg\.getByRole\("alert"\)/g) ?? []).length === 3
@@ -76,7 +84,10 @@ const hasHardWeekReviews = (source) => {
     && seal.includes('getByRole("textbox", { name: `${s.label} seal evidence`, exact: true })');
 };
 
-assert.equal(checkOpenChecklist(seeded, [attestation]).ok, true, "seeded standing needs only the second reader");
+assert.equal(checkOpenChecklist(seeded, [attestation]).ok, true, "seeded standing needs only the attestation");
+// ⛔ The old line, which said a SECOND reader must attest, is no longer the checklist's: it reads as an unexpected blocker.
+assert.equal(checkOpenChecklist(seeded, ["A second reader has not attested that English, Swahili and Chinese agree."]).ok, false,
+  "the retired second-reader line is not read as the attestation item");
 assert.equal(checkOpenChecklist(fresh, [licence, attestation, guarantee]).ok, true, "fresh standing names all three blockers");
 assert.equal(checkOpenChecklist(fresh, [attestation]).ok, false, "a missing licence and guarantee must fail");
 assert.equal(checkOpenChecklist(fresh, [licence, attestation, guarantee.replace("1,000,000", "0")]).ok, false,
@@ -114,6 +125,14 @@ if (process.argv.includes("--prove-red")) {
   const noAttestGate = driveSource.replace('word: "ATTEST", confirm: "Record the attestation"', 'word: "", confirm: "Record the attestation"');
   assert.notEqual(noAttestGate, driveSource, "attest-gate mutation must plant");
   assert.equal(hasHardWeekReviews(noAttestGate), false, "losing a typed attestation gate must turn the drive guard red");
+  // FEE-TAX R1 · a drafter's refusal walked without the Owner's checks ever turned ON (nothing stored reads OFF, so the
+  // drive would read the bar's absence as its presence), and a second attestation that never turned them OFF again.
+  const neverOn = driveSource.replace('await setSecondOfficerChecks(true, "4.0"', 'void ("4.0"');
+  assert.notEqual(neverOn, driveSource, "second-officer-on mutation must plant");
+  assert.equal(hasHardWeekReviews(neverOn), false, "a drafter refusal with the checks never turned ON must turn the drive guard red");
+  const neverOff = driveSource.replace('await setSecondOfficerChecks(false, "4.1c"', 'void ("4.1c"');
+  assert.notEqual(neverOff, driveSource, "second-officer-off mutation must plant");
+  assert.equal(hasHardWeekReviews(neverOff), false, "a drafter attestation with the checks never turned OFF must turn the drive guard red");
   const noCancel = driveSource.replace('await lateReview.cancel();', 'void lateReview;');
   assert.notEqual(noCancel, driveSource, "refused-modal mutation must plant");
   assert.equal(hasHardWeekReviews(noCancel), false, "leaving a refused close modal open must turn the drive guard red");

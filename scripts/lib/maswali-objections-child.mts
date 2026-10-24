@@ -32,6 +32,12 @@ process.env.MASWALI_SCHEDULER = "false";
 
 const { loadMaswaliWorld } = await import("./maswali-money-world.mts");
 const W = await loadMaswaliWorld();
+// FEE-TAX R1 · the Owner's "Second-officer checks" (ruling 6 of 2026-10-24; the setting's own store seam). ⭐ Nothing stored
+// reads OFF — the Owner's ruling is the default — so this suite, which asserts §2's separation of duties as it was built
+// (the sealer, the confirmer, the present result's author, who corrects), holds the Owner's stored ON for its whole run;
+// §2d drives the same bars with a stored OFF, one act at a time, and the seam puts the stored ON back after each.
+const { holdSecondOfficerChecksOn, withSecondOfficerChecksOff: checksOff } = await import("./second-officer-seam.mts");
+await holdSecondOfficerChecksOn();
 const ob = await import("../../src/lib/server/maswali-objections.ts");
 const classic = await import("../../src/lib/server/objections-service.ts");
 const { getAuditByActionsDurable, auditFlush } = await import("../../src/lib/server/audit.ts");
@@ -342,6 +348,66 @@ const byRuler4 = await correctRW(4, COMP_A, "YES", 13);
 ok("2.22 · ⛔ fail closed: a ruled question whose present record cannot be read is corrected by nobody — never its sealer by default",
   rev4?.ok === true && rev4.recorded === false && !bySealer4.ok && /cannot be read/.test(errOf(bySealer4)) && !byRuler4.ok && /cannot be read/.test(errOf(byRuler4))
     && (await question(RW.wk.id, 4)).outcome === "NO", J({ rev4, bySealer4, byRuler4 }));
+
+// ═══ §2d · FEE-TAX R1 · THE SAME BARS WITH THE OWNER'S "SECOND-OFFICER CHECKS" OFF ════════════════════════════════
+// Ruling 6 of 2026-10-24 (`second-officer-policy.ts`): every case above ran under the suite's stored ON (its header). With a
+// stored OFF (the setting's own store seam) the question's own officers — its sealer, its confirmer, the officer whose upheld
+// ruling set its present result — rule on its objections, and any officer corrects a result inside the window, even one
+// whose present record cannot be read. ⛔ What STAYS whatever the setting says (ruling 6b): the objector never rules on their
+// own case, and an officer holding a ticket never rules (MR-14) — a holder's own claim and the staff-may-not-play bar.
+console.log(`${LF}§2d · FEE-TAX R1 · the Owner's second-officer checks OFF`);
+const [S1, S2, S3, SI] = [await W.user({ balance: 50_000 }), await W.user({ balance: 50_000 }), await W.user({ balance: 50_000 }), await W.user({ balance: 50_000 })];
+const OW = await weekWith([[S1, [picks()]], [S2, [picks()]], [S3, [picks()]], [SI, [picks()]]]);
+const sealOW = new Date(OW.start + 9 * DAY);
+// M2 under the two-officer rule, confirmed by COMP_B; the rest by the sealer alone.
+await seal(OW.wk.id, [2], sealOW, {}, SEALER, true);
+const confOW = await W.svc.confirmSeal({ weekId: OW.wk.id, slot: 2, officerId: COMP_B, ...(await reviewed(OW.wk.id, 2)), now: sealOW });
+if (!confOW.ok) throw new Error(`confirm: ${confOW.error}`);
+await seal(OW.wk.id, [1, ...SLOTS(3, 15)], sealOW);
+const atOW = (m: number) => new Date(sealOW.getTime() + HOUR + m * MIN);
+const fo3 = await file(S1, OW.wk.id, 3, atOW(0));
+const sealerOff = fo3.ok ? await checksOff(() => rule(fo3.objectionId, SEALER, "REJECT", OW.wk.id, 3, atOW(1), { note: "The sealer read the source again" })) : fo3;
+ok("2.23 · ⭐ FEE-TAX R1 · 2.2's bar is the Owner's setting: with second-officer checks OFF the officer who sealed the question rules on its objection",
+  fo3.ok && sealerOff.ok && (await objectionRow(fo3.objectionId))?.reviewedBy === SEALER, J({ fo3, sealerOff }));
+const fo2 = await file(S2, OW.wk.id, 2, atOW(2));
+const confirmerOff = fo2.ok ? await checksOff(() => rule(fo2.objectionId, COMP_B, "REJECT", OW.wk.id, 2, atOW(3), { note: "The confirmer read the source again" })) : fo2;
+ok("2.24 · ⭐ FEE-TAX R1 · 2.13's bar too: with the checks OFF the officer who confirmed the seal rules on its objection",
+  fo2.ok && confirmerOff.ok && (await objectionRow(fo2.objectionId))?.reviewedBy === COMP_B, J({ fo2, confirmerOff }));
+const fo5a = await file(S3, OW.wk.id, 5, atOW(4), { detail: "The federation decided event 5 as NO" });
+const rev5OW = fo5a.ok ? await rule(fo5a.objectionId, COMP_A, "REVERSE", OW.wk.id, 5, atOW(5), { note: "The federation's sheet reads NO for event 5" }) : fo5a;
+const fo5b = await file(S1, OW.wk.id, 5, atOW(6), { detail: "The source published YES for event 5 on the day" });
+const authorOn = fo5b.ok ? await rule(fo5b.objectionId, COMP_A, "REJECT", OW.wk.id, 5, atOW(7)) : fo5b;
+const authorOff = fo5b.ok ? await checksOff(() => rule(fo5b.objectionId, COMP_A, "REJECT", OW.wk.id, 5, atOW(7), { note: "The ruling stands on the federation's sheet" })) : fo5b;
+ok("2.25 · ⭐ FEE-TAX R1 · 2.17's bar too: refused while ON, and with the checks OFF the officer whose upheld ruling set the present result rules on its next objection",
+  rev5OW.ok && fo5b.ok && !authorOn.ok && /present result on an earlier objection/.test(errOf(authorOn)) && authorOff.ok
+    && (await objectionRow(fo5b.objectionId))?.reviewedBy === COMP_A, J({ rev5OW, authorOn, authorOff }));
+const correctOW = async (slot: number, officerId: string, outcome: string, m: number) => W.svc.correctSeal({ weekId: OW.wk.id, slot, outcome: outcome as any,
+  evidence: `Corrected against the official source for event ${slot}`, ...(await reviewed(OW.wk.id, slot)), officerId, now: atOW(m) });
+const sealerFixOff = await checksOff(() => correctOW(5, SEALER, "YES", 8));
+ok("2.26 · ⭐ FEE-TAX R1 · 2.18's bar too: with the checks OFF the sealer corrects a result an upheld objection set",
+  sealerFixOff.ok && (await question(OW.wk.id, 5)).outcome === "YES", errOf(sealerFixOff));
+const otherFixOn = await correctOW(9, COMP_A, "NO", 9);
+const otherFixOff = await checksOff(() => correctOW(9, COMP_A, "NO", 10));
+ok("2.27 · ⭐ FEE-TAX R1 · 2.21's bar too: a plain seal is corrected only by its sealer while ON, and by any officer while OFF",
+  !otherFixOn.ok && /Only the officer who sealed a question may correct it/.test(errOf(otherFixOn)) && otherFixOff.ok && (await question(OW.wk.id, 9)).outcome === "NO",
+  J({ otherFixOn, otherFixOff }));
+const fo4 = await file(S2, OW.wk.id, 4, atOW(11), { detail: "The federation decided event 4 as NO" });
+W.svc.__setMaswaliAuditWriterForTests(async (row: any) => (row.action === "maswali.objection.upheld" ? { recorded: false } : auditWrite(row)));
+let rev4OW: any;
+try { rev4OW = fo4.ok ? await rule(fo4.objectionId, COMP_A, "REVERSE", OW.wk.id, 4, atOW(12), { note: "The federation's sheet reads NO for event 4" }) : fo4; }
+finally { W.svc.__setMaswaliAuditWriterForTests(null); }
+const blindOn = await correctOW(4, COMP_B, "YES", 13);
+const blindOff = await checksOff(() => correctOW(4, COMP_B, "YES", 14));
+ok("2.28 · ⭐ FEE-TAX R1 · 2.22's refusal too: a ruled question whose present record cannot be read is corrected by nobody while ON, and by an officer while OFF — the record's author is not asked",
+  rev4OW?.ok === true && rev4OW.recorded === false && !blindOn.ok && /cannot be read/.test(errOf(blindOn)) && blindOff.ok && (await question(OW.wk.id, 4)).outcome === "YES",
+  J({ rev4OW, blindOn, blindOff }));
+await W.setUserFields(SI, { role: "COMPLIANCE" });
+const fo7 = await file(SI, OW.wk.id, 7, atOW(15));
+const fo8 = await file(S3, OW.wk.id, 8, atOW(15));
+const ownOff = fo7.ok ? await checksOff(() => rule(fo7.objectionId, SI, "REJECT", OW.wk.id, 7, atOW(16))) : fo7;
+const holderOff = fo8.ok ? await checksOff(() => rule(fo8.objectionId, SI, "REJECT", OW.wk.id, 8, atOW(16))) : fo8;
+ok("2.29 · ⛔ FEE-TAX R1 · kept with the checks OFF: no officer rules on their own objection (2.14), and an officer holding a ticket never rules (2.15)",
+  fo7.ok && !ownOff.ok && /your own objection/.test(errOf(ownOff)) && fo8.ok && !holderOff.ok && /holds a ticket in this week/.test(errOf(holderOff)), J({ ownOff, holderOff }));
 
 // ═══ §3 · VOID AND REINSTATE ════════════════════════════════════════════════════════════════════════════════════════
 console.log(`${LF}§3 · void and reinstate (MR-16, MR-17)`);

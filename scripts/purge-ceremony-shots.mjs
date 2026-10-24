@@ -107,9 +107,11 @@ if (hasSelect > 0) {
     await page.waitForTimeout(3000);
     await shot("03-stage1-recorded");
 
-    /* Stage 2 is refused for the SAME officer — which is the point of the ceremony, and worth
-       photographing: the attestation rail is what officer A sees. */
-    const confirmBtn = page.getByRole("button", { name: /Confirm as second officer/i });
+    /* While the Owner's "Second-officer checks" are ON, stage 2 is refused for the SAME officer and
+       the attestation rail is what officer A sees. FEE-TAX R1 · nothing stored reads OFF (the
+       Owner's ruling of 24 October 2026), and then officer A is offered step 2 themselves — the
+       confirm is photographed under either label. */
+    const confirmBtn = page.getByRole("button", { name: /Confirm as second officer|Confirm the purge/i });
     if ((await confirmBtn.count()) > 0) {
       await confirmBtn.click().catch(() => {});
       await page.waitForTimeout(1500);

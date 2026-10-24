@@ -20,7 +20,7 @@ const samples: Record<string, string> = {
   // 2026-10-10 (typed-only identity): typed details routed to an officer, and an agent applicant's photo send.
   kycSubmitted: kycSubmittedHtml({ name: "Asha", reference: "kyc_9f3k2qm1a8", submittedAt: PLACED, evidence: "typed", viewUrl: "/profile/kyc" }),
   kycSubmittedPhotos: kycSubmittedHtml({ name: "Asha", reference: "kyc_9f3k2qm1a8", submittedAt: PLACED, evidence: "photos", viewUrl: "/profile/kyc?for=agent" }),
-  kycAdmin: kycSubmittedAdminHtml({ reference: "kyc_9f3k2qm1a8", name: "Asha Mwamba", phoneMasked: "+25570*****19", idMasked: "•••• 4821", submittedAt: PLACED, reviewUrl: "https://50pick.tz/admin/kyc/usr_9f3k2qm1a8", reasons: ["Risk score at or above the two-officer threshold"] }),
+  kycAdmin: kycSubmittedAdminHtml({ reference: "kyc_9f3k2qm1a8", name: "Asha Mwamba", phoneMasked: "+25570*****19", idMasked: "•••• 4821", submittedAt: PLACED, reviewUrl: "https://50pick.tz/admin/kyc/usr_9f3k2qm1a8", reasons: ["Risk score at or above the high-risk threshold"] }),
   emailVerify: emailVerifyHtml({ name: "Asha", verifyUrl: "https://50pick.tz/auth/verify-email?token=eyJ...sig" }),
   kycMoreInfo: kycMoreInfoHtml({ reason: "Please check the spelling of your full name — it should read exactly as it is printed on your document.", reference: "kyc_9f3k2qm1a8" }),
 };

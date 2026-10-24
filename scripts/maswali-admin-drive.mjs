@@ -10,8 +10,11 @@
  *       criterion from its kind's template with every {…} filled; seeds a local calendar fixture through the events
  *       console, checks that its suggestion fills M1, then edits M1 into the officer's reviewed question.
  *       A drive week, because the seeded public week is selling and one public week sells at a time (MR-3);
- *   4 · the drafter's own attestation is refused (MB-79); a second reader — a MODERATOR, in a browser context of their
- *       own (a second context for the SAME account would sign the first out) — attests; the Owner opens the week;
+ *   4 · the Owner's "Second-officer checks" card reads OFF with nothing stored — his ruling of 24 October 2026 (FEE-TAX
+ *       R1) — so the Owner turns them ON on /admin/system (a reason and a confirm), and the drafter's own attestation is
+ *       refused (MB-79); the Owner turns them OFF again, back to his ruling, and the drafter's own attestation lands; a
+ *       MODERATOR — in a browser context of their own (a second context for the SAME account would sign the first out) —
+ *       finds the attestation standing; the Owner opens the week;
  *   2 · (inside 4) when the open refuses for want of a licence basis (every such refusal names "licence basis" — with
  *       nothing recorded the Owner's ruling of 2026-10-23 is the basis, so a fresh store needs none) or of guarantee, the
  *       Owner records the basis (typed RECORD) or pays in exactly what the refusal says is short (typed FUND GUARANTEE),
@@ -38,6 +41,7 @@
  */
 import { chromium } from "playwright";
 import { checkOpenChecklist } from "./maswali-admin-checklist.mjs";
+import { moveSecondOfficerChecks } from "./lib/second-officer-card.mjs";
 import { mkdirSync } from "node:fs";
 
 const BASE = process.env.BASE || "http://localhost:3410";
@@ -523,35 +527,69 @@ async function fundGuarantee(amount) {
   await checkpoint(page, "2b", "02b-guarantee-funded");
 }
 
+/**
+ * FEE-TAX R1 · the Owner moves "Second-officer checks" through his card on /admin/system (`moveSecondOfficerChecks`: its
+ * trigger, its dialog — a written reason arms the confirm; no typed word — and the card read again). `source` is where
+ * the card must say the position came from before the act: "absent" (nothing stored — OFF by the Owner's ruling) or
+ * "stored". ⭐ Located by the card's own hooks and by role, never by its words: the card speaks the officer's language
+ * (Swahili when no language was chosen), and this context chose none.
+ */
+const SO_ON_WHY = "Drive: second-officer checks on, to walk the second reader as built.";
+const SO_OFF_WHY = "Drive: back to the Owner's ruling, any officer attests.";
+async function setSecondOfficerChecks(turnOn, tag, tile, source) {
+  const r = await moveSecondOfficerChecks(page, { base: BASE, turnOn, reason: turnOn ? SO_ON_WHY : SO_OFF_WHY });
+  ok(`${tag} the Owner's "Second-officer checks" card reads ${turnOn ? "OFF" : "ON"} before the act${source === "absent" ? ", with nothing stored: OFF by the Owner's ruling" : ""}`,
+    r.before === (turnOn ? "off" : "on") && r.sourceBefore === source, `${r.before} · ${r.sourceBefore}`);
+  ok(`${tag} ⭐ the confirm was dead until a reason was written, and the card now reads ${turnOn ? "ON" : "OFF"}, stored, with its reason on the record`,
+    r.gated && r.flipped && r.text.includes(turnOn ? SO_ON_WHY : SO_OFF_WHY), clip(r.text, 300));
+  await settle(page);
+  await checkpoint(page, tag, tile);
+}
+
 await part("4 · attest and open", async () => {
   if (!weekPath) { ok("4 · a drafted week to attest and open", false, "step 3 left no week"); return; }
+  // FEE-TAX R1 · MB-79's second reader is the Owner's "Second-officer checks" (ruling 6 of 2026-10-24), and with nothing stored
+  // they are OFF — the Owner's ruling is the default. So the Owner first turns them ON on /admin/system — the card's own
+  // dialog: a written reason and a confirm, no typed word — and the bar is walked as built.
+  await setSecondOfficerChecks(true, "4.0", "05a-second-officer-on", "absent");
+  await go(page, weekPath);
   const own = card(page, "Before it can open");
   await own.getByRole("button", { name: "I read all three languages: they agree", exact: true }).click();
   const ownReview = await confirmDialog(page, `Attest ${driveCode}'s three languages?`, {
     word: "ATTEST", confirm: "Record the attestation", alert: (dlg) => dlg.getByRole("alert"),
   });
-  ok("4.1 the drafter's own attestation is refused after the hard confirm: a second reader must attest (MB-79)",
+  ok("4.1 the drafter's own attestation is refused after the hard confirm while the Owner's second-officer checks are ON: a second reader must attest (MB-79)",
     ownReview.gated && !ownReview.closed && /cannot attest its translations/.test(ownReview.refusal), ownReview.refusal);
   await ownReview.cancel();
   ok("4.1b …and the week stays an unattested draft", (await chipOf(page)) === "Draft" && (await own.getByText("The three languages are attested.", { exact: true }).count()) === 0);
   await checkpoint(page, "4.1", "05-attest-refused");
+
+  // The Owner turns them OFF again — back to his ruling, now as a stored act with its reason — and the drafter's own
+  // attestation then lands. The rest of the drive runs with the checks OFF, as production does.
+  await setSecondOfficerChecks(false, "4.1c", "05b-second-officer-off", "stored");
+  await go(page, weekPath);
+  const mine = card(page, "Before it can open");
+  await mine.getByRole("button", { name: "I read all three languages: they agree", exact: true }).click();
+  const offReview = await confirmDialog(page, `Attest ${driveCode}'s three languages?`, {
+    word: "ATTEST", confirm: "Record the attestation", alert: (dlg) => dlg.getByRole("alert"),
+  });
+  const attested = offReview.closed && await until(async () => (await mine.getByText("The three languages are attested.", { exact: true }).count()) > 0, 30_000);
+  ok("4.1d ⭐ with second-officer checks OFF the drafter's own attestation lands after the same hard confirm: the page says the three languages are attested",
+    offReview.gated && !!attested, offReview.refusal || await alertText(mine.getByRole("alert")));
+  await checkpoint(page, "4.1d", "05c-attested-by-drafter");
 
   const readerCtx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
   try {
     const reader = await readerCtx.newPage();
     watch(reader, "reader");
     const seeded = await readerCtx.request.post(`${BASE}/api/dev-test/seed-admin`, { data: { role: "MODERATOR", phone: "+255700000072", name: "Mo Second Reader" } });
-    ok("4.2 a second reader signs in: a MODERATOR (trading attests), in a context of their own", seeded.ok(), String(seeded.status()));
+    ok("4.2 a second officer signs in: a MODERATOR (trading attests), in a context of their own", seeded.ok(), String(seeded.status()));
     await go(reader, weekPath);
     const theirs = card(reader, "Before it can open");
-    await theirs.getByRole("button", { name: "I read all three languages: they agree", exact: true }).click();
-    const secondReview = await confirmDialog(reader, `Attest ${driveCode}'s three languages?`, {
-      word: "ATTEST", confirm: "Record the attestation", alert: (dlg) => dlg.getByRole("alert"),
-    });
-    const attested = secondReview.closed && await until(async () => (await theirs.getByText("The three languages are attested.", { exact: true }).count()) > 0, 30_000);
-    ok("4.2b the second reader attests after the hard confirm: the page says the three languages are attested",
-      secondReview.gated && !!attested, secondReview.refusal || await alertText(theirs.getByRole("alert")));
-    await checkpoint(reader, "4.2", "06-attested-by-second-reader");
+    const stands = await until(async () => (await theirs.getByText("The three languages are attested.", { exact: true }).count()) > 0, 30_000);
+    ok("4.2b the drafter's attestation stands — an attestation is never overwritten, whoever made it — and no attest control is offered",
+      !!stands && (await theirs.getByRole("button", { name: "I read all three languages: they agree", exact: true }).count()) === 0, clip(await theirs.textContent(), 300));
+    await checkpoint(reader, "4.2", "06-attestation-stands");
     // S6-ADMIN · G8 · the lock chip a Trading officer reads names who works the control in the roles' own words.
     await go(reader, "/admin/maswali");
     const lock = card(reader, "Rules for the next week").locator("[title]").filter({ hasText: "Change the rules" }).first();

@@ -19,7 +19,8 @@ export function checkOpenChecklist(standing, problems) {
   // adds its own positive floor; pools' existing-open-week figure is only a lower bound here.
   if (current === 0 || current < required) expected.push("guarantee");
   const actual = problems.map((item) => {
-    if (/^A second reader has not attested that English, Swahili and Chinese agree/.test(item)) return "attestation";
+    // FEE-TAX R1 · the line names the step, not who takes it: who may attest is the Owner's second-officer setting.
+    if (/^The translations have not been attested/.test(item)) return "attestation";
     // Each of the open's three licence refusals names "licence basis", and no other line of the checklist does
     // (`maswali-licence.ts`; `test:maswali-licence-gate` §1.11–§1.12 feed this the real sentences).
     if (/licence basis/.test(item)) return "licence";

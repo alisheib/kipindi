@@ -6,6 +6,9 @@
  *       (a FRESH in-memory `next dev`, 2FA off, FEATURE_MILLIONEA=ACTIVE, MASWALI_SCHEDULER=false, LIFECYCLE_TICKER=false)
  *
  *   1 · the Owner signs in (`/api/dev-test/seed-admin`); before any week exists the card says there is nothing to rule;
+ *       FEE-TAX R1 · the Owner's "Second-officer checks" card on /admin/system reads OFF with nothing stored (his ruling of
+ *       24 October 2026), so the Owner turns them ON there (a reason and a confirm): the queue's separation of duties
+ *       below — the sealer's, the confirmer's, the present result's author's — is read as built;
  *   2 · the seed (`/api/dev-test/seed-maswali-objections`): an earlier week whose window has closed with one objection
  *       still to rule, and a later week, its window open, with M3 and M5 sealed by the Owner and M7 by the results officer;
  *   3 · the Owner reads the queue: on the questions the Owner sealed, the words that another officer rules (the service's
@@ -24,6 +27,7 @@
  */
 import { chromium } from "playwright";
 import { mkdirSync } from "node:fs";
+import { moveSecondOfficerChecks } from "./lib/second-officer-card.mjs";
 
 const BASE = process.env.BASE || "http://localhost:3530";
 if (!/^http:[/][/]localhost(:[0-9]+)?$/.test(BASE)) { console.error("refusing: BASE must be a localhost dev server"); process.exit(2); }
@@ -106,6 +110,13 @@ ok("1 · with no week being decided, the card says there is nothing to rule",
   (await owner.page.getByText("No objection to rule").count()) > 0);
 await tiles(owner, "empty", () => owner.page.locator("[data-section-heading]", { hasText: "Objections" }));
 noErrors(owner, "1 · the empty queue");
+// FEE-TAX R1 · nothing stored reads OFF (the Owner's ruling of 24 October 2026); the separation of duties this drive reads
+// is the setting's ON, so the Owner turns it ON through his card — the real door, an audited act with a written reason.
+const SO_WHY = "Drive: second-officer checks on, to read the queue's separation of duties as built.";
+const so = await moveSecondOfficerChecks(owner.page, { base: BASE, turnOn: true, reason: SO_WHY });
+ok("1b · ⭐ the Owner's “Second-officer checks” card read OFF with nothing stored (his ruling), and his act turned them ON — the confirm dead until a reason was written, the reason on the record",
+  so.before === "off" && so.sourceBefore === "absent" && so.gated && so.flipped && so.text.includes(SO_WHY), `${so.before} · ${so.sourceBefore} · ${clip(so.text, 200)}`);
+noErrors(owner, "1b · the Owner's card");
 
 // ── 2 · the seed ──────────────────────────────────────────────────────────────────────────────────────────────────
 const seed = await owner.ctx.request.post(`${BASE}/api/dev-test/seed-maswali-objections`, { data: { step: "queue", ownerId: owner.userId }, timeout: 300_000 });

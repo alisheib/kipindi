@@ -27,6 +27,15 @@ const svc = await import("../../src/lib/server/maswali-service.ts");
 // S7 · the weeks run on an injected week clock, weeks ahead, and a close that is not early is checked on the database's
 // clock (MB-84): the suite hands the close that same week clock as the database's, as the money world does.
 svc.__setMaswaliCloseClockForTests((weekClockMs: number) => weekClockMs);
+// FEE-TAX R1 · the S8 hold (`oldFeeModelHold`) is lifted for this suite's weeks, as the money world lifts it: every week here
+// opens under the model that is still the law. The hold itself is `test:maswali-open-lock`'s, driven unlifted.
+svc.__liftMillioneaOpenHoldForTests(true);
+// FEE-TAX R1 · the Owner's "Second-officer checks" (the setting's own store seam). ⭐ Nothing stored reads OFF — the Owner's
+// ruling of 2026-10-24 is the default — so this suite, which asserts MB-79's bars and the correction's author bar as they
+// were built, holds the Owner's stored ON for its whole run; §2's 2.8i–2.8l drive the same bars with a stored OFF for one
+// act each, and the seam puts the stored ON back after each.
+const { holdSecondOfficerChecksOn, withSecondOfficerChecksOff } = await import("./second-officer-seam.mts");
+await holdSecondOfficerChecksOn();
 const { weekStore, questionStore, ticketStore, __resetMaswaliMemoryStores } = await import("../../src/lib/server/maswali-dal.ts");
 const { recordLicenceBasis, LICENCE_WITHDRAWN } = await import("../../src/lib/server/maswali-licence.ts");
 const { saveMaswaliConfig } = await import("../../src/lib/server/maswali-config.ts");
@@ -234,7 +243,9 @@ const nowOpen = new Date(W2 + 60_000); // Monday 00:01 EAT
     !after.some((p) => /licence basis/.test(p)) && after.some((p) => /^The guarantee holds TZS 0;/.test(p)), JSON.stringify(after));
   const noParity = await svc.openWeek({ weekId: week.id, officerId: DRAFTER, guarantee: RICH, now: nowOpen });
   ok("2.2 · ⛔ no parity attestation → refused (MB-79)", !noParity.ok && /attested/.test(errOf(noParity)), errOf(noParity));
-  ok("2.3 · ⛔ the drafter cannot attest their own translations", !(await attest(week.id, DRAFTER)).ok);
+  // FEE-TAX R1 · 2.3 and 2.8c/e/f hold while the Owner's "Second-officer checks" are ON — this suite holds the Owner's stored
+  // ON (its header); 2.8i–2.8l below are the same bars with the setting OFF (ruling 6 of 2026-10-24).
+  ok("2.3 · ⛔ the drafter cannot attest their own translations (second-officer checks ON)", !(await attest(week.id, DRAFTER)).ok);
   ok("2.4 · a second reader attests", (await attest(week.id, READER)).ok);
   const poor = await svc.openWeek({ weekId: week.id, officerId: DRAFTER, guarantee: { balance: async () => 999_999 }, now: nowOpen });
   ok("2.5 · ⛔ a guarantee below the floor → refused (OD-02)", !poor.ok && /guarantee holds TZS 999,999/.test(errOf(poor)), errOf(poor));
@@ -286,6 +297,49 @@ const nowOpen = new Date(W2 + 60_000); // Monday 00:01 EAT
     restored.ok && restored.recorded === true && readerAttests.ok && readerAttests.recorded === true && (await weekStore.get(week.id))!.parityAttestedBy === READER, errOf(readerAttests));
   const again = await attest(week.id, READER);
   ok("2.8h · ⛔ an attestation that stands is never overwritten — not even by its own reader", !again.ok && /already attested/.test(errOf(again)), errOf(again));
+  // ⭐ FEE-TAX R1 · THE SAME BARS WITH THE OWNER'S "SECOND-OFFICER CHECKS" OFF (ruling 6 of 2026-10-24). Each act runs once
+  // under the suite's stored ON (refused as above) and once with a stored OFF (the setting's own store seam): the same
+  // officer then attests. The step itself stays — every attestation below is recorded — and the week ends attested by the second
+  // reader, with every text as 2.8g left it, so §2's checks from 2.9 run on the draft they always did.
+  const t7 = await textOf(7);
+  const otherEdit = await editSlot({ weekId: week.id, slot: 7, changes: { textEn: "Will event 7 happen this weekend, as drawn?" }, officerId: OTHER });
+  const otherOn = await attest(week.id, OTHER);
+  const otherOff = await withSecondOfficerChecksOff(() => attest(week.id, OTHER));
+  ok("2.8i · ⭐ FEE-TAX R1 · 2.8c's bar is the Owner's setting: refused while it is ON, and with second-officer checks OFF the officer who edited the draft attests it",
+    otherEdit.ok && !otherOn.ok && /You edited this draft since its last attestation/.test(errOf(otherOn)) && otherOff.ok && (await weekStore.get(week.id))!.parityAttestedBy === OTHER,
+    JSON.stringify({ otherOn: errOf(otherOn), otherOff: errOf(otherOff) }));
+  const back7 = await editSlot({ weekId: week.id, slot: 7, changes: { textEn: t7 }, officerId: DRAFTER });
+  const drafterOn = await attest(week.id, DRAFTER);
+  const drafterOff = await withSecondOfficerChecksOff(() => attest(week.id, DRAFTER));
+  ok("2.8j · ⭐ FEE-TAX R1 · 2.3's bar is the Owner's setting: with second-officer checks OFF the drafter attests their own week — the step and its row stay",
+    back7.ok && !drafterOn.ok && /drafted the week cannot attest/.test(errOf(drafterOn)) && drafterOff.ok && drafterOff.recorded === true
+      && (await weekStore.get(week.id))!.parityAttestedBy === DRAFTER, JSON.stringify({ drafterOn: errOf(drafterOn), drafterOff }));
+  const t8 = await textOf(8);
+  const edit8 = await editSlot({ weekId: week.id, slot: 8, changes: { textEn: "Will event 8 happen at all?" }, officerId: DRAFTER });
+  let historyReads = 0;
+  const outage = (async () => { historyReads++; throw new Error("injected history outage"); }) as never;
+  const outageOn = await svc.attestParity({ weekId: week.id, officerId: READER, readVersion: await svc.readDraftVersion(week.id), readHistory: outage });
+  const readsWhileOn = historyReads;
+  const outageOff = await withSecondOfficerChecksOff(async () => svc.attestParity({ weekId: week.id, officerId: READER, readVersion: await svc.readDraftVersion(week.id), readHistory: outage }));
+  ok("2.8k · ⭐ FEE-TAX R1 · 2.8e's refusal is the Owner's setting: with second-officer checks OFF the draft's history is not read at all, so its outage refuses nothing",
+    edit8.ok && !outageOn.ok && /history could not be read/.test(errOf(outageOn)) && readsWhileOn === 1 && outageOff.ok && historyReads === 1
+      && (await weekStore.get(week.id))!.parityAttestedBy === READER, JSON.stringify({ outageOn: errOf(outageOn), outageOff: errOf(outageOff), historyReads }));
+  // An edit whose record is lost leaves an authorless text — words no row ever carried, since a version is its content and an
+  // older text's version would find its old author — which only the setting OFF lets anyone attest.
+  svc.__setMaswaliAuditWriterForTests(async (row) => (row.action === "maswali.week.draft_edited" ? { recorded: false } : audit(row)));
+  let lostEdit: Awaited<ReturnType<typeof svc.editDraftQuestions>>;
+  try { lostEdit = await editSlot({ weekId: week.id, slot: 8, changes: { textEn: "Will event 8 happen this Sunday, as drawn?" }, officerId: OTHER }); }
+  finally { svc.__setMaswaliAuditWriterForTests(null); }
+  const authorlessOn = await attest(week.id, READER);
+  const authorlessOff = await withSecondOfficerChecksOff(() => attest(week.id, READER));
+  const authorlessBy = (await weekStore.get(week.id))!.parityAttestedBy;
+  // Back to 2.8g's words by a recorded edit, attested by the second reader with the checks ON again: §2 runs on as before.
+  const restored8 = await editSlot({ weekId: week.id, slot: 8, changes: { textEn: t8 }, officerId: DRAFTER });
+  const reattested = await attest(week.id, READER);
+  ok("2.8l · ⭐ FEE-TAX R1 · 2.8f's refusal is the Owner's setting: with second-officer checks OFF a text with no recorded author is attested",
+    lostEdit.ok && lostEdit.recorded === false && !authorlessOn.ok && /no audit record of who wrote it/.test(errOf(authorlessOn)) && authorlessOff.ok && authorlessBy === READER
+      && restored8.ok && reattested.ok && (await weekStore.get(week.id))!.parityAttestedBy === READER && (await textOf(7)) === t7 && (await textOf(8)) === t8,
+    JSON.stringify({ authorlessOn: errOf(authorlessOn), authorlessOff: errOf(authorlessOff), reattested: errOf(reattested) }));
   const guard = await svc.openWeek({ weekId: week.id, officerId: DRAFTER, guarantee: RICH, now: nowOpen });
   ok("2.9 · ⛔ THE CLOSE GUARD: an event at 17:59 before an 18:00 close is refused (30-minute buffer, OD-15)", !guard.ok && /at least 30 minutes before the first event/.test(errOf(guard)), errOf(guard));
   const at1729 = await editSlot({ weekId: week.id, slot: 3, changes: { eventLocalStart: utcToZonedLocal(closeMs + 29 * 60_000, "Africa/Dar_es_Salaam") }, officerId: DRAFTER });

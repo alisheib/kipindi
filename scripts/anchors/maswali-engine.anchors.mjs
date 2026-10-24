@@ -328,6 +328,12 @@ export const MUTATIONS = [
     suite: "engine-pg",
   },
   // ── S5-FIX-SRV 3 + A4 · MB-79's second reader never wrote the text, and attests the text they read ──────────────────
+  // ⭐ FEE-TAX R1 (2026-10-24) · (41)–(44) are MB-79's bars, which hold while the Owner's "Second-officer checks" are ON.
+  //    Nothing stored reads OFF (the Owner's ruling), so the engine suite holds the Owner's stored ON for its whole run
+  //    (`holdSecondOfficerChecksOn`, the setting's own store seam) and each plant still reddens its own case. The anchored
+  //    lines did not move: the setting is asked beside them (`secondReader`), and `red:second-officer-switch` plants the
+  //    setting skipped while ON ((a1), (a2)) and ignored while OFF ((o1), (o2)). 2.8i–2.8l are the same bars with the
+  //    setting OFF.
   {
     name: "(41) an officer who edited the draft since its last attestation may attest it again (finding 3)",
     file: SVC,

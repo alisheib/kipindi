@@ -12,6 +12,8 @@
  *    database clock, which no week here ever reaches, so the world installs `__setMaswaliCloseClockForTests` with the
  *    week clock the close is called with (`weekCloseClock`). A case that measures the real database clock takes it away
  *    and puts it back (`test:maswali-adversarial` §1).
+ * ⛔ FEE-TAX R1 · AND IT LIFTS THE S8 HOLD (`__liftMillioneaOpenHoldForTests`): the open refuses a public week that would
+ *    freeze the old fee model until the fee change is live; these suites test that model, which is still the law.
  *
  * ⛔ IMPORT ORDER IS THE CONTRACT (the stores pick Postgres or memory on first import): the child sets the environment,
  *    then awaits `loadMaswaliWorld()`.
@@ -46,6 +48,10 @@ export async function loadMaswaliWorld() {
   // S7 · the close reads the week clock it is called with as the database's (the header): every suite's weeks close.
   const weekCloseClock = (weekClockMs: number) => weekClockMs;
   svc.__setMaswaliCloseClockForTests(weekCloseClock);
+  // FEE-TAX R1 · THE S8 HOLD IS LIFTED FOR THE WORLD'S WEEKS: the open refuses a public week that would freeze the old fee
+  // model (`oldFeeModelHold`), and every week here is built to test that model's money — it is still the law until the
+  // fee programme's R5. The hold itself is `test:maswali-open-lock`'s, driven unlifted.
+  svc.__liftMillioneaOpenHoldForTests(true);
 
   const SOURCES = [
     { category: "sports", url: "https://www.nbc.co.tz/results" }, { category: "sports", url: "https://www.tff.or.tz/fixtures" },

@@ -235,7 +235,7 @@ const RENDERS: Rendered[] = [
   // officer (ROUTE_REASON_LABEL), and the link is the identity workstation — the player page's KYC tab decides nothing now.
   // HOSTILE in every free-text field, the reasons included.
   { template: "kycSubmittedAdminHtml",
-    benign:  E.kycSubmittedAdminHtml({ reference: "kyc_a1", phoneMasked: "+2557••••5678", name: "Asha M.", idMasked: "••••1234", submittedAt: "2026-07-31T09:00:00.000Z", reviewUrl: "https://www.50pick.tz/admin/kyc/u1", reasons: ["Risk score at or above the two-officer threshold"] }),
+    benign:  E.kycSubmittedAdminHtml({ reference: "kyc_a1", phoneMasked: "+2557••••5678", name: "Asha M.", idMasked: "••••1234", submittedAt: "2026-07-31T09:00:00.000Z", reviewUrl: "https://www.50pick.tz/admin/kyc/u1", reasons: ["Risk score at or above the high-risk threshold"] }),
     hostile: E.kycSubmittedAdminHtml({ reference: HOSTILE, phoneMasked: HOSTILE, name: HOSTILE, idMasked: HOSTILE, submittedAt: HOSTILE, reviewUrl: "https://www.50pick.tz/admin/kyc/u1", reasons: [HOSTILE, HOSTILE] }) },
   { template: "sofSubmittedHtml",
     benign:  E.sofSubmittedHtml(),
@@ -716,7 +716,9 @@ section("5d · identity receipts — typed details vs agent photos, and the offi
   const adminText = plain(admin);
   ok("5d the officer's letter shows the masked number under 'Document', never a NIDA label",
     /Document/.test(adminText) && adminText.includes("••••1234") && !/NIDA/.test(adminText), adminText.slice(0, 260));
-  ok("5d …says why the identity came to an officer", /Reason/.test(adminText) && adminText.includes("Risk score at or above the two-officer threshold"), adminText.slice(0, 300));
+  // FEE-TAX R1 · the route reason reads "high-risk threshold" (`ROUTE_REASON_LABEL.HIGH_RISK`): the line routes to an
+  // officer whatever the Owner's second-officer setting says, so the letter never promises two officers.
+  ok("5d …says why the identity came to an officer", /Reason/.test(adminText) && adminText.includes("Risk score at or above the high-risk threshold"), adminText.slice(0, 300));
   ok("5d …and links the identity workstation", admin.includes("/admin/kyc/u1") && !admin.includes("tab=kyc"));
   const plainCase = plain(E.kycSubmittedAdminHtml({ reference: "kyc_a1", phoneMasked: "+2557••••5678", name: "Asha M.", idMasked: "••••1234", submittedAt: "2026-07-31T09:00:00.000Z", reviewUrl: "https://www.50pick.tz/admin/kyc/u1" }));
   ok("5d control · with no reasons the letter renders as a plain new case — no empty Reason row", !/Reason/.test(plainCase), plainCase.slice(0, 260));

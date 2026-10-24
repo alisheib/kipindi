@@ -235,8 +235,11 @@ console.log("Chain purge\n");
   const actions = decomment(readFileSync(join(ROOT, "src/app/admin/retention/purge-actions.ts"), "utf8"));
   ok("6: 🔴 stage 2 REFUSES when there is no first signature, rather than treating it as no conflict",
      /if \(!stage1\)/.test(actions) && /has not been started/.test(actions));
-  ok("6: …and the maker is asserted BEFORE twoOfficerGate is consulted",
-     actions.indexOf("if (!stage1)") < actions.indexOf("twoOfficerGate("));
+  /* FEE-TAX R1 · the different-officer question moved into the store (`purgeStage2Gate`) — so it can be driven without a
+     session, and so it is asked only while the Owner's "Second-officer checks" are ON (`test:second-officer-switch`
+     drives both positions). The ORDER this case exists for did not move: no first signature is refused before it. */
+  ok("6: …and the maker is asserted BEFORE the different-officer gate is consulted",
+     actions.indexOf("if (!stage1)") > -1 && actions.indexOf("if (!stage1)") < actions.indexOf("purgeStage2Gate("));
   ok("6: the ceremony is wrapped in withLock, so two officers cannot both pass the stage check",
      /withLock\(`updown-purge:/.test(actions));
   ok("6: the typed word is the CHAIN'S OWN LABEL, not a generic DELETE",
@@ -261,6 +264,10 @@ console.log("Chain purge\n");
      /Number\.isFinite\(at\)/.test(store));
   ok("6: it can be CLEARED — the AML original it copies never removes its row",
      /export async function clearFirstSignature/.test(store));
+  const stage2Gate = store.slice(store.indexOf("export async function purgeStage2Gate"));
+  ok("6: the stage-2 gate compares the FIRST SIGNATURE's officer with this one, through the Owner's second-officer setting",
+     store.includes("export async function purgeStage2Gate") && /secondOfficerGate\(\{/.test(stage2Gate)
+       && /makerId: stage1\.actorId/.test(stage2Gate) && /checkerId: officerId/.test(stage2Gate));
 }
 
 // ── 7 · THE HOST SURFACE — a compliance control on a compliance route ────────

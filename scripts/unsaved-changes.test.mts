@@ -164,6 +164,10 @@ const EXEMPT: Record<string, string> = {
   "app/admin/journey/rollout-control.tsx": "① the reason opens inside <Modal role=alertdialog>, with scrim-close and Escape disabled once anything is typed; Cancel and ✕ are the deliberate exits",
   "app/admin/journey/preview-links.tsx": "① the label and reason (create) and the reason (revoke) open only inside <Modal>, with scrim-close and Escape disabled once anything is typed; Cancel and ✕ are the deliberate exits",
   "app/admin/journey/page.tsx": "nothing can be typed: its only <input>s are type=hidden fields of the two native POST forms to /preview (intent, back)",
+  /* FEE-TAX R1 (2026-10-24) · the Owner's "Second-officer checks" switch on /admin/system — rollout-control.tsx's form, read
+     the same day: its reason <Textarea> exists only inside a <Modal role="alertdialog"> with `closeOnScrim={!pending && !dirty}`
+     and `closeOnEsc={!pending && !dirty}`; the reason is cleared on every exit. */
+  "app/admin/system/second-officer-switch.tsx": "① the reason opens only inside <Modal role=alertdialog>, with scrim-close and Escape disabled once anything is typed; Cancel and ✕ are the deliberate exits",
   /* ✅ vb7 review m5a (2026-10-03): U22's contact form LEFT this list — it renders <UnsavedChangesGuard> now, over its four
    *    free fields (never the number alone, so a duplicate's "Open the existing contact" asks nothing when only the
    *    number was typed), beside its own in-dialog ask on ✕ and Cancel. The list only shrinks. */

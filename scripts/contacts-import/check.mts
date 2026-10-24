@@ -29,6 +29,7 @@ import type { StageRow } from "../lib/contacts-import-world.mts";
 import { SAMPLE_ROW_SENTENCE } from "../../src/lib/contacts/sample-sheet.ts";
 import { parseTzNumber } from "../../src/lib/tz-msisdn.ts";
 import { ERASURE_EVIDENCE } from "../../src/lib/marketing/erasure-mark.ts";
+import { withSecondOfficerChecksOn } from "../lib/second-officer-seam.mts";
 
 const { IMPORT_CHECK_DEPS, IMPORT_FACTS_READS, checkContactImport, contactImportChanges, loadImportFacts } = checkModule;
 // C8a · C14's opted-out person is erased through the REAL step (after the world module set the memory twin up).
@@ -249,7 +250,9 @@ async function run({ impl, ok, log }: Ctx): Promise<void> {
     const stagingId = await stageFile(OFFICER, fortyRows(), true);
     captured.length = 0;
     const staging = await checkContactImport(OFFICER, stagingId, impl.deps);
-    const notYours = await checkContactImport(OTHER, stagingId, impl.deps);
+    // FEE-TAX R1 · X18's creator-only rule is the Owner's "Second-officer checks", and nothing stored reads OFF (the Owner's
+    // ruling): the refusal is asserted under the Owner's stored ON, as built (`test:second-officer-switch` §12 drives both).
+    const notYours = await withSecondOfficerChecksOn(() => checkContactImport(OTHER, stagingId, impl.deps));
     const missing = await checkContactImport(OFFICER, "ci_aaaaaaaaaaaaaaaaaaaa", impl.deps);
     const refusedRows = captured.filter((a) => a.action === "contacts.import.check_refused").length;
     const asAdmin = await checkContactImport(ADMIN, stagingId, impl.deps);

@@ -45,6 +45,7 @@ import { SAMPLE_ROW_SENTENCE } from "../../src/lib/contacts/sample-sheet.ts";
 import { parseTzNumber } from "../../src/lib/tz-msisdn.ts";
 import { ERASURE_EVIDENCE } from "../../src/lib/marketing/erasure-mark.ts";
 import { DONE } from "../../src/app/admin/contacts/import/import-copy.ts";
+import { withSecondOfficerChecksOn } from "../lib/second-officer-seam.mts";
 
 const { eraseMarketingFor } = await import("../../src/lib/server/marketing/erase.ts");
 const {
@@ -682,7 +683,9 @@ async function run({ impl, ok, log }: Ctx): Promise<void> {
     const seen = await importOpenRuns(ADMIN, impl.deps);
     const views = seen.ok ? seen.runs : [];
     captured.length = 0;
-    const growth = await importOpenRuns(OFFICER, impl.deps);
+    // FEE-TAX R1 · the way to other officers' runs opens to every officer while the Owner's "Second-officer checks" are OFF,
+    // and nothing stored reads OFF (the Owner's ruling): a GROWTH officer's empty list is asserted under the stored ON.
+    const growth = await withSecondOfficerChecksOn(() => importOpenRuns(OFFICER, impl.deps));
     const growthAudit = captured.length;
     const newestFirst = views.every((v, i) => i === 0 || Date.parse(views[i - 1].createdAt) >= Date.parse(v.createdAt));
     const statuses = new Set(views.map((v) => v.status));

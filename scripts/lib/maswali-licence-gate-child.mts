@@ -39,6 +39,9 @@ const { auditFlush, getAuditByActionsDurable } = await import("../../src/lib/ser
 const { eatWeekStartMs } = await import("../../src/lib/eat-day.ts");
 const { utcToZonedLocal } = await import("../../src/lib/maswali-time.ts");
 const { checkOpenChecklist } = await import("../maswali-admin-checklist.mjs");
+// FEE-TAX R1 · the S8 hold lifted for this suite's weeks, as the money world lifts it: the weeks here open under the model
+// that is still the law, and the hold is `test:maswali-open-lock`'s.
+svc.__liftMillioneaOpenHoldForTests(true);
 
 type LicenceBasis = import("../../src/lib/server/maswali-licence.ts").LicenceBasis;
 type LicenceStanding = import("../../src/lib/server/maswali-licence.ts").LicenceStanding;
@@ -195,7 +198,8 @@ console.log("\n§1 · the rule, pure: the Owner's record, else the ruling of 202
   ok("1.11 · the three refusals are three different sentences, each naming the licence basis", new Set(reasons).size === 3 && reasons.every((r) => LICENCE_ITEM.test(r)));
   // The admin drive's checker (`maswali-admin-checklist.mjs`) must read each refusal as the licence item, and must fail
   // when the standing reads None but no licence item is listed (its positive control).
-  const ATTEST = "A second reader has not attested that English, Swahili and Chinese agree (MB-79).";
+  // FEE-TAX R1 · the attestation line names the step, not who takes it (`openProblems`; the checker's matcher moved with it).
+  const ATTEST = "The translations have not been attested: no officer has recorded that English, Swahili and Chinese agree.";
   const none = { licence: "None", guarantee: "TZS 2,000,000", requirement: "TZS 1,000,000" };
   ok("1.12 · the admin drive's checker reads each refusal as the licence item — and fails a None standing that lists none",
     reasons.every((r) => checkOpenChecklist(none, [r, ATTEST]).ok) && !checkOpenChecklist(none, [ATTEST]).ok);

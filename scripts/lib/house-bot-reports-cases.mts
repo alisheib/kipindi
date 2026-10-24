@@ -2442,8 +2442,12 @@ export const AUDIT_READERS_OUTSIDE_CONSOLE: Readonly<Record<string, string>> = {
   /* Classified 2026-10-21 (MASWALI-BUILD S5-FIX-SRV, review findings 3 and A4): MB-79's second reader. `attestParity` reads
      ONE draft week's own durable rows (target MaswaliCycle) and folds them, inside the module, into the officers who edited
      it since its last attestation and one yes/no — whether the text now stored has a recorded author. No row, payload or
-     number leaves the module; the act answers only a refusal sentence. */
-  "src/lib/server/maswali-service.ts": "MB-79's second reader: ONE draft week's own rows (target MaswaliCycle) folded into its editors since the last attestation and whether its stored text has a recorded author — no row is handed on",
+     number leaves the module; the act answers only a refusal sentence.
+     ⭐ Re-read 2026-10-24 (FEE-TAX R1): that read is made only while the Owner's "Second-officer checks" are ON — OFF, no
+     history is read and none refuses. The module's other read, `presentResultAuthor` — a question's own result records
+     (target MaswaliQuestion), folded into the one officer who wrote its present result — serves the confirm-seal bar under
+     the two-officer switch and the correction bar while the second-officer checks are ON; it hands no row on either. */
+  "src/lib/server/maswali-service.ts": "MB-79's second reader, while the Owner's second-officer checks are ON: ONE draft week's own rows (target MaswaliCycle) folded into its editors since the last attestation and whether its stored text has a recorded author; and a question's own result records (target MaswaliQuestion) folded into the officer who set its present result — no row is handed on",
   /* Classified 2026-10-22 (MASWALI-BUILD S7-F9, MB-74 / RD.5), read from the source (`holdSharesForReversedDeposit`). ONE
      read: the hold records (`maswali.share.held`, target MaswaliTicket) of the paid shares a contradicted deposit may have
      bought, folded inside the module into the set of tickets already held once FOR THAT DEPOSIT, so neither the reversal's
@@ -4080,7 +4084,9 @@ if (STORE === "memory") {
         if (!ts.isCallExpression(d)) return;
         const callee = d.expression.getText();
         if (callee === "readPackForTransition" && guardAt < 0) guardAt = d.getStart();
-        if ((callee === "audit" || callee.endsWith(".audit") || callee === "twoOfficerGate") && firstAppendAt < 0) firstAppendAt = d.getStart();
+        // FEE-TAX R1 · `packApprovalGate` is the two-officer gate behind the Owner's second-officer setting, and it audits a
+        // refused self-approval exactly as `twoOfficerGate` does — so it is an append too.
+        if ((callee === "audit" || callee.endsWith(".audit") || callee === "twoOfficerGate" || callee === "packApprovalGate") && firstAppendAt < 0) firstAppendAt = d.getStart();
       });
       if (guardAt < 0) bad.push(`${name}: never calls readPackForTransition`);
       else if (firstAppendAt >= 0 && firstAppendAt < guardAt) bad.push(`${name}: appends before the guard`);
@@ -4103,7 +4109,7 @@ if (STORE === "memory") {
           if (!ts.isCallExpression(d)) return;
           const callee = d.expression.getText();
           if (callee === "readPackForTransition" && g < 0) g = d.getStart();
-          if ((callee === "audit" || callee === "twoOfficerGate") && a < 0) a = d.getStart();
+          if ((callee === "audit" || callee === "twoOfficerGate" || callee === "packApprovalGate") && a < 0) a = d.getStart();
         });
         if (g < 0) out.push("never calls readPackForTransition");
         else if (a >= 0 && a < g) out.push("appends before the guard");

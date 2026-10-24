@@ -35,7 +35,7 @@ import {
 } from "../src/lib/server/bulk-resolve-eligibility.ts";
 import { decideAutoResolve } from "../src/lib/server/market-service.ts";
 import { sourceMatchesAny, type TrustedSource } from "../src/lib/server/source-registry.ts";
-import { BULK_REASON, composeOverrideJustification } from "../src/app/admin/resolver-queue/bulk-verdict-copy.ts";
+import { BULK_REASON, bulkReasonDetail, composeOverrideJustification } from "../src/app/admin/resolver-queue/bulk-verdict-copy.ts";
 import { compareBy, parseSort, SORT_OPTIONS } from "../src/app/admin/resolver-queue/queue-order.ts";
 import { BULK_VERDICT, CEREMONY } from "../src/lib/admin-status-lexicon.ts";
 
@@ -1093,6 +1093,20 @@ const V = (m: VerdictMarket, over: Partial<Parameters<typeof bulkVerdictFor>[0]>
   // turned the queue off.
   const unstaged = V(clean({ resolutionStage1By: null }), { requireTwoOfficer: false });
   ok("16.7 an UNSTAGED row is still eligible", unstaged.eligible === true, unstaged.all.join(","));
+
+  // ⭐ FEE-TAX R1 · THE STAGED ROW'S WORDS FOLLOW THE TWO-OFFICER SWITCH. "Another officer must complete it" is true only
+  // while two-officer approval of resolutions is ON: with it OFF, `resolveMarket` lets the officer who staged a row finish
+  // it on the market's own card like anyone else. The words are read off the verdict the queue draws (`stage`).
+  const mineOn = bulkReasonDetail({ ...on, threshold: 90 });
+  const mineOff = bulkReasonDetail({ ...off, threshold: 90 });
+  const theirsOff = bulkReasonDetail({ ...byOther, threshold: 90 });
+  ok("16.8 with two-officer approval ON the staging officer's row still says another officer must complete it",
+     on.stage === "stage1" && mineOn === "you recorded the first verdict · another officer must complete it", String(mineOn));
+  ok("16.9 ⭐ with it OFF the same row never says so: it sends the officer who staged it to the market's own card, where they may complete it",
+     off.stage === "seal" && off.stagedByMe === true && mineOff !== null && !/another officer must/.test(mineOff) && /complete it on the market's own card/.test(mineOff),
+     String(mineOff));
+  ok("16.10 control · a row another officer staged reads the same in both positions — complete it on the market's own card",
+     theirsOff === "another officer recorded the first verdict · complete it on the market's own card", String(theirsOff));
 }
 
 // ── 17 · THE BULK PATH IS NEVER LAXER THAN THE ENGINE ────────────────────────

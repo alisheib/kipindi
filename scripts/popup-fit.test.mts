@@ -292,6 +292,7 @@ const REVIEWED: readonly string[] = [
   "src/app/admin/settlement/hold-button.tsx",
   "src/app/admin/settlement/settle-button.tsx",
   "src/app/admin/sources/source-controls.tsx",
+  "src/app/admin/system/second-officer-switch.tsx",   // reviewed 2026-10-24 (FEE-TAX R1) — the Owner's "Second-officer checks" dialog: rollout-control.tsx's shape; no truncate, no clamp, no nowrap, no max-h; heading, body, the Field and its hint are blocks that wrap in every language, and Modal scrolls
   "src/app/admin/updown/proposals/proposal-actions.tsx",
   "src/app/admin/updown/rounds/void-round-control.tsx",
   "src/app/admin/updown/updown-controls.tsx",

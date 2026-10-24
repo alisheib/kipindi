@@ -48,6 +48,8 @@ import {
 } from "../src/lib/server/objections-service.ts";
 import { getGlobalConfig } from "../src/lib/server/market-config.ts";
 import { setRequireTwoOfficerResolution } from "../src/lib/server/resolution-policy.ts";
+// FEE-TAX R1 · the Owner's "Second-officer checks", through the setting's own store seam (ruling 6 of 2026-10-24).
+import { holdSecondOfficerChecksOn, withSecondOfficerChecks, withSecondOfficerChecksOff } from "./lib/second-officer-seam.mts";
 
 import "./lib/verified-fixtures.mts";
 // This suite's `adjudicate()` helper models a two-DISTINCT-officer ceremony (stage-1
@@ -55,6 +57,9 @@ import "./lib/verified-fixtures.mts";
 // now, so enable it for the bulk of the suite; the final block flips it OFF to prove
 // the single-admin one-action path hits the SAME objection/settlement gate.
 await setRequireTwoOfficerResolution(true, "settlement-gate-setup");
+// ⭐ FEE-TAX R1 · nothing stored reads OFF (the Owner's ruling is the default), so this suite — whose §6 and §14 hold the
+// filer of a case off its ruling, as built — holds the Owner's stored ON for its whole run; §14c moves it one act at a time.
+await holdSecondOfficerChecksOn();
 
 let pass = 0, fail = 0;
 const ok = (l: string, c: boolean, x = "") => { c ? pass++ : fail++; console.log(`${c ? "PASS" : "FAIL"} ${l}${x ? ` — ${x}` : ""}`); };
@@ -879,6 +884,63 @@ async function closeWindow(mid: string): Promise<void> {
        (await countOpenObjections(mid3)) === 0);
     ok("14b: …and the stake came back rather than paying a verdict", (await bal("g14b_a")) > before,
        `delta=${(await bal("g14b_a")) - before}`);
+  }
+
+  // ── §14c · FEE-TAX R1 · THE HOLD'S SELF-RULING BAR IS THE OWNER'S "SECOND-OFFICER CHECKS" (ruling 6 of 2026-10-24) ──
+  //
+  // Every case above ran under the suite's stored ON — and stays exactly as it was. With a stored OFF (the setting's own
+  // store seam), and with nothing stored (the Owner's ruling), the officer who placed a hold on a market they hold no money
+  // in rules on it like any officer. ⛔ An officer's case on their OWN stake — a player's objection they filed, then made an
+  // officer — stays refused whatever the setting says: a check on their own account (ruling 6b), which §6 above already
+  // holds while ON.
+  {
+    const mid4 = await makeMarket();
+    await fundedUser("g14c_win");
+    await fundedUser("g14c_lose");
+    await buyPosition("g14c_win", { marketId: mid4, side: "YES", stake: 7_000 });
+    await buyPosition("g14c_lose", { marketId: mid4, side: "NO", stake: 7_000 });
+    await adjudicate(mid4, "YES");
+    const held4 = await holdSettlementAsOfficer("gate_officer", {
+      marketId: mid4, reason: "OTHER", detail: "Holding while the source is read once more.",
+    });
+    const hold4 = (await db.objection.listForMarket(mid4)).find((o) => o.status === "OPEN")!.id;
+    const onTry = await rejectObjection(hold4, "gate_officer", "Releasing my own hold with the checks on.");
+    const offTry = await withSecondOfficerChecksOff(() => rejectObjection(hold4, "gate_officer", "Releasing my own hold: second-officer checks are off."));
+    ok("14c: ⭐ FEE-TAX R1 · the officer's own hold is refused while second-officer checks are ON, and with them OFF the officer who placed it releases it",
+       held4.ok && !onTry.ok && onTry.code === "CONFLICT" && offTry.ok && (await countOpenObjections(mid4)) === 0,
+       JSON.stringify({ onTry, offTry }));
+
+    const mid6 = await makeMarket();
+    await fundedUser("g14c_win6");
+    await fundedUser("g14c_lose6");
+    await buyPosition("g14c_win6", { marketId: mid6, side: "YES", stake: 7_000 });
+    await buyPosition("g14c_lose6", { marketId: mid6, side: "NO", stake: 7_000 });
+    await adjudicate(mid6, "YES");
+    const held6 = await holdSettlementAsOfficer("gate_officer", {
+      marketId: mid6, reason: "OTHER", detail: "Holding while the source is read again.",
+    });
+    const hold6 = (await db.objection.listForMarket(mid6)).find((o) => o.status === "OPEN")!.id;
+    const noneTry = await withSecondOfficerChecks("absent", () => rejectObjection(hold6, "gate_officer", "Releasing my own hold: the Owner's ruling."));
+    ok("14c: ⭐ …and with nothing stored — the Owner's ruling, OFF — the officer who placed a hold releases it too",
+       held6.ok && noneTry.ok && (await countOpenObjections(mid6)) === 0, JSON.stringify({ noneTry }));
+
+    const mid5 = await makeMarket();
+    await fundedUser("g14c_staker");
+    await fundedUser("g14c_other");
+    await buyPosition("g14c_staker", { marketId: mid5, side: "NO", stake: 5_000 });
+    await buyPosition("g14c_other", { marketId: mid5, side: "YES", stake: 5_000 });
+    await adjudicate(mid5, "YES");
+    const filed5 = await fileObjection("g14c_staker", { marketId: mid5, reason: "WRONG_OUTCOME", detail: "The source reports the opposite result." });
+    await db.user.update("g14c_staker", { role: "COMPLIANCE" });
+    const own5 = (await db.objection.listForMarket(mid5)).find((o) => o.status === "OPEN")!.id;
+    const ownOff = await withSecondOfficerChecksOff(() => rejectObjection(own5, "g14c_staker", "Dismissing my own objection with the checks off."));
+    const ownNone = await withSecondOfficerChecks("absent", () => rejectObjection(own5, "g14c_staker", "Dismissing my own objection under the ruling."));
+    ok("14c: ⛔ …but an officer's case on their OWN stake stays refused with the checks OFF, stored or by the ruling (ruling 6b keeps checks on one's own account)",
+       filed5.ok && !ownOff.ok && ownOff.code === "CONFLICT" && !ownNone.ok && ownNone.code === "CONFLICT" && (await countOpenObjections(mid5)) === 1,
+       JSON.stringify({ filed5, ownOff, ownNone }));
+    await db.user.update("g14c_staker", { role: "PLAYER" });
+    // Released by another officer, so this market is not left frozen for the sections below.
+    await rejectObjection(own5, "g14_officer2", "Reviewed by another officer: the verdict stands.");
   }
 }
 
