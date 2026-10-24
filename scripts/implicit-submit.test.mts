@@ -108,7 +108,7 @@ const UPDOWN = "src/app/admin/updown/updown-controls.tsx";
  */
 const DIRECT_BY_DESIGN = [
   { file: CONFIG, component: "GlobalConfigForm", opener: "setConfirmFd(fd)",
-    why: "only a change to the money model asks (the fee model, its two rate slices, the estimate): it reprices every future poll; any other rate saves on Save" },
+    why: "only a change to the money model asks (the fee model, its two rate slices, the estimate, the winning tax — FEE-TAX-2026-10 R2c): it reprices every future poll; any other rate saves on Save" },
   { file: UPDOWN, component: "ReadingMethodForm", opener: "setConfirmOpen(true)",
     why: "only the simulated feed asks, behind its typed word; a real source saves on Save" },
 ];

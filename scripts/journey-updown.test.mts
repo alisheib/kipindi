@@ -405,7 +405,10 @@ console.log("\n§6 · the U43 classic source snapshot keeps every intentional bo
     [BOARD, "bbcd4f2a043e1a71287b5950ac3a89ac6ae3a753a04a5029e7e1c6f46284b1fb", "export default async function UpDownPage({"],
     [ROUND, "05d8ef79865916bb2c27f3e65db8d1dc58b9e10c5cfc84440bbdc27acc2eef79", "export default async function UpDownRoundPage({"],
     [CARD, "602356816a54a0e5a6bd35947e53c1b0270973585c9ff0336c2cb15b416b618a", "export function UpDownCard(props: UpDownCardProps) {"],
-    [PANEL, "12f2607f1a08a7c737549daefe9b2da644710fcd9dbffc455a5b8355fc3391bb", "export function RoundStakePanel(props: {"],
+    // 2026-10-24 · FEE-TAX-2026-10 R2c · PANEL re-pinned for one deliberate change: a stake-share round's notice
+    // (`upDownNotice`) — the below-stake warning above the commit, this stake's fee line, the fee note and the standing
+    // line under it, all drawn only when the round froze stake-share; no other byte of the file moved.
+    [PANEL, "0902be76c22e4864c17ff8d6cbc0e9ed71722cc90f4179b803c6749fcc61cfd3", "export function RoundStakePanel(props: {"],
     [ACTION, "f8f075998d9f448634dbae66d1f8906630facda10993cc0a14d1aaa962f9bf72", "export function RoundActionPanel(props: {"],
   ] as const;
   const classicFiles = [BOARD, ROUND, CARD, PANEL, ACTION];

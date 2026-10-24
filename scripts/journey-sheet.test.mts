@@ -51,7 +51,9 @@ import { DEFAULT_GLOBAL_CONFIG, snapshotFromConfig } from "../src/lib/server/mar
 import { RATE_RULES } from "../src/lib/server/rate-limit.ts";
 import * as SHEET from "../src/lib/server/journey-sheet.ts";
 import { getMarket, isSelectionClosed, stakeBoundsForMarket } from "../src/lib/server/market-service.ts";
-import { cardEstimate, pickEstimateRates } from "../src/lib/markets/estimate.ts";
+import { cardEstimate, feePctFor, pickEstimateRates, taxPctFor } from "../src/lib/markets/estimate.ts";
+import { parseSheetSeed } from "../src/lib/journey/sheet-seed.ts";
+import { __setFeeLawLiveForTest } from "../src/lib/fee-law-gate.ts";
 import { cardClosesAtMs } from "../src/lib/markets/card-close-label.ts";
 import { loserSharePct } from "../src/lib/payout.ts";
 import { checkLossLimit, checkSessionTimeLimit, getLimitUsage, getRgSettings, isLockedOut } from "../src/lib/server/responsible-gambling.ts";
@@ -166,6 +168,17 @@ async function fixtures() {
   await market("mkt_sheet0resolved", { status: "RESOLVED" });
   await market("mkt_sheet0draft", { status: "DRAFT" });
   await market("mkt_sheet0legacy", { selectionClosedAt: null });
+  // FEE-TAX-2026-10 (R2c) · a market frozen under the decided stake-share law (3% + 10% of every stake, a 15% winnings tax).
+  // Stamping one is gated (`fee-law-gate.ts`): the gate is opened in THIS process for the stamp alone, then put back.
+  await market("mkt_sheet0stake");
+  __setFeeLawLiveForTest(true);
+  try {
+    await marketStore.stamp("mkt_sheet0stake", {
+      feeSnapshot: snapshotFromConfig({ ...DEFAULT_GLOBAL_CONFIG, feeModel: "stake-share", platformFeeRate: 0.03, operatorFeeRate: 0.10, winningsTaxRate: 0.15 }) as never,
+    });
+  } finally {
+    __setFeeLawLiveForTest(null);
+  }
   await player("usr_sheet_1", 3_000, 500);
   await position("pos_sheet_1", "usr_sheet_1", "mkt_sheet0live", "YES", "OPEN");
   await position("pos_sheet_2", "usr_sheet_1", "mkt_sheet0live", "NO", "CASHED_OUT");
@@ -191,7 +204,8 @@ async function preExtraction(marketId: string, nowMs: number) {
   const { bettable, rates, estimates } = SHEET.cardFigures(m, nowMs);
   const closes = cardClosesAtMs(m);
   return {
-    id: m.id, bettable, yesPool: m.yesPool, noPool: m.noPool, rates, feePct: rates ? loserSharePct(rates) : null,
+    // {pct} and {tax} per the market's frozen model (FEE-TAX-2026-10, R2c): the loser-share total on these fixtures, as before.
+    id: m.id, bettable, yesPool: m.yesPool, noPool: m.noPool, rates, feePct: feePctFor(rates), taxPct: taxPctFor(rates),
     min: bounds.min, max: bounds.max, closesAt: closes === null ? null : new Date(closes).toISOString(), serverNow: nowMs, estimates,
   };
 }
@@ -215,6 +229,17 @@ async function run(impl: Impl, log: (l: string) => void, tag = "real"): Promise<
     p?.min === DEFAULT_GLOBAL_CONFIG.minStake && p?.max === DEFAULT_GLOBAL_CONFIG.maxStake, j({ min: p?.min, max: p?.max }));
   const legacy = await impl.pub("mkt_sheet0legacy", NOW);
   ok("1.legacy · no selection close: betting closes at resolution", legacy?.closesAt === iso(NOW + 48 * HOUR), j(legacy?.closesAt));
+  // FEE-TAX-2026-10 (R2c) · the sheet speaks stake-share: its frozen rates carry the tax, {fee} and {tax} are its own.
+  const ss = await impl.pub("mkt_sheet0stake", NOW);
+  ok("1.stake-share · a stake-share market: its FROZEN rates with the winnings tax, {pct} 13 of every stake, {tax} 15, and the law's own card figures (Dodoma ≈2.4× / ≈1.2×)",
+    !!ss && ss.rates?.feeModel === "stake-share" && ss.rates.winningsTaxRate === 0.15 && ss.feePct === 13 && ss.taxPct === 15
+      && ss.estimates.YES?.multText === "2.4" && ss.estimates.NO?.multText === "1.2", j(ss));
+  ok("1.stake-share-legacy · …and a loser-share market's public half carries no {tax}", !!p && p.taxPct === null, j(p?.taxPct));
+  const ssRow = await marketStore.get("mkt_sheet0stake");
+  const ssSeed = ssRow ? await impl.seed(ssRow, NOW) : null;
+  const ssRead = ssSeed ? parseSheetSeed(j(ssSeed)) : null;
+  ok("1.stake-share-seed · its seed is READ by the client (parseSheetSeed), {tax} and all — the sheet opens on it instead of navigating away",
+    !!ssRead && ssRead.taxPct === 15 && ssRead.rates?.feeModel === "stake-share" && ssRead.rates.winningsTaxRate === 0.15, j(ssSeed));
 
   /* 2 · not a sheet */
   const nulls = await Promise.all(["mkt_sheet0updown", "mkt_sheet0resolved", "mkt_sheet0draft", "mkt_nothere", "not an id", "mkt_a/../b"].map((id) => impl.pub(id, NOW)));
@@ -467,7 +492,7 @@ async function seedAndRoute(impl: Impl, ok: Ok) {
 
   /* 8 · the route and the key */
   const p = await impl.pub("mkt_sheet0live", NOW);
-  const PUBLIC_KEYS = ["id", "bettable", "yesPool", "noPool", "rates", "feePct", "min", "max", "closesAt", "serverNow", "estimates"];
+  const PUBLIC_KEYS = ["id", "bettable", "yesPool", "noPool", "rates", "feePct", "taxPct", "min", "max", "closesAt", "serverNow", "estimates"];
   const code = impl.route.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
   ok("8.anon · the public half names no viewer: its fields are exactly the market's, and the route reads the session only for ?me=1",
     !!p && j(Object.keys(p).sort()) === j([...PUBLIC_KEYS].sort()) && /const session = me \? await getSession\(\) : null;/.test(code)

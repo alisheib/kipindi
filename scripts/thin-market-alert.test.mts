@@ -68,6 +68,9 @@ const LOSER_SHARE = {
   v: 2 as const, stampedAt: now(),
 };
 const CAPPED = { ...LOSER_SHARE, feeModel: "capped-commission" as const };
+/** FEE-TAX-2026-10 (R2c) · the decided law, frozen as a stake-share snapshot stamps it (`v: 3`, the tax included). Stamped
+ *  straight onto the fixture's row, as every snapshot here is — no door is opened by it (`fee-law-gate.ts` stays shut). */
+const STAKE_SHARE = { ...LOSER_SHARE, feeModel: "stake-share" as const, winningsTaxRate: 0.15, v: 3 as const };
 
 let marketSeq = 0;
 /**
@@ -78,7 +81,7 @@ let marketSeq = 0;
  * production when the per-market timer fires.
  */
 async function closeWith(opts: {
-  snapshot: typeof LOSER_SHARE | typeof CAPPED;
+  snapshot: typeof LOSER_SHARE | typeof CAPPED | typeof STAKE_SHARE;
   bets: Array<{ side: "YES" | "NO"; stake: number }>;
 }): Promise<{ payload: Record<string, unknown> } | null> {
   const m = await createMarket({
@@ -243,6 +246,40 @@ console.log("\n§5 · how the triggers relate — derived, not assumed");
      && (thinOnly.payload.triggers as Record<string, boolean>).lopsidedBook === false,
      thinOnly ? `${JSON.stringify(thinOnly.payload.triggers)} worstRatio=${thinOnly.payload.worstWinnerRatio} smaller=${thinOnly.payload.smallerPctOfPool}%`
               : "NO ALERT");
+}
+
+// ── §6 · STAKE-SHARE (FEE-TAX-2026-10, R2c): the `below` level fires, and is not mistaken for fair ──────────────
+console.log("\n§6 · a stake-share market whose winner would be paid less than the stake fires the alert");
+//
+// Under stake-share a correct call on a lopsided book is paid back LESS than it staked (Ali's ruling 1) — `leanFor` names
+// that level `below`. The trigger is `!== "fair"` (R2a), so `below` fires as `thin` does; an `=== "thin"` trigger would let
+// the WORSE case pass in silence. The fee is the same whichever side wins (every stake pays it), stated as data.
+{
+  const below = await closeWith({ snapshot: STAKE_SHARE, bets: [{ side: "YES", stake: 200_000 }, { side: "NO", stake: 10_000 }] });
+  ok("6.1 · ★ a lopsided STAKE-SHARE market fires — its big-side winner would be paid under the stake", below !== null,
+     below ? JSON.stringify(below.payload.triggers) : "NO ALERT");
+  if (below) {
+    ok("6.2 · …named as the law it is", below.payload.feeModel === "stake-share", String(below.payload.feeModel));
+    // YES 200,000 / NO 10,000: F = 13% of every stake = 26,000 + 1,300; P = 8,700; T = 15% of P, half up = 1,305; the YES
+    // side shares 210,000 − 27,300 − 1,305 = 181,395 — 0.907 of its stakes.
+    ok("6.3 · ★ the worst winner ratio is UNDER 1 — the projection the money path uses, not a re-derivation",
+       Math.abs(Number(below.payload.worstWinnerRatio) - 181_395 / 200_000) < 0.002 && Number(below.payload.worstWinnerRatio) < 1,
+       `${below.payload.worstWinnerRatio} vs ${(181_395 / 200_000).toFixed(4)}`);
+    ok("6.4 · ★ the fee is the SAME whichever side wins (every stake pays it): 27,300 both ways, never the tax",
+       below.payload.feeIfYesWins === 27_300 && below.payload.feeIfNoWins === 27_300,
+       `${below.payload.feeIfYesWins} / ${below.payload.feeIfNoWins}`);
+    const t = below.payload.triggers as Record<string, boolean>;
+    ok("6.5 · …and `below` drives the thin-upside trigger (the lopsided one fires beside it)", t.thinUpside === true && t.lopsidedBook === true, JSON.stringify(t));
+  }
+  // ⭐ WHERE THE TWO SEPARATE UNDER THIS LAW: the break-even (~14.95% of the pool on the small side) sits just under the
+  // lopsided threshold (15%), so a 15% book is NOT lopsided — and its big side is paid barely above its stake.
+  const edge = await closeWith({ snapshot: STAKE_SHARE, bets: [{ side: "YES", stake: 170_000 }, { side: "NO", stake: 30_000 }] });
+  ok("6.6 · ★ a 15% book (not lopsided) fires on thinUpside ALONE — its big side is paid 1.0005× of its stake",
+     edge !== null && (edge.payload.triggers as Record<string, boolean>).thinUpside === true && (edge.payload.triggers as Record<string, boolean>).lopsidedBook === false,
+     edge ? `${JSON.stringify(edge.payload.triggers)} worstRatio=${edge.payload.worstWinnerRatio}` : "NO ALERT");
+  // ⭐ THE CONTROL: a balanced stake-share book pays its winners ~1.61× and must not fire.
+  const fair = await closeWith({ snapshot: STAKE_SHARE, bets: [{ side: "YES", stake: 100_000 }, { side: "NO", stake: 100_000 }] });
+  ok("6.7 · ★ a BALANCED stake-share market does NOT fire", fair === null, fair ? `FIRED: ${JSON.stringify(fair.payload.triggers)}` : "");
 }
 
 console.log(`\nthin-market-alert: ${pass} passed, ${fail} failed`);

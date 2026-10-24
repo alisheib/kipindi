@@ -704,6 +704,36 @@ console.log("\n§8 · rendered: the choices read Up and Down only, the commit ke
      jPlant !== jTwo.html && journeyDefectsOf(jTwo, jPlant).some((x) => /Up button reads|×/.test(x)), journeyDefectsOf(jTwo, jPlant).join(" · "));
 }
 
+// ── §9. FEE-TAX-2026-10 (R2c) · A STAKE-SHARE ROUND — the commit's money is the law's, and its warning is never hidden ──
+console.log("\n§9 · a stake-share round: priced net of the fee on every stake and the winnings tax; the warning is not an estimate");
+{
+  const SS: UpDownRates = { feeModel: "stake-share", commissionRate: 0.1, feeCeilingRate: 1 / 3, platformFeeRate: 0.03, operatorFeeRate: 0.1, winningsTaxRate: 0.15 };
+  const lop = P(90_000, 10_000, SS);
+  const want = payoutFor({ yesPool: 90_000, noPool: 10_000, side: "YES", stake: 10_000 }, SS).payout;
+  ok("9.1 · ★ the confirm's projected return under stake-share IS payoutFor's — net of the fee on every stake and the tax",
+     projectedReturn(lop, "UP", 10_000) === want, `${projectedReturn(lop, "UP", 10_000)} vs ${want}`);
+  ok("9.2 · ★ …and on a lopsided round it is BELOW the stake (ruling 1) — a true figure the screen must not hide",
+     want < 10_000 && (impliedMultiplier(lop, "UP", 10_000) ?? 2) < 1, `${want} for 10,000`);
+  const n = pricingModule.upDownNotice(lop, "UP", 10_000);
+  ok("9.3 · ★ the round's notice warns on UP with that very figure, and not on DOWN", n?.below?.payout === want && pricingModule.upDownNotice(lop, "DOWN", 10_000)?.below === null, JSON.stringify(n));
+  ok("9.4 · ★ the display switch hides the ESTIMATE only: show=false prints no return, and still warns",
+     projectedReturn(P(90_000, 10_000, SS, false), "UP", 10_000) === null && !!pricingModule.upDownNotice(P(90_000, 10_000, SS, false), "UP", 10_000)?.below);
+  const noTax: UpDownRates = { ...SS, winningsTaxRate: undefined };
+  let threw = "";
+  try { impliedMultiplier(P(90_000, 10_000, noTax), "UP", 10_000); projectedReturn(P(90_000, 10_000, noTax), "UP", 10_000); } catch (e) { threw = String(e); }
+  ok("9.5 · a stake-share round sent WITHOUT its tax prices nothing and throws nothing (the engine refuses; the card says nothing)",
+     threw === "" && impliedMultiplier(P(90_000, 10_000, noTax), "UP", 10_000) === null, threw);
+  ok("9.6 · CONTROL · a loser-share round's money and notice are exactly as before: no notice, the old projection",
+     pricingModule.upDownNotice(P(90_000, 10_000), "UP", 10_000) === null
+       && projectedReturn(P(90_000, 10_000), "UP", 10_000) === payoutFor({ yesPool: 90_000, noPool: 10_000, side: "YES", stake: 10_000 }, LIVE).payout);
+  // The board must SEND the tax: a stake-share round's projection refuses without it.
+  ok("9.7 · ★ the board's frozen rates carry a stake-share round's winningsTaxRate — and only when the snapshot froze one",
+     /\.\.\.\(rates\.winningsTaxRate !== undefined \? \{ winningsTaxRate: rates\.winningsTaxRate \} : \{\}\)/.test(toBoardRound ?? ""));
+  ok("9.8 · the confirm panel draws the round's notice, and the two-way controls the either-side form (never a figure there)",
+     /upDownNotice\(pricing, lockedSide/.test(panelCode) && /upDownNoticeEitherSide\(pricing/.test(controlsCode)
+       && !/notice\.below\.payout|notice\.quote/.test(controlsCode));
+}
+
 console.log(`\nupdown-pricing: ${pass} passed, ${fails.length} failed`);
 if (fails.length) {
   console.error(`\n✗ ${fails.length} failed:\n${fails.map((f) => `   · ${f}`).join("\n")}\n`);

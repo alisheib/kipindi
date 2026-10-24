@@ -331,7 +331,9 @@ const WARN_REGISTRY: Record<string, [number, string]> = {
   "src/components/kyc/kyc-gate-panel.tsx": [6, "'your move' and a held wallet — somebody must act"],
   "src/components/layout/app-shell.tsx": [2, "the session-ended notice and its Sign in — the player must sign in again"],
   "src/components/markets/comments-thread.tsx": [2, "the character counter's last 40 · the report link's hover — cautions"],
-  "src/components/markets/house-lean-warning.tsx": [1, "'the upside is thin' — the Callout's own documented warning"],
+  "src/components/markets/house-lean-warning.tsx": [1, "'the upside is thin' — the Callout's own documented warning; and, under stake-share, 'less than you bet, even if you win' (FEE-TAX-2026-10 R2c, the same one tone)"],
+  // FEE-TAX-2026-10 R2c: a stake-share poll's quote is a receipt, and our fee on the stake is its deduction row.
+  "src/components/markets/bet-confirm-modal.tsx": [1, "the stake-share receipt's fee row's amber (a deduction), as the withdraw confirm's"],
   "src/components/markets/objection-dialog.tsx": [5, "the dispute route's caution"],
   // PHOSPHOR-MIGRATION W4 (§8a): the ⚠️ emoji that opened this caution in each language is the family's warning, in Fill.
   "src/app/legal/rules/_content-up-down.tsx": [3, "the shortest rounds' caution (en, sw, zh) — the free exit can never apply there; the player weighs it before betting on one"],
