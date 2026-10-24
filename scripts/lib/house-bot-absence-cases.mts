@@ -147,7 +147,11 @@ export const U43_REVIEWED_BLOBS: Readonly<Record<string, string>> = {
   // stake-share fee, gated off until R5): its diff against e6c25553b is 58 ADDED lines — `market.ss*` (12 keys) and
   // `journey.ssEstimateNote` / `ssEstimateNoteCompact` (2 keys), in en, sw and zh — no line removed, no other line changed;
   // the added lines scanned for every house / desk / bot / liquidity word in the three languages: none.
-  "src/lib/i18n-dict.ts": "4749a3b7ab6a0f60fd60a79ade3e74ed773366b9",
+  // D19a RE-PINNED AT FEE-TAX R3 (was 4749a3b7a, R2's; the lead, 2026-10-24 — lane R3b's words for a stake-share result,
+  // gated off until R5): its diff against 4749a3b7a is 122 ADDED lines — `payoutTax.*` (35 keys) and `agent.wfBasisStakes`
+  // … `wfEffectiveStakes` (6 keys), in en, sw and zh — no line removed, no other line changed; the added lines scanned for
+  // every house / desk / bot / liquidity word in the three languages (whole words): none.
+  "src/lib/i18n-dict.ts": "dd57c073329a59ed9d68ae22fa27033f98d9d427",
   "src/app/legal/rules/_content-up-down.tsx": "a2ee86a3f3fd39cba34ddfdfd8ef316f7961cdf9",
   "src/app/legal/rules/up-down/page.tsx": "d6ab15942ad15e0812abf22fe236e27f91e586f5",
 };
