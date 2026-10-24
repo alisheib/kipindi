@@ -55,6 +55,18 @@ lane c (projections, the bet screens' below-stake warning and standing line, the
 - Read back: `?dpl=abbee1fa1` on the three hosts after 1081 s; `qa:chunks-prod` on both origins; production `qa:live`
   358/0. Production (read-only): both R2 migrations applied (`Position.feeTzs` / `winningsTaxTzs`,
   `SETTLEMENT_WINNINGS_TAX`); the polls and Up & Down still on `loser-share`, no tax, no switch record — the law is off.
+🔨 R5 lane b — the one-time switch — is LIVE and INERT at `245c53e2f` (it does nothing while the gate is shut):
+`src/lib/server/fee-law-switch.ts` runs at boot (after the audit drain and the boot checks, before every scheduler) and,
+once the gate opens, applies Ali's ruling through the audited writers — the banner (Swahili and English, the saved rates),
+the polls (stake-share; the stored 13% split kept; the 15% tax), then Up & Down's default and every chain in one
+transaction — and records `fee_law.switch` with `at`; a failed step puts back what was done, records FAILED, writes a
+COMPLIANCE row and retries; once across containers by a claim on the record. `/api/health` publishes `feeLaw` {live,
+switch, switchedAt} — production reads `{"live":false,"switch":"none","switchedAt":null}`. Proven by
+`test:fee-law-switch` (38) and `red:fee-law-switch` (10/10 planted defects caught). Production instruments taught the new
+law: `stake-share-settled.cjs` (new), `pool-residual.cjs`, `house-money.cjs`. Pre-switch production baselines (read-only):
+every settled pool at 0, levy divergence 0, the books balanced; 47 + 3 open polls and 9 open rounds on loser-share; 20
+chains on loser-share; three polls of 2026-06/07 carry no snapshot and settle by the coded legacy terms, which the switch
+cannot touch. Millionea's `ticket-share` step joins the act when R4 merges.
 Today's money law is still in force everywhere; the fee change is not switched on.
 
 **Next:** R3 (lanes a: the tax report and books; b: receipts and notices), R4 (Millionea `ticket-share`) and R5 (lane a:
