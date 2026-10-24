@@ -1343,7 +1343,8 @@ if (!PROVE_RED) {
       world: () => plantIn(BET, CONFIRM_REF, after(CONFIRM_REF,
           "const onKey = (e: KeyboardEvent) => { if (isConfirmKey(e) && !pending) onConfirm(); };",
           'window.addEventListener("keydown", onKey);'),
-        plantIn(BET, 'import { formatTzs, formatNumber } from "@/lib/utils";', 'import { formatTzs, formatNumber, isConfirmKey } from "@/lib/utils";',
+        // RE-ANCHORED 2026-10-24 (FEE-TAX-2026-10 R2c): the confirm imports `fill` too (its stake-share receipt rows).
+        plantIn(BET, 'import { fill, formatTzs, formatNumber } from "@/lib/utils";', 'import { fill, formatTzs, formatNumber, isConfirmKey } from "@/lib/utils";',
           plantIn("src/lib/utils.ts", "export function formatNumber(value: number): string {",
             'export function isConfirmKey(e: KeyboardEvent): boolean { return e.key === "Enter"; }' + NL + "export function formatNumber(value: number): string {"))) },
     { name: "a listener on the page body in the Sell confirm", expect: /^2[.]1 /,
