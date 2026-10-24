@@ -23,17 +23,26 @@ production `qa:live` 360/0, run 40101277556): the rulings entry, this tracker, t
 row and MASWALI-PLAN's S8 hold (gate lines 8 and 9 re-opened). Ali's go-live answers of the same day are recorded in
 COMPLIANCE-DECISIONS (§ "2026-10-24 · The fee & tax change — Ali's go-live answers …"): the release itself turns the new
 law on under his ruling, the second-officer checks go live OFF by his word, his word stands as Finance's TRA
-confirmation, production reads and a six-bet live proof are approved, and he sets the desk himself. R1 is built on
-branch `feetax-r1` and not yet on `main`: the Owner setting "Second-officer checks" (`second-officer-policy.ts`; its card
-on /admin/system, Owner-only to change) over the twelve checks of §4 R1. ⭐ It goes live OFF by Ali's word (his go-live
-answers of 2026-10-24): nothing stored reads OFF — no click after the release; a read that fails reads ON; a stored
-position always wins, so the Owner can turn the checks back ON from the card (audited). And the S8 hold in code —
-`openWeek` refuses a public week that would freeze `jackpot-payout`. Today's money law is in force everywhere.
+confirmation, production reads and a six-bet live proof are approved, and he sets the desk himself.
+✅ R1 — any admin can do any step — is LIVE at `f12eb06cd` (2026-10-24): the Owner setting "Second-officer checks"
+(`second-officer-policy.ts`; its card on /admin/system, English like the console, Owner-only to change) over the twelve
+checks of §4 R1, OFF by Ali's word (nothing stored reads OFF; a read that fails, or a malformed row, reads ON; a stored
+position always wins); the S8 hold in code (`openWeek` refuses a public week that would freeze `jackpot-payout`).
+- Gate on GitHub's runners at `f12eb06cd`: typecheck; `test:all` 726/726; `test:integrity`; `red:second-officer-switch`
+  and `red:maswali-engine` (their anchors moved); build; `qa:first-load` 10 routes; the house-bot bundle; the browser
+  gates (`qa:live`, responsive, motion, revoked-deadend, admin-section-gate); `e2e:money`, `e2e:fault` and `e2e:card`
+  (100/0), each on its own fresh scratch PostgreSQL.
+- The admin drives with Millionea ACTIVE: `qa:maswali-admin-drive` 119/0 (the card read, turned on, refused, turned off,
+  attested) and `qa:maswali-objection-console` 71/0. `qa:purge-ceremony` fails the same way on `main` (`82c16ec20`): its
+  admin session is sent to sign-in. That is pre-existing and not R1's; the purge's checks are held by `test:chain-purge`
+  and `test:second-officer-switch`.
+- Read back: `?dpl=f12eb06cd` on the three hosts after 533 s; `qa:chunks-prod` on both origins; production `qa:live`
+  358/0.
+- The operator guide's PDF has been regenerated (B3: any officer attests while the checks are off) and read page by page.
+Today's money law is still in force everywhere; the fee change is not switched on.
 
-**Next:** the lead runs R1's gates on GitHub's runners — `predeploy` (now with `test:second-officer-switch` and
-`test:maswali-open-lock`), `test:all`, the PostgreSQL suites (`test:maswali-engine`, `test:maswali-objections` among them)
-and `red:second-officer-switch` — re-pins `test:house-bot-disclosure` §5.1 for the dictionary, merges and pushes R1, and
-reads it back: the card on /admin/system says the checks are OFF by the Owner's ruling. Then R2.
+**Next:** R2 — the `stake-share` engine (lane a, reviewed twice, its fixes in hand), settlement and ledger (lane b) and
+the projections, screens and admin card (lane c): merge them, run the gate, push gated-off, read back. Then R3.
 
 **Blocked on Ali:** nothing for R0–R5 (he delegated every remaining decision on 2026-10-24: "keep going until all
 perfectly done and pushed live … you take decisions based on what is better for the platform"). Before the switch, on
@@ -51,7 +60,7 @@ tracker is its copy and supersedes it.
 | Release | What | Status | Note |
 |---|---|---|---|
 | R0 | The records: rulings, this tracker, the RULES row, the board row, the S8 hold | ✅ | `82c16ec20`, live and read back 2026-10-24 (docs only) |
-| R1 | Any admin can do any step + the Millionea open lock | 🔨 | built on branch `feetax-r1`, awaiting the runner gates and the push: the Owner setting and its /admin/system card, live OFF by Ali's word (nothing stored = OFF; a failed read = ON; a stored position wins); the twelve checks gated (check 11 frees an officer's own payout hold on a market they hold no money in — a case on their own stake stays refused, ruling 6b); the bulk-resolve staged-row words follow the two-officer switch; the S8 hold in `openWeek`; `test:second-officer-switch`, `test:maswali-open-lock`, `red:second-officer-switch` |
+| R1 | Any admin can do any step + the Millionea open lock | ✅ | `f12eb06cd`, live and read back 2026-10-24: the Owner setting and its /admin/system card, live OFF by Ali's word (nothing stored = OFF; a failed read = ON; a stored position wins); the twelve checks gated (check 11 frees an officer's own payout hold on a market they hold no money in — a case on their own stake stays refused, ruling 6b); the bulk-resolve staged-row words follow the two-officer switch; the S8 hold in `openWeek`; `test:second-officer-switch`, `test:maswali-open-lock`, `red:second-officer-switch` |
 | R2 | Fee engine, settlement, ledger, safe config — gated off | ⬜ | |
 | R3 | Reports and money around settlement (polls + Up & Down) | ⬜ | |
 | R4 | Millionea `ticket-share` — engine, money, records, reports, figures — gated off | ⬜ | |

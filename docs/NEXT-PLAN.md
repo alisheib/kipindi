@@ -199,7 +199,7 @@ pages are cretaed we tlel them impelemtn on any new pages rth ephosphor plan"*.
 | **Next** | Read it from the tracker's §0, never from this cell |
 | **Rule** | Every session rewrites the tracker's §0 and ticks §1 in its own commit, and **updates this row's count in the same commit** — `npm run test:phosphor-plan` asserts the two agree |
 
-## ▶ 0k · FEE & TAX CHANGE — 13% of every stake, a 15% winnings tax, Millionea's fee on the ticket, any admin at any step — `FEE-TAX-2026-10` · 🔨 **R0 LIVE `82c16ec20` · R1 (any admin at any step) next · decided, NOT in force until the switch** · 1/6 releases ✅
+## ▶ 0k · FEE & TAX CHANGE — 13% of every stake, a 15% winnings tax, Millionea's fee on the ticket, any admin at any step — `FEE-TAX-2026-10` · 🔨 **R0 LIVE `82c16ec20` · R1 (any admin at any step) LIVE `f12eb06cd` · R2 next · the fee change decided, NOT in force until the switch** · 2/6 releases ✅
 
 Ali, 2026-10-24, sharing the *"Peer-to-Peer Prediction Pool — Business & Revenue Model Plan"* and the Millionea sheet:
 *"the plan today is completely financial … how taxation would change in 50pick … add the right fields at the level of
