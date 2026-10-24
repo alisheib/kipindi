@@ -776,6 +776,37 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
     !keepsStoredMarkerOnly("positions.set(p.id, prev ? { ...p, houseBotId: prev.houseBotId ?? p.houseBotId ?? null } : p);"));
 }
 
+/* ═══ §9b · a stake-share position's own fee and withheld tax (FEE-TAX-2026-10, R2 lane b) ═══════════════════════════
+ * ⭐ THE OPPOSITE RULE TO §9, AND THAT IS THE POINT. The house marker is create-only; these two are written by the
+ * SETTLEMENT write, which is an UPDATE of the row the bet created — so a Prisma twin that wrote them in `create` only would
+ * persist nothing on Postgres while every memory suite (full-row replace) stayed green. Both arms must write them, the read
+ * mapper must take them FROM the row (never a default 0 — NULL means "no stake-share settlement wrote this"), and the
+ * schema and the migration must agree that they are nullable integers with no default. */
+{
+  const posKeys = storedKeys("StoredPosition", marketSvcSrc);
+  const read = region(marketDalSrc, "function toStoredPosition(");
+  const setBody = region(region(marketDalSrc, "const prismaPositions"), "async set(p, tx) {");
+  const createAt = setBody.indexOf("create: {");
+  const updateAt = setBody.indexOf("update: {");
+  const createArm = createAt >= 0 && updateAt > createAt ? setBody.slice(createAt, updateAt) : "";
+  const updateArm = region(setBody, "update: {");
+  const mig = readFileSync(join(ROOT, "prisma/migrations/20261024120100_position_fee_tax/migration.sql"), "utf8").replace(/--[^\n]*/g, "");
+  ok("9b.0 · both upsert arms and the read mapper resolve", createArm.length > 100 && updateArm.length > 100 && read.length > 100);
+  for (const k of ["feeTzs", "winningsTaxTzs"]) {
+    ok(`9b.type · StoredPosition declares "${k}"`, posKeys.includes(k));
+    ok(`9b.read · toStoredPosition reads "${k}" from the row, NULL when the column is NULL`,
+      readsFrom(read, k, "r") && new RegExp(`${k}:\\s*r\\.${k}\\s*!=\\s*null\\s*\\?[^:]*:\\s*null`).test(read));
+    ok(`9b.create · positions.set's create arm writes "${k}"`, writesKey(createArm, k) && new RegExp(`\\bp\\.${k}\\b`).test(createArm));
+    ok(`9b.update · ⭐ positions.set's UPDATE arm writes "${k}" — the settlement write is an update`, writesKey(updateArm, k) && new RegExp(`\\bp\\.${k}\\b`).test(updateArm));
+    ok(`9b.schema · Position declares ${k} Int? with no @default`, new RegExp(`^\\s*${k}\\s+Int\\?\\s*$`, "m").test(schemaModel(prismaSchemaSrc, "Position")));
+    ok(`9b.migration · 20261024120100 adds "${k}" as a nullable INTEGER, re-runnably`,
+      new RegExp(`ADD COLUMN IF NOT EXISTS "${k}" INTEGER;`).test(mig));
+  }
+  ok("9b.c1 · CONTROL · an update arm without the field is caught", !writesKey("update: {\n  status: p.status,\n}", "feeTzs"));
+  ok("9b.c2 · CONTROL · a read mapper that defaults the field to 0 is caught",
+    !new RegExp(`feeTzs:\\s*r\\.feeTzs\\s*!=\\s*null\\s*\\?[^:]*:\\s*null`).test("    feeTzs: r.feeTzs ?? 0,"));
+}
+
 /* ═══ §10 · the market reopen stamp (house bots, N1 §2) + short titles and competition (Vodacom plan S2) + the position-card projection (S6 WP8) ═══ */
 {
   const mKeys = storedKeys("StoredMarket", marketSvcSrc);

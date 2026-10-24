@@ -214,6 +214,10 @@ function toStoredPosition(r: any): StoredPosition {
     idempotencyKey: r.idempotencyKey ?? null,
     houseBotId: r.houseBotId ?? null,
     origin: r.origin ?? null,
+    // ⭐ FEE-TAX-2026-10 · stake-share only, NULL on every other row (`StoredPosition.feeTzs` / `.winningsTaxTzs`). Read
+    // from the row, never defaulted to 0: NULL means "no stake-share settlement wrote this", 0 is a figure.
+    feeTzs: r.feeTzs != null ? num(r.feeTzs) : null,
+    winningsTaxTzs: r.winningsTaxTzs != null ? num(r.winningsTaxTzs) : null,
   };
 }
 
@@ -865,6 +869,8 @@ const memoryPositions: PositionStore = {
     // ⛔ The house marker is create-only, exactly as the Prisma update arm: once a row exists, a
     // full-row write never changes its marker, in either direction. The commit-7 remark uses its
     // own statement, never set.
+    // ⭐ The stake-share `feeTzs` / `winningsTaxTzs` (FEE-TAX-2026-10) ride this full-row replace exactly as both Prisma
+    // arms write them: the settlement write carries the figures, every other write carries what the row already held.
     const prev = positions.get(p.id);
     positions.set(p.id, prev ? { ...p, houseBotId: prev.houseBotId ?? null, origin: prev.origin ?? null } : { ...p, origin: p.origin ?? null });
   },
@@ -1483,6 +1489,8 @@ const prismaPositions: PositionStore = {
         idempotencyKey: p.idempotencyKey ?? null,
         houseBotId: p.houseBotId ?? null,
         origin: p.origin ?? null,
+        feeTzs: p.feeTzs ?? null,
+        winningsTaxTzs: p.winningsTaxTzs ?? null,
       },
       // Mirror the full mutable field set so this DAL matches the in-memory
       // store's full-replace semantics (positions.set(p.id, p)). Previously only
@@ -1493,6 +1501,11 @@ const prismaPositions: PositionStore = {
       // create-only: settlement and cash-out rewrite positions from copies, and a copy read
       // before the column existed would otherwise un-mark house money. The one sanctioned
       // rewrite is the remark script in build commit 7, through its own statement.
+      //
+      // ⭐ THE TWO STAKE-SHARE FIGURES ARE IN THIS ARM ON PURPOSE (FEE-TAX-2026-10): `settleMarket` writes them on the
+      // WIN / LOSS write, which is an UPDATE of a row the bet created — written only in `create` they would never persist.
+      // The service rewrites a position only from a copy a store read (which carries them, NULL or the figure), and only
+      // while it is OPEN — nothing rewrites a settled position — so the full-row mirror cannot clear a recorded figure.
       update: {
         userId: p.userId, marketId: p.marketId,
         side: p.side, stake: p.stake, bonusStakeTzs: p.bonusStakeTzs ?? 0,
@@ -1501,6 +1514,8 @@ const prismaPositions: PositionStore = {
         placedAt: new Date(p.placedAt),
         settledAt: p.settledAt ? new Date(p.settledAt) : null,
         idempotencyKey: p.idempotencyKey ?? null,
+        feeTzs: p.feeTzs ?? null,
+        winningsTaxTzs: p.winningsTaxTzs ?? null,
       },
     });
   },

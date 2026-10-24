@@ -414,6 +414,19 @@ export type StoredPosition = {
   houseBotId?: string | null;
   /** S9 verified manual deposit-return attribution. Null/absent on legacy/direct/house bets; create-only. */
   origin?: string | null;
+  /**
+   * ⭐ STAKE-SHARE ONLY (FEE-TAX-2026-10, `docs/FEE-TAX-PLAN.md` §3) — this stake's own fee: its largest-remainder share
+   * of ITS SIDE's fee, from the one split settlement pays by (`stakeShareSplit`). Written by `settleMarket` on the WIN or
+   * LOSS write, in the same transaction as the money; NULL/absent on every other row — every older model, every refund,
+   * and every row settled before the column existed. ⛔ Never re-derived from a rate by a reader: it is the record.
+   */
+  feeTzs?: number | null;
+  /**
+   * ⭐ STAKE-SHARE ONLY — the winnings tax withheld from this position's prize for TRA (`stakeShareSplit`'s `tax_i`, the
+   * same figure as its `BET_PAYOUT.taxWithheld` and its `SETTLEMENT_WINNINGS_TAX` ledger line); 0 on a stake-share loser,
+   * which won nothing. NULL/absent on every other row. `finalPayout` stays the NET credited.
+   */
+  winningsTaxTzs?: number | null;
 };
 
 
