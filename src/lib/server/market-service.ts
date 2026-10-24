@@ -43,7 +43,8 @@ import { normaliseShortTitleSet, messageTitle, messageTitles } from "@/lib/marke
 // ACTIVE for everyone — the S15 flip — and the full title until then, and on any failure (`message-titles.ts`).
 import { shortTitlesInMessagesNow } from "./message-titles";
 import { normaliseCompetition } from "@/lib/markets/competitions";
-import { payoutFor, settledPayoutFor, allocateWinnerPayouts, allocateFeeShares, winnersForAllocation, poolFee, levySplit, leanFor, resolveFeeModel, THIN_SMALLER_SIDE_SHARE, type FeeSnapshot } from "@/lib/payout";
+// FEE-TAX-2026-10 · R2b: `stakeShareSplit` is the one stake-share split settlement and the close-time disclosure pay by.
+import { payoutFor, settledPayoutFor, allocateWinnerPayouts, allocateFeeShares, winnersForAllocation, poolFee, levySplit, leanFor, resolveFeeModel, stakeShareSplit, rateBp, THIN_SMALLER_SIDE_SHARE, type FeeBreakdown, type FeeSnapshot, type StakeShareSplit } from "@/lib/payout";
 import type { FailureReason } from "@/lib/failure-reasons";
 import { exitWindowFacts } from "@/lib/exit-window";
 // House bots (build commit 2): the H0–H4 gates the bet path calls for a house stake, and the house
@@ -445,6 +446,19 @@ export function impliedYesPct(m: Pick<StoredMarket, "yesPool" | "noPool">): numb
  * Prices against the POLL'S OWN frozen rates when the poll exists. A projection
  * that used live config while settlement used something else is precisely how the
  * dial ended up quoting a number we did not pay.
+ *
+ * ⭐ UNDER `stake-share` IT CANNOT THROW FOR ANY MARKET THE STAMP COULD CREATE (FEE-TAX-2026-10, R2b's verification of
+ * the bet path, where this runs INSIDE the market lock — `buyPositionInner` — and a throw would be a 500, not a refusal).
+ * `payoutFor` routes the model to R2a's own projection (`settledPayoutFor` → its stake-share arm), and every refusal that
+ * arm has is unreachable from a real bet:
+ *   · the first bet onto an EMPTY other side is the one-sided mirror — the stake itself, never 87% of it;
+ *   · the net-stake bound it asserts is proven (stake − rhu(stake) − 1, `payout.ts`) for every pool;
+ *   · the pools are whole shillings — every stake is checked `Number.isInteger` before either lock, and an exit or a
+ *     refund removes whole stakes;
+ *   · the rates are complete — `snapshotFromConfig` refuses to stamp a stake-share market without its winnings tax.
+ * A hand-edited snapshot is the one way left to make it throw, and refusing a bet on a market nobody could price or
+ * settle is the safe direction (the legacy refusal of an unknown model is the same). It is a PROJECTION — the figure the
+ * receipt quotes; the close-time disclosure (`closeTimePayouts`) and settlement pay the split, to the shilling.
  */
 export async function projectedPayout(
   m: Pick<StoredMarket, "yesPool" | "noPool"> & { id?: string; feeSnapshot?: FeeSnapshot | null },
@@ -457,6 +471,210 @@ export async function projectedPayout(
     ? ratesFor({ feeSnapshot: m.feeSnapshot ?? null })
     : await getEffectiveConfig(m.id);
   return payoutFor({ yesPool: m.yesPool, noPool: m.noPool, side, stake }, rates).payout;
+}
+
+/**
+ * ⛔ A FEE MODEL THE CODE DOES NOT KNOW IS A COMPILE ERROR AT EVERY EXHAUSTIVE SWITCH BELOW, AND A THROW AT RUN TIME
+ * (FEE-TAX-2026-10). Settlement's arithmetic, its tamper-evident record and the close-time disclosure each NAME every model
+ * (`switch` over `FeeModel`, ending here); a fifth model fails to compile until each says what it does under it — the
+ * defect class `test:fee-model-census` was written for, where a new model fell silently into another model's arm.
+ */
+function assertNeverFeeModel(model: never, where: string): never {
+  throw new Error(`[fee-model] unhandled fee model ${JSON.stringify(model)} at ${where} — refused, never coerced`);
+}
+
+/**
+ * ⭐ THE TWO SETS A STAKE-SHARE SPLIT IS FED (FEE-TAX-2026-10) — a RULE, so it is a function, for the reason
+ * `winnersForAllocation` is one: on 2026-08-24 a winner set built inline by a `side` filter counted a CASHED_OUT stake
+ * that had already left the pool, and thirteen winners were short-paid in silence (E-200).
+ *   · winners — `winnersForAllocation`: the winning side, WIN + OPEN. A resumed settlement sees the rows an earlier pass
+ *     paid, so the deterministic split reproduces every shilling of every share.
+ *   · losers  — the losing side's positions whose stake is STILL IN the pool: OPEN (about to be marked LOSS) and LOSS
+ *     (marked on an earlier pass). ⛔ Never CASHED_OUT (the stake left at the exit) or VOID (refunded).
+ * ⛔ ALLOWLIST, NOT DENYLIST, for `ALLOCATABLE_WINNER_STATUSES`' reason: a status added later is excluded until it is
+ * proven to belong — and then the sets no longer make the pools, so `stakeShareSplit` REFUSES, loudly, rather than pay.
+ * Exported so `test:payout-alloc` drives the real decision.
+ */
+export const STAKE_SHARE_LOSER_STATUSES: readonly string[] = ["LOSS", "OPEN"];
+
+export function stakeShareParties<T extends { side: Side; status: string }>(positions: readonly T[], outcome: Side): { winners: T[]; losers: T[] } {
+  return {
+    winners: winnersForAllocation(positions, outcome),
+    losers: positions.filter((p) => p.side !== outcome && STAKE_SHARE_LOSER_STATUSES.includes(p.status)),
+  };
+}
+
+/** The stake-share split of a market's own positions for ONE outcome. Throws on every set that does not make the pools. */
+function stakeShareSplitFor(
+  pools: Pick<StoredMarket, "yesPool" | "noPool">,
+  positions: ReadonlyArray<Pick<StoredPosition, "id" | "side" | "status" | "stake">>,
+  outcome: Side,
+  rates: FeeSnapshot,
+): StakeShareSplit {
+  const { winners, losers } = stakeShareParties(positions, outcome);
+  return stakeShareSplit({
+    yesPool: pools.yesPool, noPool: pools.noPool, outcome,
+    winners: winners.map((p) => ({ id: p.id, stake: p.stake })),
+    losers: losers.map((p) => ({ id: p.id, stake: p.stake })),
+  }, rates);
+}
+
+/**
+ * ⭐ WHAT EVERY BETTOR IS TOLD WHEN BETTING CLOSES — "if your side wins you receive X", per OPEN position — and Terms §4
+ * promises it is the EXACT amount. So it comes out of the arithmetic SETTLEMENT PAYS BY, model by model:
+ *   · `stake-share` (FEE-TAX-2026-10): `stakeShareSplit` once per hypothetical outcome, over the market's own positions,
+ *     each OPEN position disclosed its `perWinner` payout in the outcome where its side wins. At close every live stake is
+ *     OPEN, selling has shut (`exitClosesAtMs`) and no bet is accepted, so these ARE the sets `settleMarket` will feed the
+ *     same deterministic split (`stakeShareParties`): disclosed = paid, to the shilling.
+ *     ⛔ NOT `settledPayoutFor`. Its stake-share arm is the one-position PROJECTION, which rounds once where the split
+ *     rounds per winner: on YES 1,005 / 1,337 / 999 against NO 500 / 500 / 1,337 it discloses 1,394 / 1,855 / 1,386 where
+ *     settlement pays 1,395 / 1,854 / 1,386 (the independent review of R2a). ONE SIDE EMPTY → the stake itself: settlement
+ *     refunds every stake in full at no fee (ruling 2), and the split refuses a one-sided market.
+ *   · `loser-share` / `capped-commission`: `settledPayoutFor`, exactly as this disclosure has always computed it.
+ *   · `jackpot-payout`: refused — a Millionea week has its own notices and never reaches a poll's close.
+ * ⛔ It never guesses: a position set that does not make the pools, or rates the arithmetic refuses, THROWS — a figure
+ * nobody can stand behind is not disclosed, and the caller turns the throw into an alert (`notifySelectionClosedForMarket`).
+ * Pure — no store, no clock — so `test:selection-closed` holds it against settlement directly.
+ */
+export function closeTimePayouts(
+  pools: Pick<StoredMarket, "yesPool" | "noPool">,
+  positions: ReadonlyArray<Pick<StoredPosition, "id" | "side" | "status" | "stake">>,
+  rates: FeeSnapshot,
+): Map<string, number> {
+  const open = positions.filter((p) => p.status === "OPEN");
+  const out = new Map<string, number>();
+  switch (rates.feeModel) {
+    case "stake-share": {
+      if (pools.yesPool === 0 || pools.noPool === 0) {
+        for (const p of open) out.set(p.id, p.stake);
+        return out;
+      }
+      for (const outcome of ["YES", "NO"] as const) {
+        const split = stakeShareSplitFor(pools, positions, outcome, rates);
+        for (const p of open) {
+          if (p.side !== outcome) continue;
+          const part = split.perWinner.get(p.id);
+          if (!part) throw new Error(`closeTimePayouts: the stake-share split names no payout for OPEN position ${p.id} if ${outcome} wins`);
+          out.set(p.id, part.payout);
+        }
+      }
+      return out;
+    }
+    case "loser-share":
+    case "capped-commission":
+      for (const p of open) {
+        out.set(p.id, settledPayoutFor({ yesPool: pools.yesPool, noPool: pools.noPool, side: p.side, stake: p.stake }, rates).payout);
+      }
+      return out;
+    case "jackpot-payout":
+      throw new Error("closeTimePayouts: a Millionea week is never disclosed through a poll's close — its notices are its own");
+    default:
+      return assertNeverFeeModel(rates.feeModel, "closeTimePayouts");
+  }
+}
+
+/**
+ * THE MARKET'S FEE AS SETTLEMENT BOOKS AND RECORDS IT — `poolFee` on the frozen rates, byte for byte, for every older model.
+ * ⭐ A STAKE-SHARE VOID IS THE REFUND SHAPE, FEE 0, PRICED BY NO RATE (FEE-TAX-2026-10; the independent review of R2a).
+ * With no winning side `poolFee` answers the fee known BEFORE an outcome — F, 13% of every stake — and a VOID charges none
+ * of it (ruling 2: every stake refunded in full). Booked or recorded as F, the tamper-evident `market.resolved` row of a
+ * void would state a fee and levies nobody was charged. A refund needs no rate, so none is read: the shape is built here,
+ * and a void of a market whose snapshot lacks its tax still refunds (the one-sided refund never reaches this at all).
+ * ⛔ The capped-commission VOID keeps the figure it has always recorded — history is not re-described in a release that
+ * changes no older law; `chargedFee` is how every reader reads any void as charged nothing.
+ */
+function settlementFee(m: Pick<StoredMarket, "yesPool" | "noPool">, rates: FeeSnapshot, winningSide: Side | undefined): FeeBreakdown {
+  if (rates.feeModel === "stake-share" && winningSide === undefined) {
+    const yes = Math.max(0, m.yesPool), no = Math.max(0, m.noPool);
+    return { pool: yes + no, smaller: Math.min(yes, no), larger: Math.max(yes, no), commission: 0, ceiling: 0, fee: 0, netPool: yes + no, capped: false, shareOfLosers: 0 };
+  }
+  return poolFee(m.yesPool, m.noPool, rates, winningSide);
+}
+
+/**
+ * ⭐ THE STAKE-SHARE SETTLEMENT SPLIT (FEE-TAX-2026-10) — `stakeShareSplit` once, over the market's own positions
+ * (`stakeShareParties`: winners WIN + OPEN, losers LOSS + OPEN), and then CROSS-CHECKED against the fee `poolFee` priced the
+ * market at: F, T and netPool must be the same three numbers, because both are `stakeShareTotals`. They cannot differ
+ * today; if an edit ever makes them, the levies (priced on `settleFee.fee`) and the payouts (from the split) would describe
+ * two laws, so the settlement refuses instead. The split itself refuses every set that does not make the pools (E-200),
+ * and asserts Σ payout + T + F = pool and every payout ≥ its net stake.
+ */
+function stakeShareSettlementSplit(
+  m: Pick<StoredMarket, "id" | "yesPool" | "noPool">,
+  positions: ReadonlyArray<Pick<StoredPosition, "id" | "side" | "status" | "stake">>,
+  outcome: Side,
+  rates: FeeSnapshot,
+  settleFee: FeeBreakdown,
+): StakeShareSplit {
+  const split = stakeShareSplitFor(m, positions, outcome, rates);
+  if (split.fee !== settleFee.fee || split.winningsTax !== settleFee.winningsTax || split.netPool !== settleFee.netPool) {
+    throw new Error(
+      `settle ${m.id}: the stake-share split (fee ${split.fee}, tax ${split.winningsTax}, netPool ${split.netPool}) disagrees with ` +
+      `the fee the market was priced at (${settleFee.fee}, ${settleFee.winningsTax}, ${settleFee.netPool}) — refusing to settle`,
+    );
+  }
+  return split;
+}
+
+/**
+ * The two older models' winner payouts — `allocateWinnerPayouts` over `settleFee.netPool`, byte for byte as they have
+ * always been paid (the stake floor asserted per winner inside it).
+ * ⛔ IT REFUSES A STAKE-SHARE MARKET, on its own, whatever the caller's switch did (the independent review of R2a). Fed a
+ * stake-share `poolFee` it would pay out of the new netPool by the STAKE floor — throwing on any lopsided book, so the
+ * market could never settle — and leave the winnings tax in POOL in silence. So if the stake-share arm is ever skipped,
+ * settlement throws here rather than pay a stake-share market by the older law.
+ */
+function legacyWinnerPayouts(
+  winners: ReadonlyArray<Pick<StoredPosition, "id" | "stake">>,
+  winningPool: number,
+  settleFee: FeeBreakdown,
+  rates: FeeSnapshot,
+): Map<string, number> {
+  if (resolveFeeModel(rates) === "stake-share") {
+    throw new Error("settle: a stake-share market reached the older models' allocator — refused; it settles by its split or not at all");
+  }
+  return allocateWinnerPayouts(winners.map((wp) => ({ id: wp.id, stake: wp.stake })), winningPool, settleFee.netPool);
+}
+
+/**
+ * THE FEE ARITHMETIC THE `market.resolved` ROW RECORDS — per model, by an exhaustive switch (FEE-TAX-2026-10).
+ * 🔴 It was a two-way ternary that labelled every model it did not name "whole-pool-capped-fee" with capped rates, so a
+ * stake-share market — or a Millionea week, had one ever reached it — would have been recorded under a law it never froze,
+ * in the one record that is append-only and HMAC-chained for seven years. Now:
+ *   · loser-share / capped-commission — exactly the label and rates they have always recorded;
+ *   · stake-share — its rates, and in `stakeShare` every figure of the split it settled by: f and t in the whole basis
+ *     points the arithmetic charges (`feeBp`, `winningsTaxBp`), F, F_YES, F_NO, P (the prize fund), T (the winnings tax)
+ *     and netPool, so a dispute can be recomputed from the row alone; on a VOID, `refunded: true`, fee 0 and tax 0;
+ *   · jackpot-payout — named as itself (a Millionea week never settles here; its fence refuses it first).
+ * ⛔ It never throws for a refund: the basis points are read defensively (null when a rate is not a finite number), so a
+ * void of a market with a corrupt snapshot still refunds and is still recorded.
+ */
+function settlementFeeRecord(rates: FeeSnapshot, split: StakeShareSplit | null): {
+  payoutModel: string;
+  rates: Record<string, unknown>;
+  stakeShare?: Record<string, unknown>;
+} {
+  switch (rates.feeModel) {
+    case "loser-share":
+      return { payoutModel: "whole-pool-loser-share", rates: { feeModel: "loser-share", platformFeeRate: rates.platformFeeRate, operatorFeeRate: rates.operatorFeeRate } };
+    case "capped-commission":
+      return { payoutModel: "whole-pool-capped-fee", rates: { feeModel: "capped-commission", commissionRate: rates.commissionRate, feeCeilingRate: rates.feeCeilingRate } };
+    case "stake-share": {
+      const bp = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? rateBp(v) : null);
+      const charged = { feeBp: bp(rates.platformFeeRate + rates.operatorFeeRate), winningsTaxBp: bp(rates.winningsTaxRate) };
+      return {
+        payoutModel: "whole-pool-stake-share",
+        rates: { feeModel: "stake-share", platformFeeRate: rates.platformFeeRate, operatorFeeRate: rates.operatorFeeRate, winningsTaxRate: rates.winningsTaxRate ?? null },
+        stakeShare: split
+          ? { ...charged, refunded: false, fee: split.fee, feeYes: split.feeYes, feeNo: split.feeNo, prizeFund: split.prizeFund, winningsTax: split.winningsTax, netPool: split.netPool }
+          : { ...charged, refunded: true, fee: 0, winningsTax: 0 },
+      };
+    }
+    case "jackpot-payout":
+      return { payoutModel: "jackpot-payout", rates: { feeModel: "jackpot-payout", jackpotFeeRate: rates.jackpotFeeRate ?? null } };
+    default:
+      return assertNeverFeeModel(rates.feeModel, "settlementFeeRecord");
+  }
 }
 
 /** A "Demo · " market is a synthetic training fixture. Per tester feedback
@@ -2351,54 +2569,89 @@ async function resolveDemoMarketOne(id: string): Promise<boolean> {
  * instances can never double-notify. Demo markets are excluded — they auto-resolve
  * the instant they expire, so "waiting for results" would be immediately
  * contradicted by the win/loss receipt.
+ *
+ * ⭐ ONE SCOPE, AND NOTHING WRITTEN UNTIL EVERY FIGURE IS IN HAND (FEE-TAX-2026-10, R2b). Under the market lock: the
+ * cutoff checked, the frozen pools and the positions read on the lock's own transaction, every "if you win" figure
+ * computed (`closeTimePayouts` — the arithmetic settlement pays by), then every `potentialPayout` and the stamp
+ * written, together. 🔴 It used to stamp FIRST and compute AFTER the lock, through a function that can throw: a throw
+ * then lost the notice for good (the stamp is what stops a re-fire) and left `potentialPayout` written on some
+ * positions and not others. On Postgres the figures and the stamp now commit or roll back as one; in memory the figures
+ * are all computed before the first write, so a refusal writes nothing.
+ * ⛔ A FIGURE THAT CANNOT BE COMPUTED IS NOT A SILENT LOSS. Nothing is written, a COMPLIANCE alert names the market and
+ * the reason (`market.selection_closed.disclosure_failed`), and the error is re-thrown — so the scheduler BACKS OFF and
+ * retries (`market-scheduler.ts → fireMarket`'s catch) instead of re-firing an unstamped deadline in a tight loop, and a
+ * transient fault heals on the next attempt. A failure that does not heal (a hand-edited snapshot, positions that do
+ * not make the pools) alerts again on every attempt until an officer acts — and the same arithmetic would refuse to
+ * settle the market, so the officer's remedy is the same one: the emergency void refunds every stake in full.
+ * The bell and the email still fire AFTER the lock, from the figures the scope committed.
  */
 export async function notifySelectionClosedForMarket(marketId: string): Promise<{ notified: boolean; bettors: number }> {
   const now = Date.now();
-  // Stamp inside the lock so two concurrent fires can't both notify.
-  const stamped = await withLock(`market:${marketId}`, async () => {
-    const cur = await marketStore.get(marketId);
-    if (!cur || cur.status !== "LIVE" || isDemoMarket(cur) || cur.selectionClosedNotifiedAt) return false;
-    const cutoff = cur.selectionClosedAt ? Date.parse(cur.selectionClosedAt) : Date.parse(cur.resolutionAt);
-    if (!Number.isFinite(cutoff) || cutoff > now) return false;
-    // stamp, not set: a full-row write here would erase the pool increments of any
-    // bet that committed between the read above and this write.
-    await marketStore.stamp(marketId, { selectionClosedNotifiedAt: new Date().toISOString() });
-    return true;
-  });
-  if (!stamped) return { notified: false, bettors: 0 };
-
-  const m = await marketStore.get(marketId);
-  if (!m) return { notified: true, bettors: 0 };
-
-  // ── THE EXACT PAYOUT, DISCLOSED THE MOMENT BETTING CLOSES ──────────────────
-  //
-  // Once selections close the pools are FROZEN. So the payout stops being a
-  // projection and becomes an exact number — arithmetic, not a forecast. We tell
-  // every player precisely what they receive if their side wins, to the shilling.
-  //
-  // It is computed by `settledPayoutFor` — THE FUNCTION THAT ACTUALLY SETTLES —
-  // against the poll's own frozen fee snapshot. Not a re-derivation, not an
-  // estimate, and emphatically not a model: what we tell him here and what we pay
-  // him at settlement come out of the same line of code, so they cannot disagree.
-  // (It also asserts the winner floor, so a poll that could underpay a winner would
-  // throw HERE, at disclosure time, days before any money moves.)
-  //
-  // This does not touch the D3 policy (license review 2026-05), which hides the
-  // payout figure BEFORE a bet is placed. Betting is over; nothing left to influence.
-  const open = (await listPositionsForMarket(m.id)).filter((p) => p.status === "OPEN");
-  const closeFee = poolFee(m.yesPool, m.noPool, ratesFor(m));
-
-  // Persist each position's exact payoutIfWin.
-  const payoutByPosition = new Map<string, number>();
-  for (const p of open) {
-    const { payout } = settledPayoutFor(
-      { yesPool: m.yesPool, noPool: m.noPool, side: p.side, stake: p.stake },
-      ratesFor(m),
-    );
-    payoutByPosition.set(p.id, payout);
-    p.potentialPayout = payout;
-    await positionStore.set(p);
+  // A re-fire on a market already notified (or not a live poll) is answered before any position is read; the lock below
+  // re-checks every condition, so this read only saves work — it decides nothing.
+  const pre = await marketStore.get(marketId);
+  if (!pre || pre.status !== "LIVE" || isDemoMarket(pre) || pre.selectionClosedNotifiedAt) return { notified: false, bettors: 0 };
+  // A disclosure writes every open position inside the lock, so the lock's budget is sized from a read before it, the
+  // way settlement sizes its own (30 s plus 50 ms a position, within the lock module's 30 s – 10 min bounds).
+  const planned = (await positionStore.listForMarket(marketId)).length;
+  const timeoutMs = Math.min(600_000, Math.max(30_000, 30_000 + planned * 50));
+  type Disclosure = { m: StoredMarket; open: StoredPosition[]; payoutByPosition: Map<string, number> };
+  let disclosure: Disclosure | null;
+  try {
+    // Stamp inside the lock so two concurrent fires can't both notify — and only once every figure is written beside it.
+    disclosure = await withLock(`market:${marketId}`, async (lockTx): Promise<Disclosure | null> => {
+      const cur = await marketStore.get(marketId, lockTx);
+      if (!cur || cur.status !== "LIVE" || isDemoMarket(cur) || cur.selectionClosedNotifiedAt) return null;
+      const cutoff = cur.selectionClosedAt ? Date.parse(cur.selectionClosedAt) : Date.parse(cur.resolutionAt);
+      if (!Number.isFinite(cutoff) || cutoff > now) return null;
+      // ── THE EXACT PAYOUT, DISCLOSED THE MOMENT BETTING CLOSES ──────────────────
+      //
+      // Once selections close the pools are FROZEN. So the payout stops being a
+      // projection and becomes an exact number — arithmetic, not a forecast. We tell
+      // every player precisely what they receive if their side wins, to the shilling.
+      //
+      // ⭐ It is computed by `closeTimePayouts` — THE ARITHMETIC SETTLEMENT PAYS BY — against the poll's own frozen fee
+      // snapshot: `stakeShareSplit` per outcome under `stake-share` (FEE-TAX-2026-10), `settledPayoutFor` under the two
+      // older models exactly as before. Not a re-derivation, not an estimate, and emphatically not a model: what we
+      // tell him here and what we pay him at settlement come out of the same arithmetic. (Each model's floor is asserted
+      // there too, so a poll that could underpay a winner would throw HERE, at disclosure time, days before any money
+      // moves — and the throw is now an alert, never a lost notice.)
+      //
+      // This does not touch the D3 policy (license review 2026-05), which hides the
+      // payout figure BEFORE a bet is placed. Betting is over; nothing left to influence.
+      const all = await positionStore.listForMarket(cur.id, lockTx);
+      const payoutByPosition = closeTimePayouts(cur, all, ratesFor(cur));
+      // Persist each position's exact payoutIfWin — every figure is already in hand, so a refusal above wrote nothing.
+      const open = all.filter((p) => p.status === "OPEN");
+      for (const p of open) {
+        p.potentialPayout = payoutByPosition.get(p.id) ?? 0;
+        await positionStore.set(p, lockTx);
+      }
+      // stamp, not set: a full-row write here would erase the pool increments of any
+      // bet that committed between the read above and this write.
+      const stampedAt = new Date().toISOString();
+      await marketStore.stamp(marketId, { selectionClosedNotifiedAt: stampedAt }, lockTx);
+      return { m: { ...cur, selectionClosedNotifiedAt: stampedAt }, open, payoutByPosition };
+    }, { timeoutMs });
+  } catch (err) {
+    // ⛔ THE ALERT — never a silent loss. Nothing above committed (the scope rolled back, or never wrote).
+    audit({
+      category: "COMPLIANCE",
+      action: "market.selection_closed.disclosure_failed",
+      actorId: "system",
+      targetType: "Market",
+      targetId: marketId,
+      payload: {
+        error: String((err as Error)?.message ?? err).slice(0, 500),
+        stamped: false,
+        consequence: "No bettor was told the exact payout and no figure was written; the close stays pending, so the scheduler retries after its back-off. If it does not heal, the same arithmetic will refuse to settle this market: investigate the market's frozen fee snapshot and its positions.",
+      },
+    });
+    throw err;
   }
+  if (!disclosure) return { notified: false, bettors: 0 };
+  const { m, open, payoutByPosition } = disclosure;
+  const closeFee = poolFee(m.yesPool, m.noPool, ratesFor(m));
 
   // A player may hold both YES and NO. Sum what he'd receive per side so the
   // notification tells him the truth about his own book, not one leg of it.
@@ -2453,8 +2706,8 @@ export async function notifySelectionClosedForMarket(marketId: string): Promise<
   // plausible and is wrong is worse than a missing alert.
   //
   // ⭐ THE REPLACEMENT USES WHAT THE MONEY PATH ALREADY COMPUTED. `payoutByPosition` was
-  // built above by `settledPayoutFor` — the function that actually settles — and it IS
-  // told the side, so it is model-correct under both. The worst ratio any real position
+  // built above by `closeTimePayouts` — the arithmetic that actually settles, per model — and it IS
+  // told the side, so it is model-correct under every model. The worst ratio any real position
   // faces is therefore an exact figure about real money, not a re-derivation.
   //
   //   oneSided       nobody to lose to: every stake refunded, we earn nothing
@@ -2480,6 +2733,17 @@ export async function notifySelectionClosedForMarket(marketId: string): Promise<
   // models, where `leanFor` never answers `below` for a winner.
   const thinUpside = ratios.length > 0 && leanFor(worstWinnerRatio, rates.thinProfitRatio) !== "fair";
   const lopsidedBook = !oneSided && smallerShare < THIN_SMALLER_SIDE_SHARE;
+  // ⭐ THE WORDS ARE MODEL-AWARE (FEE-TAX-2026-10; the independent review of R2a). "Winners are protected (never below
+  // stake)" is the floor of the two older models and FALSE under `stake-share`, where the fee comes out of every stake: a
+  // winner on the big side of a lopsided book IS paid back less than they staked (ruling 1), and the floor is the NET stake.
+  // An officer reading this row must be told THAT, not the older law's comfort. The older models' sentence is unchanged.
+  const stakeShareClose = rates.feeModel === "stake-share";
+  const belowStake = stakeShareClose && ratios.length > 0 && worstWinnerRatio < 1;
+  const thinReason = !stakeShareClose
+    ? "THIN UPSIDE — a real position would be paid under the thin-profit ratio if its side wins. Winners are protected (never below stake) but there is little in it for them."
+    : belowStake
+      ? "BELOW STAKE — this market is frozen under stake-share (a fee on every stake): a winner on the big side would be paid back LESS than their stake if their side wins. The floor is the net stake (the stake less its fee); players were warned before they bet."
+      : "THIN UPSIDE — a real position would be paid under the thin-profit ratio if its side wins. Under stake-share a winner is protected only down to the net stake (the stake less its fee), and there is little in it for them.";
   if (oneSided || thinUpside || lopsidedBook) {
     audit({
       category: "ADMIN",
@@ -2498,11 +2762,13 @@ export async function notifySelectionClosedForMarket(marketId: string): Promise<
         feeIfNoWins: Math.round(feeIfNo.fee),
         worstWinnerRatio: +worstWinnerRatio.toFixed(4),
         thinProfitRatio: rates.thinProfitRatio,
-        triggers: { oneSided, thinUpside, lopsidedBook },
+        // stake-share only: the tax each outcome would withhold for TRA, beside its fee — never folded into the fee.
+        ...(stakeShareClose ? { winningsTaxIfYesWins: feeIfYes.winningsTax ?? 0, winningsTaxIfNoWins: feeIfNo.winningsTax ?? 0 } : {}),
+        triggers: { oneSided, thinUpside, lopsidedBook, ...(stakeShareClose ? { belowStake } : {}) },
         reason: oneSided
           ? "ONE-SIDED — no opposing pool. Stakes still held are due full return when settlement commits; earlier cash-outs keep their paid amount. The remaining pool incurs no settlement fee."
           : thinUpside
-            ? "THIN UPSIDE — a real position would be paid under the thin-profit ratio if its side wins. Winners are protected (never below stake) but there is little in it for them."
+            ? thinReason
             : "LOPSIDED BOOK — the smaller side is a small fraction of the pool. Winners on the big side share a thin losing pool.",
       },
     });
@@ -4139,34 +4405,10 @@ export async function settleMarket(
   const settleCfg = ratesFor(m);
   const grossPool = m.yesPool + m.noPool;
   const winningPool = opts.outcome === "YES" ? m.yesPool : opts.outcome === "NO" ? m.noPool : 0;
-
-  // THE FEE, from the two pool numbers and the poll's FROZEN rates.
-  //  - capped-commission (legacy polls): outcome-neutral — byte-identical for a YES
-  //    or NO win on the same pools (F6 §3.1). The `winningSide` arg is ignored.
-  //  - loser-share (new polls, owner decision 2026-07-23): the fee is a slice of the
-  //    LOSING pool, so it DOES depend on the outcome — we pass the declared winner so
-  //    `poolFee` charges the correct (losing) side. VOID never reaches the fee.
-  const winningSide: Side | undefined = opts.outcome === "YES" || opts.outcome === "NO" ? opts.outcome : undefined;
-  // MASWALI-BUILD S3 · a Millionea week reaches here only on its VOID arm (refused above otherwise), and a void charges
-  // no fee: its pool is never priced as a poll's — `poolFee` refuses the jackpot model, loudly, and must stay that way.
-  const settleFee: ReturnType<typeof poolFee> = switchLine(m.productLine, {
-    MARKET: () => poolFee(m.yesPool, m.noPool, settleCfg, winningSide),
-    UPDOWN: () => poolFee(m.yesPool, m.noPool, settleCfg, winningSide),
-    MASWALI: () => ({ pool: grossPool, smaller: 0, larger: grossPool, commission: 0, ceiling: 0, fee: 0, netPool: grossPool, capped: false, shareOfLosers: 0 }),
-  });
-  /**
-   * 🔴 THE LEVIES, SPLIT ONCE — and it is the NET that referral commission is priced on.
-   *
-   * TRA (10%) and GBT (5%) come out of OUR fee before we keep a shilling of it
-   * (`RULES.md` §2.2, `payout.ts` → `levySplit`). Commission used to be computed against
-   * `settleFee.fee`, the GROSS — sharing out roughly 15% of money the state already owned.
-   * `operatorNet` is what the house actually retains, and it is computed HERE, once, so the
-   * audit payload below and the accrual loop read the same number: two `levySplit` calls over
-   * one fee is how the chain and the payout drift apart.
-   * ⚠️ `settleCfg` is the market's FROZEN snapshot (`ratesFor(m)`), so a later levy change
-   * cannot retro-price an old poll's commission — the same guarantee the fee itself has.
-   */
-  const settleLevies = levySplit(settleFee.fee, settleCfg);
+  // ⭐ THE FEE IS PRICED BELOW THE ONE-SIDED REFUND, NOT HERE (FEE-TAX-2026-10; the independent review of R2a): a refund
+  // needs no rate. Priced here, a one-sided `stake-share` market whose snapshot lacked its tax would THROW before it
+  // refunded a shilling — `poolFee` reads a stake-share rate set completely or not at all — and its players' stakes would
+  // stay in the pool behind a market that can never settle. See "THE FEE" after the one-sided branch.
 
   // Settle only OPEN positions. A CASHED_OUT (or otherwise already-settled)
   // position has already paid out and had its stake removed from the pool —
@@ -4301,6 +4543,45 @@ export async function settleMarket(
     return { ok: true, data: { winnersPaid: 0, positionsSettled: myPositions.length } };
   }
 
+  // THE FEE, from the two pool numbers and the poll's FROZEN rates — priced HERE, after the one-sided refund (above).
+  //  - capped-commission (legacy polls): outcome-neutral — byte-identical for a YES
+  //    or NO win on the same pools (F6 §3.1). The `winningSide` arg is ignored.
+  //  - loser-share (new polls, owner decision 2026-07-23): the fee is a slice of the
+  //    LOSING pool, so it DOES depend on the outcome — we pass the declared winner so
+  //    `poolFee` charges the correct (losing) side. VOID never reaches the fee.
+  //  - stake-share (FEE-TAX-2026-10, gated off until R5): a fee on EVERY stake, rounded per side, and the winnings tax T
+  //    beside it (`poolFee` → `stakeShareTotals`: `fee` = F only, `winningsTax`, `prizeFund`, `netPool` = pool − F − T).
+  //    A VOID is the refund shape — fee 0 — through `settlementFee`, never the F `poolFee` answers with no winning side.
+  const winningSide: Side | undefined = opts.outcome === "YES" || opts.outcome === "NO" ? opts.outcome : undefined;
+  // MASWALI-BUILD S3 · a Millionea week reaches here only on its VOID arm (refused above otherwise), and a void charges
+  // no fee: its pool is never priced as a poll's — `poolFee` refuses the jackpot model, loudly, and must stay that way.
+  // ⚠️ `switchLine<FeeBreakdown>`, typed: inferred, T came from the MASWALI arm's literal (`capped: false`, no
+  // `winningsTax` / `prizeFund`) and the widened `FeeBreakdown` of the other two arms no longer fit it (TS2322, the R2
+  // gate's first run).
+  const settleFee: FeeBreakdown = switchLine<FeeBreakdown>(m.productLine, {
+    MARKET: () => settlementFee(m, settleCfg, winningSide),
+    UPDOWN: () => settlementFee(m, settleCfg, winningSide),
+    MASWALI: () => ({ pool: grossPool, smaller: 0, larger: grossPool, commission: 0, ceiling: 0, fee: 0, netPool: grossPool, capped: false, shareOfLosers: 0 }),
+  });
+  /**
+   * 🔴 THE LEVIES, SPLIT ONCE — and it is the NET that referral commission is priced on.
+   *
+   * TRA (10%) and GBT (5%) come out of OUR fee before we keep a shilling of it
+   * (`RULES.md` §2.2, `payout.ts` → `levySplit`). Commission used to be computed against
+   * `settleFee.fee`, the GROSS — sharing out roughly 15% of money the state already owned.
+   * `operatorNet` is what the house actually retains, and it is computed HERE, once, so the
+   * audit payload below and the accrual loop read the same number: two `levySplit` calls over
+   * one fee is how the chain and the payout drift apart.
+   * ⚠️ `settleCfg` is the market's FROZEN snapshot (`ratesFor(m)`), so a later levy change
+   * cannot retro-price an old poll's commission — the same guarantee the fee itself has.
+   * ⭐ Under `stake-share` the levies are on F, OUR fee, and on nothing else — ⛔ never on the winnings tax, which is
+   * the state's money from the first shilling and is booked to its own account (`acct.winningsTax`).
+   */
+  const settleLevies = levySplit(settleFee.fee, settleCfg);
+  // ⭐ The stake-share split this settlement pays by (two-sided outcome only; null on VOID and under every older model) —
+  // read by the payouts, the ledger groups, the position rows, the agent accruals and the `market.resolved` record.
+  let shareSplit: StakeShareSplit | null = null;
+
   if (opts.outcome === "VOID") {
     // 🔴 E-94 · THE WALLET HISTORY IS A SURFACE, AND IT NAMED ONE REASON OUT OF FIVE.
     //
@@ -4396,17 +4677,23 @@ export async function settleMarket(
       }
     }
   } else {
-    // Whole-pool pari-mutuel distribution, with the capped fee.
-    //   fee     = min(commissionRate × pool, feeCeilingRate × smallerSide)
-    //   netPool = pool - fee
-    //   payout  = (stake / winningSidePool) × netPool
+    // Whole-pool pari-mutuel distribution, by the market's FROZEN fee model (FEE-TAX-2026-10: three pool models).
+    //   capped-commission / loser-share:
+    //     fee     = poolFee(…, winner) — min(commissionRate × pool, feeCeilingRate × smallerSide), or 13% of the losing pool
+    //     netPool = pool - fee
+    //     payout  = (stake / winningSidePool) × netPool
+    //   stake-share: `stakeShareSplit` — every winner its net stake (stake − its fee share) plus its share of the prize
+    //     fund after the winnings tax; Σ payouts + T + F = the pool EXACTLY (see "THE ARITHMETIC, BY MODEL" below).
     //
-    // `settledPayoutFor` asserts the winner floor and THROWS if a WIN position
+    // Under the two older models `allocateWinnerPayouts` asserts the winner floor and THROWS if a WIN position
     // would be paid below its stake. That is deliberate: the throw propagates,
     // settlement aborts, the pool stays intact and an officer sees it. Refusing to
     // settle is recoverable. Paying a winner 93,150 on a 100,000 stake is not —
     // by the time anyone notices, the money is gone. That is the bug this whole
     // change exists to kill, and this is the tripwire that keeps it dead.
+    // ⭐ Under `stake-share` the floor is the NET stake (ruling 1: a winner on a lopsided market IS paid below their stake
+    // — 94,395 on 100,000 against 10,000) and `stakeShareSplit` asserts it per winner (`assertNetStakeFloor`), throwing
+    // the same way — never `assertWinnerFloor`, which would refuse every lopsided market the ruling allows.
     //
     // M2 — allocate payouts across ALL winning-side positions by largest-remainder
     // (deterministic, so a resumed settlement reproduces each amount) so the sum is
@@ -4421,11 +4708,35 @@ export async function settleMarket(
     // and the house short 7 more. The rule now lives in ONE exported function that
     // `test:payout-alloc` drives directly; the note at :2700 already said why.
     const winningSidePositions = winnersForAllocation(allMarketPositions, opts.outcome);
-    const payoutByPos = allocateWinnerPayouts(
-      winningSidePositions.map((wp) => ({ id: wp.id, stake: wp.stake })),
-      winningPool,
-      settleFee.netPool,
-    );
+    // ── THE ARITHMETIC, BY MODEL — ONE EXHAUSTIVE CHOICE (FEE-TAX-2026-10; the independent review of R2a) ─────────────
+    //
+    // 🔴 Before R2b a stake-share market fell through to the LEGACY allocators: `allocateWinnerPayouts` paid out of the
+    // new netPool by the stake floor (on 100,000 against 10,000 `assertWinnerFloor` threw, and the market could never
+    // settle), and the winnings tax T stayed in POOL in silence — a residual every group and the trial balance accept.
+    // ⛔ So the model is a `switch` that names all four and ends in `assertNeverFeeModel`, and the legacy path refuses a
+    // stake-share market on its own (`legacyWinnerPayouts`): if this arm is ever skipped, settlement THROWS — it can
+    // never pay a stake-share market by the older law.
+    //   · stake-share — `stakeShareSplit` ONCE, over winners = WIN + OPEN and losers = LOSS + OPEN (`stakeShareParties`),
+    //     cross-checked against the fee `poolFee` priced: the payouts, each winner's fee share and tax, each loser's fee.
+    //     The commission each winner's ledger group carries is still its largest-remainder share of the WHOLE fee F by
+    //     stake (`feeByPos` below) — the losers have no group — and TRA/GBT follow those shares exactly as before.
+    //   · loser-share / capped-commission — `allocateWinnerPayouts` over `settleFee.netPool`, byte for byte as before.
+    //   · jackpot-payout — refused: a Millionea week never settles here (its fence, above).
+    let payoutByPos: Map<string, number>;
+    switch (settleCfg.feeModel) {
+      case "stake-share":
+        shareSplit = stakeShareSettlementSplit(m, allMarketPositions, opts.outcome, settleCfg, settleFee);
+        payoutByPos = new Map([...shareSplit.perWinner].map(([id, part]) => [id, part.payout] as const));
+        break;
+      case "loser-share":
+      case "capped-commission":
+        payoutByPos = legacyWinnerPayouts(winningSidePositions, winningPool, settleFee, settleCfg);
+        break;
+      case "jackpot-payout":
+        throw new Error(`settle ${m.id}: a jackpot-payout snapshot on a market settled as a poll — a Millionea week settles by its own release, never here. Refusing.`);
+      default:
+        assertNeverFeeModel(settleCfg.feeModel, "settleMarket");
+    }
     // 🔴 THE FEE IS ALLOCATED THE SAME WAY THE PAYOUTS ARE, and for the same reason.
     // The ledger used to derive each winner's commission line independently as
     // `Math.round(share * fee)`. Independent rounding need not sum to the fee, and
@@ -4483,7 +4794,13 @@ export async function settleMarket(
         // M2: use the pre-computed largest-remainder allocation (Σ == floor(netPool),
         // winner floor asserted in allocateWinnerPayouts) instead of an independent
         // per-winner round that could drift the operator's fee by a few TZS.
+        // ⭐ Under stake-share: the split's payout — the NET credited (net stake + prize after tax), Σ = pool − F − T.
         const payout = payoutByPos.get(p.id) ?? 0;
+        // ⭐ STAKE-SHARE ONLY (FEE-TAX-2026-10): this winner's own part of the split — its fee share (`Position.feeTzs`),
+        // its withheld tax (`Position.winningsTaxTzs`, `BET_PAYOUT.taxWithheld` and the SETTLEMENT_WINNINGS_TAX line, one
+        // figure in three records). Undefined under every older model, whose rows keep exactly the shape they had.
+        const sharePart = shareSplit ? shareSplit.perWinner.get(p.id) : undefined;
+        if (shareSplit && !sharePart) throw new Error(`settle ${m.id}: the stake-share split names no part for winning position ${p.id} — refusing to settle`);
         paidWallets.add(p.userId);
         const payoutTxnId = `txn_${randomId(12)}`;
         // ATOMIC (audit C3): the wallet credit, the position → WIN mark, the
@@ -4496,13 +4813,18 @@ export async function settleMarket(
         const balanceAfter = await withMoneyTx(async (tx) => {
           const updated = await db.wallet.adjust(w.id, { balance: payout }, undefined, tx);
           if (!updated) throw new Error(`settle ${m.id}: wallet ${w.id} row missing for payout`);
+          // ⭐ stake-share: the position's own fee and its withheld tax land in the SAME write as the WIN mark.
+          if (sharePart) { p.feeTzs = sharePart.fee; p.winningsTaxTzs = sharePart.tax; }
           p.status = "WIN"; p.finalPayout = payout; p.settledAt = settledAt;
           await positionStore.set(p, tx);
           await db.txn.create({
             id: payoutTxnId,
             walletId: w.id, userId: p.userId,
             type: "BET_PAYOUT", status: "CONFIRMED",
-            amount: payout, fee: 0, taxWithheld: 0,
+            // ⭐ `amount` is the NET — the wallet delta and the `balanceAfter` change — under every model; `taxWithheld` is
+            // the stake-share winnings tax (gross winnings = amount − net stake + taxWithheld), 0 under every older model.
+            // `fee` stays 0: the fee left at no single row; it is on the position (`feeTzs`) and in the ledger's lines.
+            amount: payout, fee: 0, taxWithheld: sharePart?.tax ?? 0,
             balanceAfter: updated.balance, currency: "TZS",
             provider: "INTERNAL", providerRef: null, msisdn: null,
             // 🔴 §L1 — the other half of Ali's report: "NO won" over a round whose sides are
@@ -4517,19 +4839,24 @@ export async function settleMarket(
           // The ledger books this winner's SHARE of the poll's single fee AND of its two
           // levies — summing every winner's group reconstitutes the fee, the TRA and the
           // GBT exactly, so the ledger and `levySplit` state one liability, not two.
+          // ⭐ And under stake-share its withheld tax, POOL → HOUSE:WINNINGS_TAX, tied to this payout row: summing every
+          // winner's group then empties the pool EXACTLY — payouts + F + T = pool, no dust (`test:winnings-tax-ledger`).
           await postLedgerEntries(`settle_${payoutTxnId}`, settlementPayoutEntries({
             groupId: `settle_${payoutTxnId}`, userId: p.userId, marketId: m.id,
             payout, stake: p.stake, fee: settleFee.fee, winningPool,
             commissionAmount: feeByPos.get(p.id) ?? 0,
             traLevyAmount: traByPos.get(p.id) ?? 0,
             gbtLevyAmount: gbtByPos.get(p.id) ?? 0,
+            ...(sharePart ? { winningsTaxAmount: sharePart.tax, txnId: payoutTxnId } : {}),
             rates: { traTaxOnCommissionRate: settleCfg.traTaxOnCommissionRate, gbtLevyOnCommissionRate: settleCfg.gbtLevyOnCommissionRate },
           }), tx);
           return updated.balance;
         });
         // Tamper-evident chain entry for the payout credit (txn row is the
         // ledger; this anchors it in the HMAC audit chain too).
-        queueSettlementEffect(() => { audit({ category: "WALLET", action: "bet.payout", actorId: p.userId, targetType: "Position", targetId: p.id, payload: { marketId: m.id, outcome: opts.outcome, payout, balanceAfter } }); });
+        // ⭐ stake-share: the record names what the NET is made of — the fee share, the tax withheld, the gross winnings.
+        const payoutRecord = sharePart ? { ownFee: sharePart.fee, winningsTaxWithheld: sharePart.tax, grossWinnings: sharePart.prize + sharePart.tax } : {};
+        queueSettlementEffect(() => { audit({ category: "WALLET", action: "bet.payout", actorId: p.userId, targetType: "Position", targetId: p.id, payload: { marketId: m.id, outcome: opts.outcome, payout, balanceAfter, ...payoutRecord } }); });
         // Win receipt — opens the position so they can see the payout. Suppressed for
         // Up & Down (see perEventNotificationsSuppressed): the money above is already
         // credited, booked and audited; only the message is digested.
@@ -4563,6 +4890,14 @@ export async function settleMarket(
           }); });
         }
       } else {
+        // ⭐ STAKE-SHARE ONLY (FEE-TAX-2026-10): a loser's own fee — its largest-remainder share of ITS SIDE's fee — on the
+        // row beside the LOSS mark. Nothing was won, so nothing was withheld (0, not NULL: this row WAS settled under the
+        // model). Every older model leaves both NULL, as before.
+        if (shareSplit) {
+          const lost = shareSplit.perLoser.get(p.id);
+          if (!lost) throw new Error(`settle ${m.id}: the stake-share split names no fee for losing position ${p.id} — refusing to settle`);
+          p.feeTzs = lost.fee; p.winningsTaxTzs = 0;
+        }
         p.status = "LOSS"; p.finalPayout = 0; p.settledAt = settledAt;
         // ⚠️ ON THE LOCK'S TRANSACTION, like every other position write in this
         // scope. This was the ONE `positionStore.set` here that took no `tx` (the
@@ -4630,7 +4965,22 @@ export async function settleMarket(
       //
       // 🔴 AND IT IS THE NET FEE — `settleLevies.operatorNet`, not `settleFee.fee`. The gross
       // shares out money that already belongs to TRA and GBT. See the note at `settleLevies`.
-      if (settleFee.pool > 0 && settleLevies.operatorNet > 0) {
+      //
+      // ⭐ UNDER `stake-share` (FEE-TAX-2026-10) EVERY POSITION PAID ITS OWN FEE — 13% of its own stake, winner and loser
+      // alike — so the base is exactly that: `levySplit(feeTzs).operatorNet`, the position's OWN fee net of the TRA and GBT
+      // levied on it. ⛔ NOT the pro-rata formula below: with F = Σ of per-side roundings and the levies rounded once for the
+      // market, `(stake / pool) × operatorNet(F)` is a fraction near — not equal to — what this position paid, and a
+      // commission must be priced on what was paid. ⛔ AND NEVER THE WINNINGS TAX: T is the state's money from the first
+      // shilling, withheld from the winners' prize — it is not a fee 50pick kept, so it can never enter the base
+      // (`test:agent-settlement-attribution`). The older models keep their formula, byte for byte.
+      if (shareSplit) {
+        const ownFee = shareSplit.perWinner.get(p.id)?.fee ?? shareSplit.perLoser.get(p.id)?.fee;
+        if (ownFee === undefined) throw new Error(`settle ${m.id}: the stake-share split names no fee for position ${p.id} — refusing to settle`);
+        const ownNetFee = levySplit(ownFee, settleCfg).operatorNet;
+        if (ownNetFee > 0) {
+          pendingReferralAccruals.push({ userId: p.userId, operatorNetFee: ownNetFee, positionId: p.id, houseBotId: p.houseBotId ?? null });
+        }
+      } else if (settleFee.pool > 0 && settleLevies.operatorNet > 0) {
         const attributableNetFee = (p.stake / settleFee.pool) * settleLevies.operatorNet;
         pendingReferralAccruals.push({ userId: p.userId, operatorNetFee: attributableNetFee, positionId: p.id, houseBotId: p.houseBotId ?? null });
       }
@@ -4656,6 +5006,10 @@ export async function settleMarket(
   const totalWinnersPaid = settledNow.reduce((s, p) => s + (p.status === "WIN" ? (p.finalPayout ?? 0) : 0), 0);
   const totalPositionsSettled = settledNow.filter((p) => p.status !== "OPEN").length;
 
+  // The model this poll FROZE at creation, so the chain records which maths paid — built HERE, inside the lock and before
+  // the money commits (an exhaustive switch, `settlementFeeRecord`), never inside the post-commit effect, where a throw
+  // would drop the row in silence after the money had moved.
+  const feeRecord = settlementFeeRecord(settleCfg, shareSplit);
   const resolutionAudit = () => audit({
     category: "ADMIN",
     action: "market.resolved",
@@ -4665,23 +5019,19 @@ export async function settleMarket(
     payload: {
       outcome: opts.outcome,
       yesPool: m.yesPool, noPool: m.noPool,
-      // The model this poll FROZE at creation, so the chain records which maths paid.
       // ⛔ Every model named (FEE-TAX-2026-10): a stake-share market must never be recorded as the capped fee it is not.
-      payoutModel: settleCfg.feeModel === "loser-share" ? "whole-pool-loser-share"
-        : settleCfg.feeModel === "stake-share" ? "whole-pool-stake-share"
-        : "whole-pool-capped-fee",
+      payoutModel: feeRecord.payoutModel,
       // The whole fee arithmetic, in the tamper-evident chain. An inspector (or a
       // player who disputes a payout) can recompute the fee from these numbers:
       //  - capped-commission: fee = min(commissionRate·pool, feeCeilingRate·smaller), outcome-neutral.
       //  - loser-share: fee = (platformFeeRate+operatorFeeRate)·losingPool, where the
       //    loser is the side opposite `outcome`.
       //  - stake-share: fee = rhu(each side's pool, platformFeeRate+operatorFeeRate), and the winnings tax =
-      //    rhu(the losing side's net stakes, winningsTaxRate) — `payout.ts → stakeShareTotals`. R2b: the split itself.
-      rates: settleCfg.feeModel === "loser-share"
-        ? { feeModel: "loser-share", platformFeeRate: settleCfg.platformFeeRate, operatorFeeRate: settleCfg.operatorFeeRate }
-        : settleCfg.feeModel === "stake-share"
-          ? { feeModel: "stake-share", platformFeeRate: settleCfg.platformFeeRate, operatorFeeRate: settleCfg.operatorFeeRate, winningsTaxRate: settleCfg.winningsTaxRate ?? null }
-          : { feeModel: "capped-commission", commissionRate: settleCfg.commissionRate, feeCeilingRate: settleCfg.feeCeilingRate },
+      //    rhu(the losing side's net stakes, winningsTaxRate) — `payout.ts → stakeShareTotals`; every figure of the
+      //    split it settled by is in `stakeShare` (f and t in basis points, F, F_YES, F_NO, P, T, netPool). On a VOID
+      //    it records the refund: fee 0, no levies, no tax (ruling 2) — never the F a fee-before-outcome would state.
+      rates: feeRecord.rates,
+      ...(feeRecord.stakeShare ? { stakeShare: feeRecord.stakeShare } : {}),
       grossPool: settleFee.pool,
       smallerSide: settleFee.smaller,
       commissionUncapped: Math.round(settleFee.commission),
