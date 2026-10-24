@@ -48,9 +48,10 @@
 import { Callout } from "@/components/ui/callout";
 import type { LeanLevel } from "@/lib/payout";
 import { useT } from "@/lib/i18n";
-import { formatTzs } from "@/lib/utils";
-import { fillNodes } from "@/lib/fill-nodes";
+import { fill, formatTzs } from "@/lib/utils";
+import { moneyRuns } from "@/lib/fill-nodes";
 import { keepText } from "@/components/ui/keep-run";
+import { noticeBody } from "@/components/ui/empty-state-text";
 
 /** The one tone this notice is drawn in — the warning family's amber (§B11: somebody must act, here before the bet). */
 const TONE = "warning" as const;
@@ -74,20 +75,23 @@ export function HouseLeanWarning({ level, stakeShare = false, below = null, clas
   if (level === "fair") return null;
 
   if (level === "below") {
-    // FEE-TAX-2026-10 · the below-stake warning: calm amber words with the engine's figures, each an amount (§M4).
+    // FEE-TAX-2026-10 · the below-stake warning: calm amber words with the engine's figures, each an amount (§M4). The
+    // sentence is drawn through the notice keep (`noticeBody`), so "dau lako" never tears. ⚠️ Each figure is a KEPT RUN:
+    // the dash rule holds "10,000 —" (the unit before a dash), which alone would cut "TZS" from its digits; named here, the
+    // figure's run merges with the dash's, stays whole, and is set as an amount (`moneyRuns`).
+    if (below && typeof below.payout === "number" && typeof below.stake === "number") {
+      const payout = formatTzs(below.payout), stake = formatTzs(below.stake);
+      return (
+        <Callout tone={TONE} className={className} title={keepText(t.market.ssBelowTitle)}>
+          <p className="mt-1 text-body-sm leading-snug text-text-muted">
+            {noticeBody({ text: fill(t.market.ssBelowBody, { side: below.side, payout, stake }), keep: [payout, stake] }, { part: moneyRuns })}
+          </p>
+        </Callout>
+      );
+    }
     return (
       <Callout tone={TONE} className={className} title={keepText(t.market.ssBelowTitle)}>
-        {below ? (
-          <p className="mt-1 text-body-sm leading-snug text-text-muted">
-            {typeof below.payout === "number" && typeof below.stake === "number"
-              ? fillNodes(t.market.ssBelowBody, {
-                side: below.side,
-                payout: <span className="amount">{formatTzs(below.payout)}</span>,
-                stake: <span className="amount">{formatTzs(below.stake)}</span>,
-              })
-              : fillNodes(t.market.ssBelowSide, { side: below.side })}
-          </p>
-        ) : null}
+        {below ? <p className="mt-1 text-body-sm leading-snug text-text-muted">{noticeBody(fill(t.market.ssBelowSide, { side: below.side }))}</p> : null}
       </Callout>
     );
   }

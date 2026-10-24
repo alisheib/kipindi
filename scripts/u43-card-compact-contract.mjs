@@ -15,7 +15,8 @@ export function compactCardIssues({ card, css, line, controls, dict }) {
   need(card.match(/TippingBar className="mt-0\.5"/g)?.length === 2
     && controls.includes('compact ? "mb-1 flex-nowrap"')
     && controls.includes('compact ? "mb-1 text-[10px]"')
-    && controls.match(/compact \? "mt-1" : "mt-1\.5"/g)?.length === 3,
+    // 3 → 4 (FEE-TAX R2c, 2026-10-24): the stake-share standing line joins the three helper lines on the same compact rung.
+    && controls.match(/compact \? "mt-1" : "mt-1\.5"/g)?.length === 4,
     "stake controls and split use compact spacing without shrinking money taps");
   need(pulse.includes('var(--text) 40%, transparent') && !/var\(--(?:yes|no|success|brand|gold|gilt)-/.test(pulse)
     && css.includes('@keyframes ud-side-flash'), "placed ring is neutral and the chosen side still flashes");

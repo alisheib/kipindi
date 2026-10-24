@@ -1738,7 +1738,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = PLATFORM
           promise a gain the pool cannot pay. The standing line is drawn whatever the figures; with nobody on the other
           side yet the refund line stands in for a figure (ruling 2: a one-sided market refunds every stake in full). */}
       {effectiveSide !== "NEUTRAL" && notice && (
-        <div className="mt-3 rounded-md border border-border bg-bg-overlay px-3 py-2.5" data-stake-share-notice="">
+        <div className="mt-3 rounded-md border border-border bg-bg-overlay px-3 py-[10px]" data-stake-share-notice="">
           <p className="font-mono text-micro uppercase eyebrow text-text-subtle mb-1">
             <InfoHint panelId={hintId("payout")} open={openHint === "payout"} onToggle={() => toggleHint("payout")} size={10}>
               {t.dialog.estimatedWinningsLabel}
