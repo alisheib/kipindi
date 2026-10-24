@@ -213,10 +213,12 @@ const paidOut = (positions: Array<{ finalPayout?: number | null }>) =>
 {
   // An EXPLICIT capped-commission profile — exactly how the 4,146 production rows carry
   // theirs, because a chain's own rateProfile always beats the product default.
+  // ⚠️ FEE-TAX-2026-10: a chain on another model than the default's needs the EXPLICIT override since R2a
+  // (`feeModelMismatch`) — this suite builds a legacy row on purpose, so it says so.
   const c = await createChain({
     assetId: asset.id, durationMinutes: 10,
     rateProfile: { feeModel: "capped-commission", commissionRate: 0.13, feeCeilingRate: 1 / 3 },
-  }, OFFICER);
+  }, OFFICER, { allowFeeModelOverride: true });
   if (!c.ok) throw new Error(c.error);
   await setChainState(c.data.id, "RUNNING", OFFICER);
 
@@ -307,7 +309,7 @@ const paidOut = (positions: Array<{ finalPayout?: number | null }>) =>
   const legacy = await createChain({
     assetId: asset.id, durationMinutes: 30,
     rateProfile: { feeModel: "capped-commission", commissionRate: 0.13, feeCeilingRate: 1 / 3 },
-  }, OFFICER);
+  }, OFFICER, { allowFeeModelOverride: true }); // a legacy row, built on purpose (FEE-TAX-2026-10 R2a)
   if (!legacy.ok) throw new Error(legacy.error);
   const resolved = await rateProfileFor((await chainStore.get(legacy.data.id))!);
   ok("4.5 · ⛔ a chain's OWN profile beats the product default — the default alone is not the job",

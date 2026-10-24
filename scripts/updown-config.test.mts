@@ -648,6 +648,96 @@ let goldId = "";
      `${FEED_ADVICE_TTL_MS}ms — an 11.9s read that expires between two page views was never cached`);
 }
 
+// ── §10 · FEE-TAX-2026-10 — profiles, the default's model, and the compare-and-swap writer ──────────────────
+// A profile may be `stake-share` once `fee-law-gate.ts` opens (test:fee-gate drives that), never carries a winnings
+// tax, and the default's MODEL moves only with every chain. The writer reads the row FRESH and swaps it by
+// compare-and-swap, so a stale container can never write an old field back: driven here through the store seam,
+// against a row that moves, a read that fails and a read-back that disagrees — no database needed.
+{
+  const { __setUpDownConfigStoreForTest, readUpDownConfigFresh, rateProfileForStamping } = await import("../src/lib/server/updown-config.ts");
+  const { validateRateConfig } = await import("../src/lib/server/market-config.ts");
+  const LS = { ...DEFAULT_UPDOWN_CONFIG.defaultRateProfile };
+  const SS = { feeModel: "stake-share" as const, platformFeeRate: 0.03, operatorFeeRate: 0.10, feeCeilingRate: 1 / 3 };
+
+  const taxed = validateRateConfig({ ...LS, winningsTaxRate: 0.15 }, { scope: "profile" });
+  ok("10.1 · a profile can never carry a winnings tax — a round takes the platform's when it is stamped",
+     !taxed.ok && /cannot carry a winnings tax/.test(taxed.reason), taxed.ok ? "accepted" : taxed.reason);
+  const ss = validateRateConfig(SS, { scope: "profile" });
+  ok("10.2 · a stake-share profile is refused while the fee law is not in force", !ss.ok && /not yet in force/.test(ss.reason), ss.ok ? "accepted" : ss.reason);
+  const model = await setUpDownConfig({ defaultRateProfile: { feeModel: "capped-commission", commissionRate: 0.13, feeCeilingRate: 1 / 3 } }, OFFICER);
+  ok("10.3 · ⛔ the default's fee MODEL cannot move through the settings save — only with every chain, in one act",
+     !model.ok && /every chain/.test(model.error), model.ok ? "accepted" : model.error);
+  const tuned = await setUpDownConfig({ defaultRateProfile: { ...LS, platformFeeRate: 0.04 } }, OFFICER);
+  const restored = await setUpDownConfig({ defaultRateProfile: { ...LS } }, OFFICER);
+  ok("10.4 · …its RATES still tune under the same model", tuned.ok && restored.ok && (await getUpDownConfig()).defaultRateProfile.platformFeeRate === 0.03,
+     tuned.ok ? "" : tuned.error);
+
+  // A fake row store with jsonb-like equality (key order ignored), standing in for SystemConfig.
+  const canon = (v: unknown): string =>
+    v && typeof v === "object" && !Array.isArray(v)
+      ? `{${Object.keys(v as object).sort().map((k) => `${JSON.stringify(k)}:${canon((v as Record<string, unknown>)[k])}`).join(",")}}`
+      : Array.isArray(v) ? `[${v.map(canon).join(",")}]` : JSON.stringify(v ?? null);
+  const rows = new Map<string, unknown>();
+  let beforeSwap: (() => void) | null = null;
+  let afterSwap: (() => void) | null = null;
+  let readFails = false;
+  const KEY = "updown.config";
+  __setUpDownConfigStoreForTest({
+    hasDatabase: () => true,
+    loadConfigResult: (async (key: string) => (readFails ? { ok: false, error: "planted read failure" } : { ok: true, value: rows.has(key) ? structuredClone(rows.get(key)) : null })) as never,
+    replaceConfigIfValue: async (key: string, expected: unknown, value: unknown) => {
+      beforeSwap?.(); beforeSwap = null;
+      if (!rows.has(key) || canon(rows.get(key)) !== canon(expected)) return false;
+      rows.set(key, structuredClone(value));
+      afterSwap?.(); afterSwap = null;
+      return true;
+    },
+    createConfigIfAbsent: async (key: string, value: unknown) => { if (rows.has(key)) return "exists" as const; rows.set(key, structuredClone(value)); return "created" as const; },
+  });
+  try {
+    // The row as ANOTHER container left it: a newer staleness window this container's cache has never seen.
+    rows.set(KEY, { ...DEFAULT_UPDOWN_CONFIG, maxStalenessSeconds: 77, v: 5 });
+    const saved = await setUpDownConfig({ confidenceThreshold: 91 }, OFFICER);
+    const row = rows.get(KEY) as Record<string, unknown>;
+    ok("10.5 · ★ a save lands on the row AS STORED — the other container's 77 s survives; this container's stale copy is never written back",
+       saved.ok && row.maxStalenessSeconds === 77 && row.confidenceThreshold === 91 && row.v === 5, JSON.stringify({ ok: saved.ok, s: row.maxStalenessSeconds, c: row.confidenceThreshold }));
+    ok("10.6 · …and the cache now holds the row", (await getUpDownConfig()).maxStalenessSeconds === 77);
+
+    // A save that lands BETWEEN this one's read and its swap: the swap fails and the row is read again.
+    beforeSwap = () => { rows.set(KEY, { ...(rows.get(KEY) as object), maxStalenessSeconds: 66 }); };
+    const raced = await setUpDownConfig({ confidenceThreshold: 92 }, OFFICER);
+    const after = rows.get(KEY) as Record<string, unknown>;
+    ok("10.7 · ★ a row that moves mid-save is read again — both changes stand (66 s and 92), nothing lost",
+       raced.ok && after.maxStalenessSeconds === 66 && after.confidenceThreshold === 92, JSON.stringify({ ok: raced.ok, s: after.maxStalenessSeconds, c: after.confidenceThreshold }));
+
+    readFails = true;
+    const blind = await setUpDownConfig({ confidenceThreshold: 93 }, OFFICER);
+    readFails = false;
+    ok("10.8 · a read that fails changes NOTHING and says so", !blind.ok && /could not be read/.test(blind.error) && (rows.get(KEY) as Record<string, unknown>).confidenceThreshold === 92,
+       blind.ok ? "accepted" : blind.error);
+
+    afterSwap = () => { rows.set(KEY, { ...(rows.get(KEY) as object), confidenceThreshold: 80 }); };
+    const contested = await setUpDownConfig({ confidenceThreshold: 94 }, OFFICER);
+    ok("10.9 · a write whose read-back already holds something else is REPORTED, never claimed as saved",
+       !contested.ok && /another save changed/.test(contested.error), contested.ok ? "claimed" : contested.error);
+
+    // The fresh read at stamping: a chain with no profile of its own takes the default AS STORED.
+    rows.set(KEY, { ...DEFAULT_UPDOWN_CONFIG, defaultRateProfile: { ...LS, platformFeeRate: 0.02 }, v: 5 });
+    const fresh = await readUpDownConfigFresh();
+    const nullChain = { rateProfile: null } as unknown as Parameters<typeof rateProfileForStamping>[0];
+    const stamped = await rateProfileForStamping(nullChain);
+    ok("10.10 · ★ a round of a profile-less chain is stamped from the row read FRESH, not this container's copy",
+       fresh.ok && stamped.ok && stamped.profile.platformFeeRate === 0.02, JSON.stringify(stamped));
+    readFails = true;
+    const failed = await rateProfileForStamping(nullChain);
+    const failedFresh = await readUpDownConfigFresh();
+    readFails = false;
+    ok("10.11 · ★ …and a read that fails opens NO round (fails closed)", !failed.ok && !failedFresh.ok, JSON.stringify(failed));
+  } finally {
+    __setUpDownConfigStoreForTest(null);
+  }
+}
+
 // ── Result ──────────────────────────────────────────────────────────────────
 console.log(`\nupdown-config: ${pass} passed, ${fail} failed`);
 if (fail > 0) {
