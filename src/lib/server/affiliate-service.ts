@@ -1595,23 +1595,27 @@ export async function onRecruitSettlement(
       marketId: opts.marketId,
       sourceRef,
     });
-    return { credited, cut, status };
+    return { credited, cut, net: split.netTzs, status };
   });
 
   if (paid?.credited) {
     // ⭐ Two programmes, two voices. An agent's commission is contracted income and says so;
     // the player promo's message ("from a friend") is the withdrawn programme's, and a partner
     // reading it would be told their business is a promo (four-lens review, 2026-09-07).
+    // 🔴 THE FIGURE IS THE NET CREDITED (FEE-TAX-2026-10, R3b — the code map's side-money finding). Both notices say the
+    // amount is IN the cash balance, and the wallet was credited `split.netTzs` — the commission after the agent's own
+    // withholding — while they quoted `paid.cut`, the gross before it: a 5% overstatement on every accrual. They now state
+    // what moved. (`cut` stays the gross on the record and in the payable audit below.)
     if (policy.programme === "AGENT") {
-      notifyAgentCommission(referrerUserId, { amountTzs: paid.cut });
-      sendEmailToUser(referrerUserId, (email) => ({ to: email, subject: `Agent commission · ${formatTzs(paid.cut)}`, html: agentCommissionEarnedHtml({ amountTzs: paid.cut }), tag: "agent-commission" }), { confirmedOnly: true }).catch(() => {});
+      notifyAgentCommission(referrerUserId, { amountTzs: paid.net });
+      sendEmailToUser(referrerUserId, (email) => ({ to: email, subject: `Agent commission · ${formatTzs(paid.net)}`, html: agentCommissionEarnedHtml({ amountTzs: paid.net }), tag: "agent-commission" }), { confirmedOnly: true }).catch(() => {});
     } else {
-      notifyReferralReward(referrerUserId, { type: "COMMISSION", amountTzs: paid.cut });
+      notifyReferralReward(referrerUserId, { type: "COMMISSION", amountTzs: paid.net });
       // R8-D · `breakAware`: the letter learns its recipient's break at send time and leaves its solicitation out on one.
       sendEmailToUser(referrerUserId, (email, reader) => ({
         to: email,
-        subject: `Referral commission · ${formatTzs(paid.cut)}`,
-        html: referralEarningHtml({ type: "COMMISSION", amountTzs: paid.cut, onBreak: reader.onBreak }),
+        subject: `Referral commission · ${formatTzs(paid.net)}`,
+        html: referralEarningHtml({ type: "COMMISSION", amountTzs: paid.net, onBreak: reader.onBreak }),
         tag: "referral",
       }), { confirmedOnly: true, breakAware: true }).catch(() => {});
     }
