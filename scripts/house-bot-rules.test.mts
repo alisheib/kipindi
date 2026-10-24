@@ -2083,9 +2083,11 @@ section("§11 · constants");
   const BUDGETED_LOCKS: Record<string, { count: number; reason: string }> = {
     "src/lib/server/market-service.ts · settleMarket": { count: 2, reason: "settlement pays every open position inside ONE transaction — the first ordered holder wallet lock, or the market lock when no wallet is held, carries 30 s + 50 ms per open position, capped at 10 min" },
     "src/lib/server/market-service.ts · emergencyVoidMarket": { count: 2, reason: "the emergency void refunds every open position inside ONE transaction — the same sizing, on the same outermost lock" },
+    // 2026-10-24 · FEE-TAX R2b moved the close-time disclosure under the market lock (figures and stamp in one scope).
+    "src/lib/server/market-service.ts · notifySelectionClosedForMarket": { count: 1, reason: "the close-time disclosure writes every open position's exact payout and the market's stamp inside ONE transaction on the market lock alone (no wallet lock) — 30 s + 50 ms per position, capped at 10 min; it runs past the cutoff, so no bet commits on that market, and a house stake that waits on that market lock is bounded by HOUSE_BET_LOCK_TIMEOUT" },
   };
   const HOUSE_STAKE_FNS = ["placeHouseBet", "buyPositionInner"];
-  const BUDGETED_FNS = ["settleMarket", "emergencyVoidMarket"];
+  const BUDGETED_FNS = ["settleMarket", "emergencyVoidMarket", "notifySelectionClosedForMarket"];
   type BudgetedLock = { site: string; fn: string; line: number; arg: string };
   /** Every `withLock(…)` call in `text` that passes a third argument, with its innermost enclosing named function. */
   const budgetedLocksIn = (rel: string, text: string): BudgetedLock[] => {

@@ -619,8 +619,9 @@ async function run(fns: Fns, log: (l: string) => void): Promise<string[]> {
       j({ wait: [gw5.n, gw5.d, gw5.waiting, gw4.n, gw4.d, gw4.waiting], due: [gd5.n, gd5.d, gd5.waiting, gd4.n, gd4.d, gd4.waiting] }));
     // S6-INT 8 · main's U43 (c29cb7526) made the lock's budget a parameter: withAdvisoryLock's default (`timeoutMs = 30000`)
     // is what its $transaction passes, withLock defaults it the same way, and a caller may pass a larger one. The lag is
-    // that default. The callers that pass a larger budget are a market's settlement and its emergency void alone, and
-    // neither stamps a sign-up, a deposit, a bet or a ticket — so no unit these measures count waits longer to commit.
+    // that default. The callers that pass a larger budget are a market's settlement, its emergency void and (FEE-TAX R2b,
+    // 2026-10-24) its close-time disclosure — which writes the frozen payout figures and the close stamp — and none stamps
+    // a sign-up, a deposit, a bet or a ticket, so no unit these measures count waits longer to commit.
     const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
     const locksSrc = readFileSync("src/lib/server/locks.ts", "utf8").replace(/\r\n/g, "\n");
     const advisory = strip(locksSrc.slice(locksSrc.indexOf("async function withAdvisoryLock"), locksSrc.indexOf("async function drainLock")));
@@ -642,9 +643,9 @@ async function run(fns: Fns, log: (l: string) => void): Promise<string[]> {
       .flatMap((f) => passers(readFileSync(`src/${f}`, "utf8").replace(/\r\n/g, "\n"))));
     const plantedBet = passers("export async function placeBet() {\n  return withLock(\"wallet:u\", fn, { timeoutMs: 60_000 });\n}");
     const plantedHelper = passers("export async function settleMarket() {}\nasync function helper() {\n  return withLock(\"k\", fn, { timeoutMs });\n}");
-    ok("V.22b · the lag is the money lock's own: COMMIT_LAG_MS equals the lock's default budget in locks.ts — withAdvisoryLock's default, which its $transaction passes, and withLock's — and the only callers that pass a larger budget are settleMarket and emergencyVoidMarket, which stamp no sign-up, deposit, bet or ticket (an unfound literal fails; CONTROLS: a signature with no numeric default reads as unfound; a larger budget planted in placeBet is found, and one in a helper after settleMarket is named by the helper)",
+    ok("V.22b · the lag is the money lock's own: COMMIT_LAG_MS equals the lock's default budget in locks.ts — withAdvisoryLock's default, which its $transaction passes, and withLock's — and the only callers that pass a larger budget are settleMarket, emergencyVoidMarket and notifySelectionClosedForMarket, which stamp no sign-up, deposit, bet or ticket (an unfound literal fails; CONTROLS: a signature with no numeric default reads as unfound; a larger budget planted in placeBet is found, and one in a helper after settleMarket is named by the helper)",
       advisory.length > 0 && num(lit) === V.COMMIT_LAG_MS && passed && num(lockDefault) === V.COMMIT_LAG_MS
-        && [...larger].sort().join() === "emergencyVoidMarket,settleMarket"
+        && [...larger].sort().join() === "emergencyVoidMarket,notifySelectionClosedForMarket,settleMarket"
         && !LIT.test("async function withAdvisoryLock<T>(key: string, timeoutMs = env.TX_TIMEOUT): Promise<T> {")
         && plantedBet.join() === "placeBet" && plantedHelper.join() === "helper",
       j({ lit: lit ?? null, passed, lockDefault: lockDefault ?? null, lag: V.COMMIT_LAG_MS, larger: [...larger].sort() }));
