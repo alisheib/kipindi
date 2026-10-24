@@ -17,6 +17,7 @@ import Link from "next/link";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { cn, fill, formatNumber, formatTzs } from "@/lib/utils";
+import { fillNodes } from "@/lib/fill-nodes";
 import { HouseLeanWarning } from "@/components/markets/house-lean-warning";
 import { useT } from "@/lib/i18n";
 import { formatBreakEnd } from "@/lib/break-end";
@@ -364,8 +365,19 @@ export function RoundStakePanel(props: {
           <span>{noticeBody(t.market.udEstimateNote)}</span>
         </p>
       )}
-      {/* FEE-TAX-2026-10 · a stake-share round says what the projection is net of (the fee on every stake and the winnings
-          tax, both the round's frozen figures), and always the standing line — in the same ⓘ register as its siblings. */}
+      {/* FEE-TAX-2026-10 · a stake-share round states this stake's own fee and what enters the pool, says what the
+          projection is net of (the fee on every stake and the winnings tax, both the round's frozen figures), and always
+          the standing line — in the same ⓘ register as its siblings. */}
+      {projected != null && notice?.quote && notice.feePct !== null && !notice.noTaker && (
+        <p className="mt-2 flex items-start gap-1 text-body-sm leading-[1.45] text-text-faint" data-ss-fee="">
+          <I.info s={11} className="mt-[2px] shrink-0" />
+          <span>{fillNodes(t.market.ssFeeLine, {
+            pct: notice.feePct,
+            fee: <span className="amount">{formatTzs(notice.quote.fee)}</span>,
+            net: <span className="amount">{formatTzs(notice.quote.net)}</span>,
+          })}</span>
+        </p>
+      )}
       {projected != null && notice?.quote && notice.feePct !== null && notice.taxPct !== null && !notice.noTaker && (
         <p className="mt-2 flex items-start gap-1 text-body-sm leading-[1.45] text-text-faint">
           <I.info s={11} className="mt-[2px] shrink-0" />

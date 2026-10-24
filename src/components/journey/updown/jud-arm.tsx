@@ -273,6 +273,13 @@ export function JudConfirm({ bet, round, viewer, assetName, receipt, side }: Arm
     </Button>
     <EmptySideNote t={t} side={judEmptySide(round.pricing, side)} />
     {projected !== null && <p className="kp-jud__note"><I.info s={11} className="mt-[2px] shrink-0" /><span>{noticeBody(t.market.udEstimateNote)}</span></p>}
+    {projected !== null && notice?.quote && notice.feePct !== null && !notice.noTaker && (
+      <p className="kp-jud__note" data-ss-fee=""><I.info s={11} className="mt-[2px] shrink-0" /><span>{fillNodes(t.market.ssFeeLine, {
+        pct: notice.feePct,
+        fee: <span className="amount">{formatTzs(notice.quote.fee)}</span>,
+        net: <span className="amount">{formatTzs(notice.quote.net)}</span>,
+      })}</span></p>
+    )}
     {projected !== null && notice?.quote && notice.feePct !== null && notice.taxPct !== null && !notice.noTaker && (
       <p className="kp-jud__note"><I.info s={11} className="mt-[2px] shrink-0" /><span>{noticeBody(fill(t.market.ssFeeNote, { fee: notice.feePct, tax: notice.taxPct }))}</span></p>
     )}

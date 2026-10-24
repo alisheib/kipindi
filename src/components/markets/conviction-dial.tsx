@@ -558,7 +558,8 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = PLATFORM
     try {
       return payoutFor({ yesPool, noPool, side: effectiveSide, stake }, rates ?? {});
     } catch {
-      return { payout: 0, ratio: 0 };
+      // NaN, not 0: `leanFor(0)` reads "thin", and a refused projection must say nothing about the upside.
+      return { payout: 0, ratio: Number.NaN };
     }
   })();
   const lean: LeanLevel = effectiveSide === "NEUTRAL" ? "fair" : leanFor(proj.ratio);

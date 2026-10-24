@@ -100,7 +100,8 @@ export function GlobalConfigForm({ config, storedStake = null }: { config: RateC
         toast({ title: "Couldn't update", description: r.error, variant: "danger" });
       } else {
         markSaved();
-        setSavedShowEst(fd.get("showEstimatedWinnings") === "true");
+        // ⚠️ The switch is posted only when it CHANGED (see `drawn`): an unchanged one keeps what was last saved.
+        setSavedShowEst((was) => (fd.has("showEstimatedWinnings") ? fd.get("showEstimatedWinnings") === "true" : was));
         router.refresh();
         deferToast({
           title: "Global config updated",
