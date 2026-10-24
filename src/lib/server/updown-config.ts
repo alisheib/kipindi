@@ -30,7 +30,7 @@ import { withLock } from "./locks";
 import { hasDatabase } from "./prisma";
 import { isSourceTrusted, normalizeDomain } from "./source-registry";
 import {
-  validateRateConfig, readMarketConfigFresh, getGlobalConfig, noteStampingRead,
+  validateRateConfig, readMarketConfigFresh, noteStampingRead,
   withoutUndefined, changedFromBaseline, staleFields, staleBaselineRefusal, type ConfigSaveOptions,
 } from "./market-config";
 import { newFeeLawRefusal } from "@/lib/fee-law-gate";
@@ -723,16 +723,20 @@ export async function setUpDownConfig(
   }
 
   let warn: string | undefined;
+  // The platform's terms, read FRESH when the default profile moves (FEE-TAX R2 review): they are both the base the profile
+  // is validated against (a stake-share profile needs the platform's tax saved) and the terms a default naming no fee
+  // model freezes (`stampedFeeTermsOf`) — never this container's cache, which may be behind another container's save.
+  let platform: RateConfig | undefined;
   if (updates.defaultRateProfile !== undefined) {
+    const read = await readMarketConfigFresh({ purpose: "check" });
+    if (!read.ok) return { ok: false, error: "The platform's rates could not be read, so nothing was changed. Please try again." };
+    platform = read.config;
     // THE SAME validator global config uses — including the winner-floor guardrail. As a PROFILE (FEE-TAX-2026-10): it
     // may be stake-share once `fee-law-gate.ts` is open, never carries a winnings tax, and needs the platform's saved.
-    const v = validateRateConfig(updates.defaultRateProfile, { scope: "profile" });
+    const v = validateRateConfig(updates.defaultRateProfile, { scope: "profile", base: platform });
     if (!v.ok) return { ok: false, error: v.reason };
     warn = v.warn;
   }
-
-  // A default that names no fee model freezes the PLATFORM's (`stampedFeeTermsOf`), so its model is read with them.
-  const platform = updates.defaultRateProfile !== undefined ? await getGlobalConfig() : undefined;
 
   // ⭐ Read-modify-write against the row as stored NOW, by compare-and-swap, read back before "saved" (FEE-TAX-2026-10):
   // a stale container can no longer write its old default profile — or any other field — back over a newer save.
@@ -1349,12 +1353,17 @@ export async function createChain(input: ChainInput, officerId: string, opts?: {
     if (!Number.isFinite(lo) || lo < PLATFORM_MIN_STAKE || lo > PLATFORM_MAX_STAKE) return { ok: false, error: `Minimum stake must be between TZS ${PLATFORM_MIN_STAKE.toLocaleString("en-GB")} and TZS ${PLATFORM_MAX_STAKE.toLocaleString("en-GB")} — the platform bounds are a rule, not a setting.` };
     if (!Number.isFinite(hi) || hi < lo || hi > PLATFORM_MAX_STAKE) return { ok: false, error: `Maximum stake must be between the minimum and TZS ${PLATFORM_MAX_STAKE.toLocaleString("en-GB")}.` };
 
+    // The platform's terms, read FRESH (FEE-TAX R2 review): the base the profile is validated against, and what a profile
+    // naming no model freezes — never this container's cache.
+    const platformRead = await readMarketConfigFresh({ purpose: "check" });
+    if (!platformRead.ok) return { ok: false, error: "The platform's rates could not be read, so no chain was created. Please try again." };
+    const platform = platformRead.config;
     const profile = input.rateProfile ?? cfg.defaultRateProfile;
-    const v = validateRateConfig(profile, { scope: "profile" });
+    const v = validateRateConfig(profile, { scope: "profile", base: platform });
     if (!v.ok) return { ok: false, error: v.reason };
     if (!opts?.allowFeeModelOverride) {
       // Read as what each side's rounds will freeze — a profile naming no model is the platform's (`stampedFeeTermsOf`).
-      const mismatch = feeModelMismatch(profile, cfg, await getGlobalConfig());
+      const mismatch = feeModelMismatch(profile, cfg, platform);
       if (mismatch) return { ok: false, error: mismatch };
     }
     const marginErr = checkMarginBps(input.marginBps);
@@ -1416,11 +1425,14 @@ export async function updateChain(
     if (updates.minStake !== undefined) patch.minStake = updates.minStake;
     if (updates.maxStake !== undefined) patch.maxStake = updates.maxStake;
     if (updates.rateProfile !== undefined) {
+      // The platform's terms, read FRESH (as `createChain`): the validation's base and a model-less profile's model.
+      const platformRead = await readMarketConfigFresh({ purpose: "check" });
+      if (!platformRead.ok) return { ok: false, error: "The platform's rates could not be read, so the chain was not changed. Please try again." };
       const profile = updates.rateProfile ?? cfg.defaultRateProfile;
-      const v = validateRateConfig(profile, { scope: "profile" });
+      const v = validateRateConfig(profile, { scope: "profile", base: platformRead.config });
       if (!v.ok) return { ok: false, error: v.reason };
       if (!opts?.allowFeeModelOverride) {
-        const mismatch = feeModelMismatch(profile, cfg, await getGlobalConfig());
+        const mismatch = feeModelMismatch(profile, cfg, platformRead.config);
         if (mismatch) return { ok: false, error: mismatch };
       }
       patch.rateProfile = profile as Record<string, unknown>;
@@ -1731,8 +1743,9 @@ export async function rateProfileForStamping(chain: StoredChain): Promise<{ ok: 
  * `allowFeeModelOverride`, and AI arming (`updown-proposal.ts`, which has no override) refuses to start a chain that
  * differs. Rates within one model may differ chain by chain; a model may not, silently — the half-migrated board A2 was
  * driven out of. The way to move every chain is `applyFeeProfileToEveryChain`, in one act.
- * ⭐ `platform` — the platform's fee terms (`getGlobalConfig()`): both sides are read as what their rounds will FREEZE
- * (`stampedFeeTermsOf`), so a profile that names no model is the platform's, never "capped" (FEE-TAX R2 review).
+ * ⭐ `platform` — the platform's fee terms, read fresh by every caller here (`readMarketConfigFresh`): both sides are read as
+ * what their rounds will FREEZE (`stampedFeeTermsOf`), so a profile that names no model is the platform's, never "capped"
+ * (FEE-TAX R2 review).
  */
 export function feeModelMismatch(
   profile: Partial<RateConfig> | null | undefined,
@@ -1950,8 +1963,12 @@ export async function applyFeeProfileToEveryChain(
     return { ok: false, error: `Nothing was changed: ${(err as Error)?.message ?? String(err)}. Please try again.` };
   }
   if ("failed" in outcome) return { ok: false, error: outcome.failed };
-  // Committed: the default, every chain and the act's record moved together. This container's cache follows the row.
-  globalThis.__50PICK_UPDOWN_CONFIG = outcome.cfgAfter;
+  // Committed: the default, every chain and the act's record moved together. This container's cache follows the row —
+  // which, with a database, is exactly `cfgAfter` (its compare-and-swap refused any save in between). With none the
+  // cache IS the store, and a save of another field may have landed during the act's awaits: only the profile moves.
+  globalThis.__50PICK_UPDOWN_CONFIG = udStore.hasDatabase()
+    ? outcome.cfgAfter
+    : { ...cfgStore(), defaultRateProfile: { ...target } };
   upDownGen++;
   const counts = applyCounts(outcome.after, outcome.moved, model, false);
   audit({
