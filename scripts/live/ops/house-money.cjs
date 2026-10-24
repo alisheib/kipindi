@@ -14,6 +14,9 @@
  *                       already net of TRA and GBT.
  *   HOUSE:TRA_LEVY    — tax withheld for the Tanzania Revenue Authority. Owed, not owned.
  *   HOUSE:GBT_LEVY    — the Gaming Board levy. Owed, not owned.
+ *   HOUSE:WINNINGS_TAX — ⭐ FEE-TAX-2026-10: the 15% winnings tax withheld from stake-share winners at settlement
+ *                       (`SETTLEMENT_WINNINGS_TAX`). PLAYERS' tax, owed to TRA — never revenue, never a levy, never
+ *                       summed into GGR (the tax report's Report 3 files it).
  *   HOUSE:TAX         — withholding taken at payout where it applies.
  *   HOUSE:RESERVE     — the operator's own seeded liquidity.
  *   HOUSE:AGGREGATOR  — money in flight at the payment provider.
@@ -61,6 +64,20 @@ const tzs = (n) => "TZS " + Number(n).toLocaleString("en-US", { maximumFractionD
      group by "entryType" order by sum(amount) desc`)).rows) {
     console.log(`  ${String(r.entryType).padEnd(28)} ${tzs(r.total).padStart(16)}   ${r.n} entries`);
   }
+
+  // ⭐ FEE-TAX-2026-10 · the winnings tax, OWED to TRA, beside the revenue and never inside it: its ledger line against
+  // the winners' payout rows, which carry the same tax (`taxWithheld`) — only BET_PAYOUT rows, never every type (agent
+  // commission rows carry the agents' own withholding in that column).
+  console.log("\n=== WINNINGS TAX WITHHELD (owed to TRA — players' tax, not revenue) ===\n");
+  const [wt] = (await c.query(`
+    select coalesce(sum(amount),0)::numeric as booked, count(*)::int as n
+      from "LedgerEntry" where account = 'HOUSE:WINNINGS_TAX' and "entryType" = 'SETTLEMENT_WINNINGS_TAX'`)).rows;
+  const [px] = (await c.query(`
+    select coalesce(sum("taxWithheld"),0)::numeric as withheld, count(*) filter (where "taxWithheld" > 0)::int as n
+      from "Transaction" where type = 'BET_PAYOUT' and status = 'CONFIRMED'`)).rows;
+  console.log(`  booked on HOUSE:WINNINGS_TAX ${tzs(wt.booked).padStart(16)}   ${wt.n} lines`);
+  console.log(`  withheld on payout rows      ${tzs(px.withheld).padStart(16)}   ${px.n} rows`);
+  console.log(`  ${Number(wt.booked) === Number(px.withheld) ? "✓ the ledger and the payout rows agree to the shilling" : "🔴 THE LEDGER AND THE PAYOUT ROWS DISAGREE"}`);
 
   console.log("\n=== PLAYER MONEY STILL IN ESCROW (open market pools) ===\n");
   const [pools] = (await c.query(`

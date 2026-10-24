@@ -5,6 +5,9 @@
  * A pool account is escrow: stakes in, payouts + fee out. Once a market has settled it
  * must hold exactly nothing. A NEGATIVE residual means more money left the pool than
  * ever entered it — the platform paid out money nobody staked.
+ * ⭐ FEE-TAX-2026-10 · under `stake-share` the pool also pays the winners' tax out (to HOUSE:WINNINGS_TAX), and every
+ * part is a whole-shilling share, so a stake-share pool has NO rounding dust: any residual on one, either sign, is a
+ * defect (🔴). The older models may carry a shilling or two of dust (ledger.ts → settlementPayoutEntries).
  *
  * ⛔ Read-only.
  */
@@ -26,11 +29,12 @@ for (const l of fs.readFileSync(path.join(__dirname, ".env"), "utf8").split("\n"
 
   const rows = (await c.query(`
     select le.account, sum(le.amount)::numeric as residual,
-           m.status, m."productLine" as line, m."settledAt" is not null as settled
+           m.status, m."productLine" as line, m."settledAt" is not null as settled,
+           coalesce(m."feeSnapshot"->>'feeModel', 'unstamped') as model
       from "LedgerEntry" le
       join "PredictionMarket" m on ('POOL:' || m.id) = le.account
      where le.account like 'POOL:%'
-     group by le.account, m.status, m."productLine", m."settledAt"
+     group by le.account, m.status, m."productLine", m."settledAt", m."feeSnapshot"->>'feeModel'
     having sum(le.amount) <> 0
      order by sum(le.amount)`)).rows;
 
@@ -39,14 +43,15 @@ for (const l of fs.readFileSync(path.join(__dirname, ".env"), "utf8").split("\n"
 
   console.log(`SETTLED markets whose pool did NOT return to zero: ${settled.length}`);
   let neg = 0, tot = 0;
+  for (const r of settled) { const v = Number(r.residual); if (v < 0) neg++; tot += v; }
   for (const r of settled.slice(0, 25)) {
     const v = Number(r.residual);
-    if (v < 0) neg++;
-    tot += v;
-    console.log(`  ${v < 0 ? "🔴" : "⚠️ "} ${r.account.padEnd(34)} ${String(v).padStart(10)}  ${r.status}  ${r.line}`);
+    console.log(`  ${v < 0 || r.model === "stake-share" ? "🔴" : "⚠️ "} ${r.account.padEnd(34)} ${String(v).padStart(10)}  ${r.status}  ${r.line}  ${r.model}`);
   }
   if (settled.length > 25) console.log(`  … ${settled.length - 25} more`);
+  const ss = settled.filter((r) => r.model === "stake-share");
   console.log(`\n  ${neg} of them NEGATIVE (paid out more than was staked). Net residual across all settled pools: ${tot}`);
+  console.log(`  ${ss.length} of them stake-share — ${ss.length === 0 ? "✓ every settled stake-share pool is at exactly 0" : "🔴 a stake-share pool has no dust: each one listed is a defect"}`);
   console.log(`\nOPEN markets with a non-zero pool (expected — stakes are still in escrow): ${open.length}`);
   await c.end();
 })().catch((e) => { console.error("FAILED:", e.message); process.exit(1); });
