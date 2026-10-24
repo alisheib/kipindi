@@ -20,12 +20,15 @@
  *   SETTLE      resolveMarket() x2 + settleMarket() — winners paid, losers zeroed
  *   ONE-SIDED   a poll nobody opposed → everybody refunded, we earn nothing
  *   VOID        an emergency-voided poll → everybody refunded
+ *   STAKE-SHARE two polls and an Up & Down round frozen under FEE-TAX-2026-10's law (the gate opened in this
+ *               process only): close → disclosed == paid → settle → each BET_PAYOUT's withheld tax on HOUSE:WINNINGS_TAX
  *   CASH OUT    withdraw()           — to mobile money, the 1.5% fee, NO withholding tax
  *
  * Then it RECONCILES:
  *   • every ledger group sums to zero
- *   • money conservation: deposited == (wallets + pools + house), to dust
- *   • WINNER FLOOR: no WIN position is ever paid below its stake
+ *   • money conservation: deposited == (wallets + pools + house), drift 0.00
+ *   • HOUSE:WINNINGS_TAX == Σ BET_PAYOUT.taxWithheld, and every stake-share POOL closes at exactly 0
+ *   • WINNER FLOOR: no WIN position is ever paid below its floor — the stake (older models), the net stake (stake-share)
  */
 import { PrismaClient } from "@prisma/client";
 import { deposit, withdraw } from "../src/lib/server/wallet-service.ts";
@@ -37,6 +40,12 @@ import { marketStore, positionStore } from "../src/lib/server/market-dal.ts";
 import { setGlobalConfig } from "../src/lib/server/market-config.ts";
 import { setRequireTwoOfficerResolution } from "../src/lib/server/resolution-policy.ts";
 import { poolFee, DEFAULT_WITHDRAWAL_FEE_RATE, DEFAULT_WITHDRAWAL_GATEWAY_SHARE_RATE } from "../src/lib/payout.ts";
+// FEE-TAX-2026-10 · §7c/§7d — the stake-share law, stamped with the gate opened in THIS process only.
+import { __setFeeLawLiveForTest } from "../src/lib/fee-law-gate.ts";
+import { assetStore, chainStore, roundStore, observationStore } from "../src/lib/server/updown-dal.ts";
+import { createAsset, setAssetEnabled, createChain, setChainState, cleanGridAnchor } from "../src/lib/server/updown-config.ts";
+import { openRound, closeRound } from "../src/lib/server/updown-service.ts";
+import { addSource, seedDefaultSources } from "../src/lib/server/source-registry.ts";
 
 if (!process.env.DATABASE_URL) {
   console.error("money-e2e: DATABASE_URL is required — this suite runs against a REAL Postgres.");
@@ -316,6 +325,156 @@ section("7b · SINGLE-ADMIN resolution (the default) — one officer, one action
 }
 
 // ════════════════════════════════════════════════════════════════════════════
+section("7c · STAKE-SHARE POLLS (FEE-TAX-2026-10) — a fee on every stake, a 15% winnings tax, on real PG");
+// The new law is DECIDED and NOT IN FORCE (`fee-law-gate.ts`): no market can freeze it before release R5. So the gate
+// is opened IN THIS PROCESS, through the test seam, for each stamp only — and shut again before a shilling moves. Then
+// the whole chain runs for real: bet → close (the exact payout disclosed) → settle → the ledger, and §8 withdraws a
+// stake-share winner's money. Two polls: the document's own example (FEE-TAX-PLAN §3) and a lopsided book whose
+// winner is paid BELOW its stake (ruling 1) — never below its NET stake.
+// ════════════════════════════════════════════════════════════════════════════
+const stakeShareMarketIds: string[] = [];
+const SS_RATES = { feeModel: "stake-share", platformFeeRate: 0.03, operatorFeeRate: 0.10, winningsTaxRate: 0.15 };
+async function ssPoll(title: string) {
+  __setFeeLawLiveForTest(true);
+  try {
+    const m = await createMarket({
+      titleEn: title, titleSw: `${title} (sw)`, category: "macro",
+      sourceUrl: "https://bot.go.tz", resolutionCriterion: "Official source on the date.",
+      resolutionAt: new Date(Date.now() + 7 * 864e5).toISOString(),
+      selectionClosedAt: new Date(Date.now() + 60 * 60_000).toISOString(),
+      proposedBy: "officer_a", rateOverrides: SS_RATES,
+    } as never);
+    stakeShareMarketIds.push(m.id);
+    return m;
+  } finally {
+    __setFeeLawLiveForTest(null);
+  }
+}
+async function poolLedger(marketId: string) {
+  const sum = await prisma.ledgerEntry.aggregate({ _sum: { amount: true }, where: { marketId, account: `POOL:${marketId}` } });
+  return Number(sum._sum.amount ?? 0);
+}
+for (const [label, plan, want] of [
+  ["the document's example", [["p_win1", "YES", 1_000], ["p_win2", "YES", 3_000], ["p_exit_free", "YES", 5_000], ["p_lose1", "NO", 10_000], ["p_lose2", "NO", 20_000], ["p_exit_fee", "NO", 5_000]], { paid: [3_746, 11_237, 18_729], tax: 4_568, fee: 5_720 }],
+  ["a lopsided book", [["p_win1", "YES", 60_000], ["p_lose1", "NO", 2_000]], { paid: [53_679], tax: 261, fee: 8_060 }],
+] as const) {
+  const m = await ssPoll(`Stake-share e2e · ${label}`);
+  ok(`7c ${label}: the poll FROZE stake-share with its 15% tax (v3)`, m.feeSnapshot?.feeModel === "stake-share" && m.feeSnapshot?.winningsTaxRate === 0.15 && m.feeSnapshot?.v === 3, JSON.stringify(m.feeSnapshot));
+  const placed: Array<{ id: string; user: string; side: "YES" | "NO"; stake: number }> = [];
+  for (const [user, side, stake] of plan) {
+    const r = await buyPosition(user, { marketId: m.id, side, stake });
+    ok(`7c ${label}: ${user} staked ${money(stake)} on ${side}`, r.ok, r.ok ? "" : (r as { error?: string }).error);
+    if (r.ok) placed.push({ id: r.data!.positionId, user, side, stake });
+  }
+  // BETTING CLOSES — the real per-market transition discloses the exact payout.
+  const row = (await marketStore.get(m.id))!;
+  row.selectionClosedAt = new Date(Date.now() - 60_000).toISOString();
+  await marketStore.set(row);
+  const closed = await notifySelectionClosedForMarket(m.id);
+  ok(`7c ${label}: the close disclosed to every bettor`, closed.notified === true && closed.bettors === placed.length, JSON.stringify(closed));
+  const disclosed = new Map((await listPositionsForMarket(m.id)).map((p) => [p.id, p.potentialPayout]));
+  const before: Record<string, number> = {};
+  for (const p of placed) before[p.user] = await bal(p.user);
+  await resolveMarket({ marketId: m.id, outcome: "YES", officerId: "officer_a" });
+  await resolveMarket({ marketId: m.id, outcome: "YES", officerId: "officer_b" });
+  const s = await settleMarket(m.id, { force: true, actorId: "officer_a" });
+  ok(`7c ${label}: settlement succeeded`, s.ok, s.ok ? "" : (s as { error?: string }).error);
+  const settled = new Map((await listPositionsForMarket(m.id)).map((p) => [p.id, p]));
+  const winners = placed.filter((p) => p.side === "YES");
+  const paid = winners.map((p) => settled.get(p.id)?.finalPayout ?? null);
+  ok(`7c ${label}: ★ winners are paid ${want.paid.map(money).join(" / ")} — exactly what the close disclosed`,
+    JSON.stringify(paid) === JSON.stringify(want.paid) && winners.every((p) => settled.get(p.id)?.finalPayout === disclosed.get(p.id)),
+    JSON.stringify({ paid, disclosed: winners.map((p) => disclosed.get(p.id)) }));
+  let taxRows = 0, taxWithheld = 0;
+  for (const p of winners) {
+    const pos = settled.get(p.id)!;
+    const delta = (await bal(p.user)) - before[p.user];
+    ok(`7c ${label}: ${p.user}: the wallet credit is the NET payout`, delta === pos.finalPayout, `delta ${money(delta)} · paid ${money(pos.finalPayout ?? 0)}`);
+    ok(`7c ${label}: ${p.user}: ★ the NET-STAKE floor — never below the stake less its own fee (${money(pos.feeTzs ?? 0)})`,
+      pos.feeTzs != null && (pos.finalPayout ?? 0) >= p.stake - pos.feeTzs, `stake ${money(p.stake)} paid ${money(pos.finalPayout ?? 0)}`);
+    const txn = await prisma.transaction.findFirst({ where: { positionId: p.id, type: "BET_PAYOUT" } });
+    const line = txn ? await prisma.ledgerEntry.findFirst({ where: { txnId: txn.id, entryType: "SETTLEMENT_WINNINGS_TAX" } }) : null;
+    if (txn && line && Number(line.amount) === Number(txn.taxWithheld) && line.account === "HOUSE:WINNINGS_TAX" && Number(txn.taxWithheld) === pos.winningsTaxTzs && Number(txn.amount) === pos.finalPayout) taxRows++;
+    taxWithheld += Number(txn?.taxWithheld ?? 0);
+  }
+  ok(`7c ${label}: every BET_PAYOUT carries its withheld tax, tied to ONE line on HOUSE:WINNINGS_TAX`, taxRows === winners.length, `${taxRows}/${winners.length}`);
+  ok(`7c ${label}: ★ the withheld tax totals T = ${money(want.tax)}`, taxWithheld === want.tax, `withheld ${money(taxWithheld)}`);
+  const losers = placed.filter((p) => p.side === "NO");
+  ok(`7c ${label}: the losers paid their own fee and were paid nothing`, losers.every((p) => settled.get(p.id)?.status === "LOSS" && settled.get(p.id)?.feeTzs != null && Number(settled.get(p.id)?.finalPayout) === 0));
+  const fees = [...settled.values()].reduce((a, p) => a + (p.feeTzs ?? 0), 0);
+  ok(`7c ${label}: Σ every position's own fee = F = ${money(want.fee)}`, fees === want.fee, `Σ fee ${money(fees)}`);
+  ok(`7c ${label}: ★ POOL:<market> closes at EXACTLY 0 — payouts + F + T, no dust`, (await poolLedger(m.id)) === 0, `POOL ${await poolLedger(m.id)}`);
+  if (label === "a lopsided book") {
+    ok("7c a lopsided book: the winner really is paid BELOW its stake (ruling 1) — so §10's floor is measured on a case that can break it",
+      (paid[0] ?? Infinity) < 60_000);
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+section("7d · A STAKE-SHARE UP & DOWN ROUND — the real chain, the real close, on real PG");
+// The same law on the second product, through ONLY its product path: an asset, a chain on a stake-share profile (the
+// explicit override a chain on another model needs), `openRound` with a confirmed open price, real bets, and
+// `closeRound` → `settleMarket`. ⛔ The gate is open IN THIS PROCESS only for the platform's 15% tax, the chain's
+// profile and the round's stamp; a round takes its tax from the platform's config, never from its profile.
+// ════════════════════════════════════════════════════════════════════════════
+{
+  await seedDefaultSources();
+  await addSource({ domain: "api.twelvedata.com", label: "Twelve Data", category: "crypto", rationale: "e2e fixture", addedBy: "system" });
+  const a = await createAsset({
+    key: "BTCE2ESS", symbol: "BTC/USD", nameEn: "Bitcoin", nameSw: "Bitcoin", iconKey: "crypto",
+    priceSourceUrl: "https://api.twelvedata.com/quote", category: "crypto", decimals: 2, minMoveTicks: 2,
+  }, "officer_a");
+  if (!a.ok) throw new Error(`7d fixture: createAsset — ${a.error}`);
+  await setAssetEnabled(a.data.id, true, "officer_a");
+  const asset = (await assetStore.get(a.data.id))!;
+  const anchorMs = cleanGridAnchor(Date.now() + 60_000);
+  const B = (k: number) => new Date(anchorMs + k * 5 * 60_000).toISOString();
+  const confirmAt = async (iso: string, price: number) => {
+    const o = await observationStore.ensure(asset.id, iso);
+    await observationStore.confirm(o.id, { price, sourceUrl: asset.priceSourceUrl, sourceQuotedAt: iso, evidence: `BTC quoted ${price}`, confidence: 96, model: "test-stub", rawHash: `e2e${iso}${price}` });
+    return o.id;
+  };
+  let roundId = "", marketId = "";
+  __setFeeLawLiveForTest(true);
+  try {
+    const taxSaved = await setGlobalConfig({ winningsTaxRate: 0.15 }, "e2e-stake-share");
+    if (!taxSaved.ok) throw new Error(`7d fixture: the 15% tax — ${JSON.stringify(taxSaved)}`);
+    const c = await createChain({
+      assetId: asset.id, durationMinutes: 5,
+      rateProfile: { feeModel: "stake-share", platformFeeRate: 0.03, operatorFeeRate: 0.10, feeCeilingRate: 1 / 3, estimatedWinningsRate: 0.4, showEstimatedWinnings: true },
+    }, "officer_a", { allowFeeModelOverride: true });
+    if (!c.ok) throw new Error(`7d fixture: createChain — ${c.error}`);
+    await setChainState(c.data.id, "RUNNING", "officer_a");
+    const chain = (await chainStore.get(c.data.id))!;
+    const opened = await openRound(chain, B(2), await confirmAt(B(2), 63_000), 63_000);
+    if (!opened.ok) throw new Error(`7d fixture: openRound — ${opened.error}`);
+    roundId = opened.data.id; marketId = opened.data.marketId;
+  } finally {
+    __setFeeLawLiveForTest(null);
+  }
+  stakeShareMarketIds.push(marketId);
+  const m = (await getMarket(marketId))!;
+  ok("7d: the round FROZE stake-share with the platform's 15% tax (v3)", m.feeSnapshot?.feeModel === "stake-share" && m.feeSnapshot?.winningsTaxRate === 0.15, JSON.stringify(m.feeSnapshot));
+  const up = await buyPosition("p_win2", { marketId, side: "YES", stake: 5_000 });
+  const dn = await buyPosition("p_lose2", { marketId, side: "NO", stake: 5_000 });
+  ok("7d: both sides staked 5,000", up.ok && dn.ok, `${up.ok ? "" : (up as { error?: string }).error} ${dn.ok ? "" : (dn as { error?: string }).error}`);
+  const upBefore = await bal("p_win2"), dnBefore = await bal("p_lose2");
+  // The close: a confirmed reading at the round's OWN boundary, strictly beyond its frozen up target.
+  const r0 = (await roundStore.get(roundId))!;
+  const closePrice = Number(((r0.upTarget ?? 63_000) + 50).toFixed(2));
+  const closed = await closeRound(roundId, await confirmAt(r0.boundaryAt, closePrice), closePrice);
+  ok("7d: the round closed UP and its money moved", closed.ok && closed.data.outcome === "UP" && closed.data.settled, JSON.stringify(closed));
+  const pos = new Map((await listPositionsForMarket(marketId)).map((p) => [p.userId, p]));
+  // 5,000 v 5,000: F = 650 + 650; P = 4,350; T = rhu(652.5) = 653; the winner gets its net 4,350 + the prize 3,697.
+  ok("7d: ★ the UP winner is paid 8,047 — its net stake 4,350 back plus the prize after tax", pos.get("p_win2")?.finalPayout === 8_047 && (await bal("p_win2")) - upBefore === 8_047,
+    `paid ${pos.get("p_win2")?.finalPayout}`);
+  ok("7d: the DOWN loser is paid nothing and its own fee is on the row", Number(pos.get("p_lose2")?.finalPayout) === 0 && pos.get("p_lose2")?.feeTzs === 650 && (await bal("p_lose2")) === dnBefore);
+  const tax = await prisma.ledgerEntry.aggregate({ _sum: { amount: true }, where: { marketId, account: "HOUSE:WINNINGS_TAX" } });
+  ok("7d: ★ the round's 653 of tax sits on HOUSE:WINNINGS_TAX, and its POOL closes at EXACTLY 0", Number(tax._sum.amount) === 653 && (await poolLedger(marketId)) === 0,
+    `tax ${Number(tax._sum.amount)} · POOL ${await poolLedger(marketId)}`);
+}
+
+// ════════════════════════════════════════════════════════════════════════════
 section("8 · CASH OUT TO MOBILE MONEY — the 1.5% fee, and NOTHING else");
 // ════════════════════════════════════════════════════════════════════════════
 // ⛔ THESE LITERALS ARE THE LAW, NOT THE CODE'S OPINION OF IT. RULES §2.7: 1.5% of the
@@ -385,6 +544,16 @@ section("9 · RECONCILE — the books must balance");
   ok("★ the RETIRED accounts (HOUSE:TAX / HOUSE:RESERVE) were never credited", deadAccounts.length === 0,
      deadAccounts.map(d => `${d.account}=${d.sum}`).join(", "));
 
+  // ⭐ FEE-TAX-2026-10 · the winnings tax is its OWN liability (owed to TRA, never revenue, never a levy), and every
+  // shilling on it is one a BET_PAYOUT row withheld: §7c's 4,568 + 261 and §7d's 653.
+  const winningsTax = Number(house.find((h) => h.account === "HOUSE:WINNINGS_TAX")?.sum ?? 0);
+  const withheld = await prisma.transaction.aggregate({ _sum: { taxWithheld: true }, where: { type: "BET_PAYOUT" } });
+  ok("★ HOUSE:WINNINGS_TAX = Σ BET_PAYOUT.taxWithheld, to the shilling (5,482 — the stake-share sections' T)",
+     winningsTax === Number(withheld._sum.taxWithheld ?? 0) && winningsTax === 4_568 + 261 + 653,
+     `account ${money(winningsTax)} · withheld ${money(Number(withheld._sum.taxWithheld ?? 0))}`);
+  const ssPools = await Promise.all(stakeShareMarketIds.map(poolLedger));
+  ok("★ every stake-share market's POOL account closed at EXACTLY 0", ssPools.length === 3 && ssPools.every((x) => x === 0), JSON.stringify(ssPools));
+
   // (c) MONEY CONSERVATION across the whole system.
   const wallets = await prisma.wallet.aggregate({ _sum: { balance: true, hold: true } });
   const walletTotal = Number(wallets._sum.balance) + Number(wallets._sum.hold);
@@ -415,21 +584,34 @@ section("9 · RECONCILE — the books must balance");
   console.log(`  drift                   ${drift.toFixed(2).padStart(12)}`);
 
   ok("★ MONEY CONSERVATION — every shilling deposited is accounted for", Math.abs(drift) <= 5, `drift ${drift.toFixed(2)}`);
+  // The stake-share sections are exact by construction (whole shillings, largest remainder, POOL at 0), so the run's
+  // drift stays exactly where the older sections leave it: 0.00 (R2a's run, and this one).
+  ok("★ …and the drift is 0.00 — the stake-share sections add none", Math.abs(drift) < 0.005, `drift ${drift.toFixed(2)}`);
 }
 
 // ════════════════════════════════════════════════════════════════════════════
 section("10 · THE WINNER FLOOR, across every settled position in the system");
 // ════════════════════════════════════════════════════════════════════════════
 {
+  // ⭐ MODEL-AWARE SINCE FEE-TAX-2026-10. Under the two older models a winner's floor is the stake. Under `stake-share` the
+  // fee comes out of EVERY stake (ruling 1), so the floor is the NET stake — the stake less the fee the position itself
+  // paid, which settlement writes on the row (`Position.feeTzs`, set on stake-share positions only). §7c's lopsided winner
+  // IS paid below its stake, so the older wording would accuse a correct settlement.
   const wins = await prisma.position.findMany({ where: { status: "WIN" } });
-  const breaches = wins.filter((p) => Number(p.finalPayout ?? 0) < Number(p.stake));
+  const floorOf = (p: { stake: unknown; feeTzs: number | null }) => Number(p.stake) - (p.feeTzs ?? 0);
+  const breaches = wins.filter((p) => Number(p.finalPayout ?? 0) < floorOf(p));
   console.log(`\n  ${wins.length} WIN positions settled across the run`);
   for (const p of wins) {
     const ratio = Number(p.finalPayout) / Number(p.stake);
-    console.log(`    ${p.userId.padEnd(12)} staked ${money(Number(p.stake)).padStart(7)} → paid ${money(Number(p.finalPayout)).padStart(7)}  (${ratio.toFixed(3)}×)`);
+    console.log(`    ${p.userId.padEnd(12)} staked ${money(Number(p.stake)).padStart(7)} → paid ${money(Number(p.finalPayout)).padStart(7)}  (${ratio.toFixed(3)}×)${p.feeTzs != null ? `  · stake-share, own fee ${money(p.feeTzs)}` : ""}`);
   }
-  ok("★★ NOT ONE WINNER WAS PAID BELOW THEIR STAKE", breaches.length === 0,
-     breaches.map(b => `${b.userId} staked ${b.stake} paid ${b.finalPayout}`).join(", "));
+  ok("★★ NOT ONE WINNER WAS PAID BELOW ITS FLOOR — the stake (older models) or the net stake (stake-share)", breaches.length === 0,
+     breaches.map(b => `${b.userId} staked ${b.stake} paid ${b.finalPayout} fee ${b.feeTzs}`).join(", "));
+  const olderBelowStake = wins.filter((p) => p.feeTzs == null && Number(p.finalPayout ?? 0) < Number(p.stake));
+  ok("★ …and under the older models that floor is still the WHOLE stake", olderBelowStake.length === 0,
+     olderBelowStake.map(b => `${b.userId} staked ${b.stake} paid ${b.finalPayout}`).join(", "));
+  ok("…the run held stake-share winners, one of them paid below its stake (so the net-stake floor was really measured)",
+     wins.some((p) => p.feeTzs != null && Number(p.finalPayout ?? 0) < Number(p.stake)));
 }
 
 console.log(`\n${"═".repeat(74)}`);
