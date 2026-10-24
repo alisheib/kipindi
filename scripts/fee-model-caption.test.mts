@@ -48,6 +48,10 @@ const LOSER_SHARE = { feeModel: "loser-share" as const, platformFeeRate: 0.03, o
 const CAPPED = { feeModel: "capped-commission" as const, commissionRate: 0.13, feeCeilingRate: 1 / 3 };
 /** A pre-2026-07-23 snapshot: no `feeModel` field at all. */
 const LEGACY_BARE = { commissionRate: 0.10, feeCeilingRate: 1 / 3 };
+/** FEE-TAX-2026-10 · the decided law (not in force until release R5): 3% + 10% of EVERY stake, a 15% winnings tax. */
+const STAKE_SHARE = { feeModel: "stake-share" as const, platformFeeRate: 0.03, operatorFeeRate: 0.10, winningsTaxRate: 0.15, feeCeilingRate: 1 / 3 };
+/** …and as an Up & Down profile carries it: no tax (a round takes the platform's when it is stamped). */
+const STAKE_SHARE_PROFILE = { feeModel: "stake-share" as const, platformFeeRate: 0.03, operatorFeeRate: 0.10, feeCeilingRate: 1 / 3 };
 
 // ── §1 · the caption resolves the model exactly as the arithmetic does ────────
 console.log("\n§1 · the model named is the model charged");
@@ -57,6 +61,8 @@ for (const [name, rates, expected] of [
   ["capped-commission profile", CAPPED, "capped-commission"],
   ["a bare legacy snapshot with NO feeModel", LEGACY_BARE, "capped-commission"],
   ["undefined rates", undefined, "capped-commission"],
+  ["stake-share rates (FEE-TAX-2026-10)", STAKE_SHARE, "stake-share"],
+  ["a stake-share PROFILE, which carries no tax", STAKE_SHARE_PROFILE, "stake-share"],
 ] as const) {
   const d = describeFeeModel(rates);
   ok(`1.${name} → ${expected}`, d.model === expected, d.model);
@@ -130,6 +136,19 @@ const quoted = (caption: string) => [...caption.matchAll(/([\d.]+)%/g)].map((m) 
      `caption ${rate} · fee ${f.fee} · max ${MAX_LOSER_SHARE_RATE}`);
 }
 
+{
+  // FEE-TAX-2026-10 · the stake-share caption's rate is a share of EVERY stake — on an unbalanced book, so a caption that
+  // quoted the losing side's rate (or a loser-share caption over the new law) is caught. The tax is NOT in the fee.
+  const yes = 70_000, no = 30_000;
+  const f = poolFee(yes, no, STAKE_SHARE, "YES");
+  const caption = describeFeeModel(STAKE_SHARE).caption;
+  const [rate] = quoted(caption);
+  ok("2.9 · stake-share caption quotes ONE rate, and says of what: \"13% of stakes\"", quoted(caption).length === 1 && caption === "13% of stakes", caption);
+  ok("2.10 · ★ quoted rate × EVERY stake == the fee poolFee charged — 13% of 100,000 = 13,000 — and the tax stands beside it",
+     Math.abs(rate * (yes + no) - f.fee) < 1e-9 && typeof f.winningsTax === "number" && f.winningsTax > 0, `${rate * (yes + no)} vs fee ${f.fee} · tax ${f.winningsTax}`);
+  ok("2.11 · …and it is not the rate of the losing side alone", Math.abs(rate * no - f.fee) > 1, `${rate * no} vs ${f.fee}`);
+}
+
 // ── §3 · a chain does NOT inherit the default ────────────────────────────────
 console.log("\n§3 · the split a default-only console cannot see");
 
@@ -177,6 +196,24 @@ console.log("\n§3 · the split a default-only console cannot see");
   ok("3.11 · a board with no chains at all falls back to the default, without claiming a split",
      boardFeeSummary([], cfg).split === false && boardFeeSummary([], cfg).caption === "loser-share 13%",
      boardFeeSummary([], cfg).caption);
+
+  // ⛔ FEE-TAX-2026-10 · the split caption used to map every model that was not loser-share to "capped" — so a board
+  // half-moved to stake-share would have been captioned with a law no chain runs.
+  const moving = boardFeeSummary([migrated, { rateProfile: { ...STAKE_SHARE_PROFILE } as Record<string, unknown> }], cfg);
+  ok("3.12 · ★ a board split between loser-share and stake-share NAMES both — never \"capped\"",
+     moving.split && moving.caption.includes("loser-share") && moving.caption.includes("stake-share") && !moving.caption.includes("capped"), moving.caption);
+  const ssCfg = { ...DEFAULT_UPDOWN_CONFIG, defaultRateProfile: { ...STAKE_SHARE_PROFILE } } as UpDownConfig;
+  const ssChains = [{ rateProfile: { ...STAKE_SHARE_PROFILE } as Record<string, unknown> }];
+  const moved = boardFeeSummary(ssChains, ssCfg);
+  ok("3.13 · a board entirely on stake-share captions its rate of every stake", !moved.split && moved.caption === "13% of stakes", moved.caption);
+  // The tile prices its preview WITH a side, which needs the tax — and a profile never carries one (a round takes the
+  // platform's when it is stamped). So the console lays the platform's saved tax beside it, and invents none.
+  const priced = boardFeeSummary(ssChains, ssCfg, { winningsTaxRate: 0.15 });
+  ok("3.14 · the priced preview of a stake-share board takes the PLATFORM's tax — 13% of a balanced 10,000 is 1,300",
+     priced.profile.winningsTaxRate === 0.15 && poolFee(5_000, 5_000, priced.profile, "YES").fee === 1_300 && priced.caption === "13% of stakes",
+     JSON.stringify(priced.profile));
+  ok("3.15 · …and with no tax saved none is invented: the profile stays without one",
+     boardFeeSummary(ssChains, ssCfg, {}).profile.winningsTaxRate === undefined && boardFeeSummary([migrated], cfg, { winningsTaxRate: 0.15 }).profile.winningsTaxRate === undefined);
 }
 
 // ── §4 · the live admin tile derives its caption ─────────────────────────────
@@ -273,6 +310,11 @@ console.log("\n§6 · a correct caption an operator cannot read is still a defec
     ["capped-commission", CAPPED],
     ["a bare legacy snapshot", LEGACY_BARE],
     ["undefined rates", undefined],
+    ["stake-share", STAKE_SHARE],
+    // The longest a basis point can write: 12.75% of stakes, 16 characters.
+    ["stake-share at 12.75%", { ...STAKE_SHARE, platformFeeRate: 0.0275 }],
+    // The highest fee any save may freeze (MAX_STAKE_FEE_RATE).
+    ["stake-share at its 30% bound", { ...STAKE_SHARE, platformFeeRate: 0.10, operatorFeeRate: 0.20 }],
   ] as const) {
     const c = describeFeeModel(rates).caption;
     ok(`6.${name} fits the 1024px tile (≤ ${FEE_CAPTION_MAX_CHARS} chars)`,
@@ -378,6 +420,23 @@ console.log("\n§7 · the simulator an officer reads before saving a rate");
   ok("7.7 · ★★ at 5%+20% the caption reads 25%, so it is DERIVED and not a literal",
      otherHtml.includes(`${Number(((g.fee / 10_500) * 100).toFixed(2))}% of the losing pool`) && !otherHtml.includes("13% of the losing pool"),
      `expected ${Number(((g.fee / 10_500) * 100).toFixed(2))}%`);
+
+  // ── FEE-TAX-2026-10 · the simulator under stake-share speaks NEITHER older law ──────────────────────────────────────
+  // Its grids are written for the two older models; under stake-share the screen says what the law is and prices nothing
+  // it cannot price (R2c brings the stake-share simulator). The defect this guards is the 2026-09-08 one, one model on:
+  // a correct-looking grid of capped (or loser-share) sentences beside a law that charges neither.
+  const SS_CFG = {
+    feeModel: "stake-share", platformFeeRate: 0.03, operatorFeeRate: 0.10, winningsTaxRate: 0.15, commissionRate: 0.13,
+    feeCeilingRate: 1 / 3, traTaxOnCommissionRate: 0.10, gbtLevyOnCommissionRate: 0.05,
+  } as unknown as Parameters<typeof FeeSimulator>[0]["config"];
+  let ssHtml = "";
+  try { ssHtml = renderToStaticMarkup(createElement(FeeSimulator, { config: SS_CFG })); }
+  catch (err) { ok("7.8 · the simulator renders under stake-share", false, String((err as Error)?.message ?? err)); }
+  ok("7.8 · ★ under stake-share it states the law — 13% of every stake, 15% winnings tax — and says it simulates nothing here",
+     ssHtml.includes("not simulated on this screen yet") && ssHtml.includes("13% of every stake") && ssHtml.includes("15%"), ssHtml.slice(0, 160));
+  ok("7.9 · ★ …with NONE of the older laws' vocabulary: no min(), no ceiling, no 33.3%, no \"of the losing pool\"",
+     CAPPED_ONLY.every((p) => !ssHtml.includes(p)) && !ssHtml.includes("33.3%") && !ssHtml.includes("of the losing pool"),
+     CAPPED_ONLY.filter((p) => ssHtml.includes(p)).join(" · "));
 }
 
 console.log(`\nfee-model-caption: ${pass} passed, ${fail} failed`);

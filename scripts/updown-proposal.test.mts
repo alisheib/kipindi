@@ -39,7 +39,7 @@ delete process.env.ANTHROPIC_API_KEY;
 
 import { __resetUpDownMemoryStores, roundStore } from "../src/lib/server/updown-dal.ts";
 import {
-  createAsset, setAssetEnabled, createChain, setChainState, listChains, getAsset,
+  createAsset, setAssetEnabled, createChain, updateChain, setChainState, listChains, getAsset,
   __resetUpDownConfig, setUpDownConfig,
 } from "../src/lib/server/updown-config.ts";
 import {
@@ -514,6 +514,37 @@ console.log("\n── 11 · the record of why a live chain exists cannot be dele
   const counts = await countProposalsByState();
   ok("the state counter reports every state", Object.keys(counts).length === 7, Object.keys(counts).join(","));
   ok("…and counts the armed one", counts.ARMED === 1, JSON.stringify(counts));
+}
+
+// ── 12 · FEE-TAX-2026-10 · arming cannot START a chain on another fee model ─────────
+// Arming starts a chain and has no override to give, so it refuses an existing chain whose fee model is not the product
+// default's — checked before anything is written (`armProposal`, ONE LAW ACROSS THE BOARD). Added at the R2 review: the
+// refusal shipped in R2a with no test that ever reached it.
+console.log("\n── 12 · ⛔ arming refuses a chain on another fee model than the default's ──");
+{
+  __resetProposalsForTest();
+  const assetId = await makeAsset("FEEM");
+  // A 15-minute chain on the RETIRED model, built on purpose with the explicit override (the default is loser-share).
+  const legacy = await createChain({
+    assetId, durationMinutes: 15, rateProfile: { feeModel: "capped-commission", commissionRate: 0.13, feeCeilingRate: 1 / 3 },
+  }, OFFICER, { allowFeeModelOverride: true });
+  if (!legacy.ok) throw new Error(`legacy chain: ${legacy.error}`);
+  const p = await readableProposal(assetId);   // 15 minutes — the same (asset, duration) as the chain
+  const ap = await approveProposal(p.id, { officerId: OFFICER });
+  ok("12.0 · an APPROVED proposal for an asset whose 15-minute chain is on capped-commission", ap.ok, ap.ok ? "" : ap.error);
+  const armed = await armProposal(p.id, { officerId: OFFICER });
+  ok("12.1 · ⛔ arming is REFUSED, and says why: the chain is capped-commission, the board loser-share",
+    !armed.ok && /^Cannot arm — This fee profile is capped-commission, but Up & Down chains run on loser-share/.test(armed.error),
+    armed.ok ? "IT ARMED A CHAIN ON A RETIRED LAW" : armed.error);
+  const after = (await listChains({ assetId })).find((c) => c.id === legacy.data.id);
+  ok("12.2 · …before anything was written: the chain is still STOPPED on its own profile, the proposal still APPROVED",
+    after?.state === "STOPPED" && (after?.rateProfile as { feeModel?: string } | null)?.feeModel === "capped-commission"
+      && (await getProposal(p.id))?.state === "APPROVED", `${after?.state} · ${JSON.stringify(after?.rateProfile)}`);
+  // CONTROL — the same chain, moved onto the default's law (a null profile copies the default), arms.
+  const moved = await updateChain(legacy.data.id, { rateProfile: null }, OFFICER);
+  const armed2 = await armProposal(p.id, { officerId: OFFICER });
+  ok("12.3 · CONTROL · once the chain is on the default's law the same proposal arms — the refusal was the model, nothing else",
+    moved.ok && armed2.ok && armed2.data.chainId === legacy.data.id, armed2.ok ? "" : armed2.error);
 }
 
 console.log(`\n  UPDOWN PROPOSALS: ${pass} passed, ${fail} failed`);

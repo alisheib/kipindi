@@ -40,6 +40,11 @@ position always wins); the S8 hold in code (`openWeek` refuses a public week tha
   358/0.
 - The operator guide's PDF has been regenerated (B3: any officer attests while the checks are off) and read page by page.
 Today's money law is still in force everywhere; the fee change is not switched on.
+R2 is being integrated on branch `feetax-r2int`: lane a (the `stake-share` engine in `payout.ts`, the fee-law gate,
+the config's gated doors and compare-and-swap writers with the form baseline, the fresh read at stamping, the one act
+that moves every chain, the fee-model census — reviewed twice, every finding fixed) and lane b (settlement by the split,
+the `HOUSE:WINNINGS_TAX` ledger line, the additive schema, the close-time disclosure under the market lock) are merged;
+lane c (projections, the bet screens' below-stake warning, the admin Fees & taxes card) follows. All of it gated off.
 
 **Next:** R2 — the `stake-share` engine (lane a, reviewed twice, its fixes in hand), settlement and ledger (lane b) and
 the projections, screens and admin card (lane c): merge them, run the gate, push gated-off, read back. Then R3.
@@ -61,7 +66,7 @@ tracker is its copy and supersedes it.
 |---|---|---|---|
 | R0 | The records: rulings, this tracker, the RULES row, the board row, the S8 hold | ✅ | `82c16ec20`, live and read back 2026-10-24 (docs only) |
 | R1 | Any admin can do any step + the Millionea open lock | ✅ | `f12eb06cd`, live and read back 2026-10-24: the Owner setting and its /admin/system card, live OFF by Ali's word (nothing stored = OFF; a failed read = ON; a stored position wins); the twelve checks gated (check 11 frees an officer's own payout hold on a market they hold no money in — a case on their own stake stays refused, ruling 6b); the bulk-resolve staged-row words follow the two-officer switch; the S8 hold in `openWeek`; `test:second-officer-switch`, `test:maswali-open-lock`, `red:second-officer-switch` |
-| R2 | Fee engine, settlement, ledger, safe config — gated off | ⬜ | |
+| R2 | Fee engine, settlement, ledger, safe config — gated off | 🔨 | integrating on `feetax-r2int`: lanes a (+ review fixes) and b merged; lane c to follow |
 | R3 | Reports and money around settlement (polls + Up & Down) | ⬜ | |
 | R4 | Millionea `ticket-share` — engine, money, records, reports, figures — gated off | ⬜ | |
 | R5 | Every binding word in one commit, the gate flipped, the release's one-time switch under Ali's ruling | ⬜ | the switch |

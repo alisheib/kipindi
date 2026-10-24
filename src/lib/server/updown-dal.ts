@@ -14,6 +14,7 @@
  * The one genuinely subtle thing in here is the observation store; see §Observations.
  */
 import { prisma, hasDatabase } from "./prisma";
+import { currentLockTx } from "./locks";
 import type { Prisma } from "@prisma/client";
 
 // ---------------------------------------------------------------------------
@@ -255,7 +256,56 @@ export interface ChainStore {
    *  `marketStore.stamp` exists to prevent). */
   patch(id: string, fields: Partial<StoredChain>): Promise<void>;
   delete(id: string): Promise<void>;
+  /**
+   * ⭐ ONE TRANSACTION for `applyFeeProfileToEveryChain` (FEE-TAX-2026-10): swap the Up & Down config row (compare-and-swap
+   * against `config.expected`; created when that is null), give `profile` to every chain `differs` picks — in ANY state,
+   * a NULL profile included — then re-read every chain and THROW, rolling all of it back, if `stillDiffers` finds one;
+   * and, last, append the act's own RECORD (`record`) to `FEE_PROFILE_ACTS_KEY` — in the same transaction, so the act and
+   * its record land together or not at all (the audit row the caller writes after the commit is the second record, not
+   * the only one). Returns the chains moved (as they were), every chain after, and the record as written.
+   * ⭐ Inside a `withLock` it JOINS the lock's transaction (`currentLockTx`) — the act runs under the lock every chain
+   * writer of a fee profile takes (`updown-config.ts`), so nothing can create or edit a chain between its read and its
+   * commit; outside one it opens its own, with an explicit budget (the house shape: `ledger.ts → withMoneyTx`).
+   * ⚠️ The memory twin moves the chains and keeps the record only: with no database the caller's in-memory config IS
+   * the store.
+   */
+  applyProfileToChains(input: ApplyProfileInput): Promise<{ moved: StoredChain[]; after: StoredChain[]; record: Record<string, unknown> }>;
+  /** Every record `applyProfileToChains` has written, oldest first (at most `FEE_PROFILE_ACTS_KEPT`). */
+  listFeeProfileActs(): Promise<Array<Record<string, unknown>>>;
 }
+
+/** What `ChainStore.applyProfileToChains` is given. */
+export type ApplyProfileInput = {
+  /** The Up & Down config row: replaced only while it still holds `expected` (null = it must not exist yet). */
+  config: { key: string; expected: unknown; next: unknown };
+  /** The profile every moved chain is given. */
+  profile: Record<string, unknown>;
+  /** Which chains move — judged against the default being REPLACED. */
+  differs: (c: StoredChain) => boolean;
+  /** Which chains would still be off the new law after the move — judged against the NEW default. One rolls it all back. */
+  stillDiffers: (c: StoredChain) => boolean;
+  /**
+   * The act's record — {officer, reason, counts, at …} — built from what the transaction actually moved and found, and
+   * written INSIDE it, after the recount (FEE-TAX R2 review).
+   */
+  record: (moved: StoredChain[], after: StoredChain[]) => Record<string, unknown>;
+};
+
+/** The SystemConfig row that holds the record of every fee-profile act, appended inside each act's transaction. */
+export const FEE_PROFILE_ACTS_KEY = "updown.fee_profile.acts";
+/** How many records that row keeps (oldest dropped). The act is rare — a handful in the platform's life — and each one is
+ *  also in the audit chain; the row is the record that cannot be lost between the commit and the audit write. */
+export const FEE_PROFILE_ACTS_KEPT = 50;
+
+/** The records a stored value holds — `{ acts: [...] }`; anything else holds none. */
+function actsOf(value: unknown): Array<Record<string, unknown>> {
+  const acts = (value as { acts?: unknown } | null | undefined)?.acts;
+  return Array.isArray(acts) ? acts.filter((a): a is Record<string, unknown> => !!a && typeof a === "object") : [];
+}
+
+/** The order every chain list is read in (asset, then duration) — one definition for the two twins. */
+const byAssetThenDuration = (a: StoredChain, b: StoredChain): number =>
+  a.assetId.localeCompare(b.assetId) || a.durationMinutes - b.durationMinutes;
 
 export interface RoundStore {
   get(id: string): Promise<StoredRound | null>;
@@ -393,12 +443,16 @@ declare global {
   var __50PICK_UD_CHAINS: Map<string, StoredChain> | undefined;
   var __50PICK_UD_ROUNDS: Map<string, StoredRound> | undefined;
   var __50PICK_UD_OBS: Map<string, StoredObservation> | undefined;
+  var __50PICK_UD_FEE_PROFILE_ACTS: Array<Record<string, unknown>> | undefined;
   /* eslint-enable no-var */
 }
 const memAssets = globalThis.__50PICK_UD_ASSETS ?? (globalThis.__50PICK_UD_ASSETS = new Map());
 const memChains = globalThis.__50PICK_UD_CHAINS ?? (globalThis.__50PICK_UD_CHAINS = new Map());
 const memRounds = globalThis.__50PICK_UD_ROUNDS ?? (globalThis.__50PICK_UD_ROUNDS = new Map());
 const memObs = globalThis.__50PICK_UD_OBS ?? (globalThis.__50PICK_UD_OBS = new Map());
+/** The memory twin of the `FEE_PROFILE_ACTS_KEY` row. */
+const memFeeProfileActs: Array<Record<string, unknown>> =
+  globalThis.__50PICK_UD_FEE_PROFILE_ACTS ?? (globalThis.__50PICK_UD_FEE_PROFILE_ACTS = []);
 
 /** The in-memory stand-in for `@@unique([assetId, boundaryAt])`. */
 const obsKey = (assetId: string, boundaryAt: string) => `${assetId}@${boundaryAt}`;
@@ -434,6 +488,27 @@ const memoryChains: ChainStore = {
     if (cur) memChains.set(id, { ...cur, ...fields, updatedAt: new Date().toISOString() });
   },
   async delete(id) { memChains.delete(id); },
+  async applyProfileToChains({ profile, differs, stillDiffers, record }) {
+    const saved = new Map(memChains);
+    const moved = [...memChains.values()].sort(byAssetThenDuration).filter(differs);
+    const now = new Date().toISOString();
+    for (const c of moved) memChains.set(c.id, { ...c, rateProfile: { ...profile }, updatedAt: now });
+    const after = [...memChains.values()].sort(byAssetThenDuration);
+    const left = after.filter(stillDiffers);
+    if (left.length > 0) {
+      // The memory twin of a rollback: every chain back as it was.
+      memChains.clear();
+      for (const [id, c] of saved) memChains.set(id, c);
+      throw new Error(`${left.length} chain(s) would still be on another fee model (${left.map((c) => c.id).join(", ")})`);
+    }
+    const entry = record(moved, after);
+    memFeeProfileActs.push(entry);
+    if (memFeeProfileActs.length > FEE_PROFILE_ACTS_KEPT) memFeeProfileActs.splice(0, memFeeProfileActs.length - FEE_PROFILE_ACTS_KEPT);
+    return { moved, after, record: entry };
+  },
+  async listFeeProfileActs() {
+    return memFeeProfileActs.map((a) => ({ ...a }));
+  },
 };
 
 /**
@@ -656,6 +731,49 @@ const prismaChains: ChainStore = {
     }
     if (Object.keys(data).length === 0) return;
     await pc().upDownChain.update({ where: { id }, data });
+  },
+  async applyProfileToChains({ config, profile, differs, stillDiffers, record }) {
+    // ⛔ ALL OR NOTHING: the default and every chain move together, or nothing moves — a half-applied act is the split
+    // board A2 had to be driven out of. Any throw below rolls the whole transaction back, the record with it.
+    const act = async (tx: Prisma.TransactionClient) => {
+      if (config.expected === null) {
+        await tx.systemConfig.create({ data: { key: config.key, value: config.next as never } });
+      } else {
+        const swapped = await tx.systemConfig.updateMany({
+          where: { key: config.key, value: { equals: config.expected as never } },
+          data: { value: config.next as never },
+        });
+        if (swapped.count !== 1) throw new Error("the Up & Down settings changed while the profile was being applied");
+      }
+      const order = [{ assetId: "asc" as const }, { durationMinutes: "asc" as const }];
+      const moved = (await tx.upDownChain.findMany({ orderBy: order })).map(toChain).filter(differs);
+      for (const c of moved) {
+        await tx.upDownChain.update({ where: { id: c.id }, data: { rateProfile: profile as never } });
+      }
+      const after = (await tx.upDownChain.findMany({ orderBy: order })).map(toChain);
+      const left = after.filter(stillDiffers);
+      if (left.length > 0) {
+        throw new Error(`${left.length} chain(s) would still be on another fee model (${left.map((c) => c.id).join(", ")})`);
+      }
+      // The act's own record, in the act's transaction: it commits with the act or not at all.
+      const entry = record(moved, after);
+      const prior = await tx.systemConfig.findUnique({ where: { key: FEE_PROFILE_ACTS_KEY } });
+      const value = { acts: [...actsOf(prior?.value), entry].slice(-FEE_PROFILE_ACTS_KEPT) };
+      await tx.systemConfig.upsert({
+        where: { key: FEE_PROFILE_ACTS_KEY },
+        create: { key: FEE_PROFILE_ACTS_KEY, value: value as never },
+        update: { value: value as never },
+      });
+      return { moved, after, record: entry };
+    };
+    // Inside the fee-profile lock: JOIN its transaction, so the lock is held until this commits. Outside one: our own,
+    // with the explicit budget every multi-statement money-adjacent transaction here gets (`ledger.ts → withMoneyTx`).
+    const joined = currentLockTx();
+    return joined ? act(joined) : pc().$transaction(act, { timeout: 30_000, maxWait: 10_000 });
+  },
+  async listFeeProfileActs() {
+    const row = await pc().systemConfig.findUnique({ where: { key: FEE_PROFILE_ACTS_KEY } });
+    return actsOf(row?.value);
   },
   /* ⛔ NO `.catch(() => {})` HERE, AND THAT IS THE POINT (S-18, scan #1, 2026-08-28).
    *
@@ -898,6 +1016,7 @@ export const observationStore: ObservationStore = usePrisma ? prismaObservations
 export function __resetUpDownMemoryStores(): void {
   if (usePrisma) return;
   memAssets.clear(); memChains.clear(); memRounds.clear(); memObs.clear();
+  memFeeProfileActs.length = 0;
 }
 
 /** Exported for the service layer's transaction-aware paths (Phase 3). */

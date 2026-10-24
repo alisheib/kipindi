@@ -1666,8 +1666,11 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = PLATFORM
           - loser-share polls (owner decision 2026-07-23): show a FIXED
             "possible winnings" estimate = stake × (1 + estimatedWinningsRate), with a
             mandatory disclaimer that it is an estimate and the real payout comes from
-            the pool. See docs/COMPLIANCE-DECISIONS.md. */}
-      {effectiveSide !== "NEUTRAL" && (() => {
+            the pool. See docs/COMPLIANCE-DECISIONS.md.
+          - stake-share polls (FEE-TAX-2026-10): NOT this block — its two arms speak the loser-share estimate and the
+            capped-commission formula, and either would misstate a fee on every stake. R2c: the stake-share disclosure,
+            with the below-stake warning, replaces it. */}
+      {effectiveSide !== "NEUTRAL" && rates?.feeModel !== "stake-share" && (() => {
         const showEstimate = rates?.feeModel === "loser-share" && rates?.showEstimatedWinnings !== false;
         const estimate = Math.round(stake * (1 + (rates?.estimatedWinningsRate ?? 0)));
         return (

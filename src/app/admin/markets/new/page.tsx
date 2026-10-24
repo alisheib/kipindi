@@ -16,6 +16,8 @@ async function NewMarketPageContent() {
   // What this market WILL freeze at creation — shown read-only in the wizard so the
   // officer can see the fee model + estimate that new polls apply.
   const config = await getGlobalConfig();
+  // FEE-TAX-2026-10 · every model the config can name gets its own summary — a stake-share platform must never be told
+  // its new polls freeze a capped commission. R2c: the wizard's fee panel.
   const feeInfo =
     config.feeModel === "loser-share"
       ? {
@@ -24,11 +26,17 @@ async function NewMarketPageContent() {
           estMult: (1 + config.estimatedWinningsRate).toFixed(2),
           showEstimate: config.showEstimatedWinnings,
         }
-      : {
-          model: "capped-commission" as const,
-          commissionPct: (config.commissionRate * 100).toFixed(0),
-          ceilingPct: (config.feeCeilingRate * 100).toFixed(0),
-        };
+      : config.feeModel === "stake-share"
+        ? {
+            model: "stake-share" as const,
+            feePct: String(Number(((config.platformFeeRate + config.operatorFeeRate) * 100).toFixed(2))),
+            taxPct: config.winningsTaxRate === undefined ? null : String(Number((config.winningsTaxRate * 100).toFixed(2))),
+          }
+        : {
+            model: "capped-commission" as const,
+            commissionPct: (config.commissionRate * 100).toFixed(0),
+            ceilingPct: (config.feeCeilingRate * 100).toFixed(0),
+          };
   return (
     <>
       <AdminPageHead title="New market" sw="Soko jipya" />

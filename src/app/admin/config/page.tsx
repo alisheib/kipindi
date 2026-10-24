@@ -75,7 +75,8 @@ async function AdminConfigContent({ searchParams }: ConfigProps) {
         sw="Mipangilio ya soko"
         actions={
           <Chip size="md" variant="resolved">
-            {config.feeModel === "loser-share" ? "Pari-mutuel · loser-share" : "Pari-mutuel · capped fee"}
+            {/* FEE-TAX-2026-10 · every model named, never folded into "capped". R2c: the Fees & taxes card. */}
+            {config.feeModel === "loser-share" ? "Pari-mutuel · loser-share" : config.feeModel === "stake-share" ? "Pari-mutuel · stake-share" : "Pari-mutuel · capped fee"}
           </Chip>
         }
       />
@@ -85,11 +86,13 @@ async function AdminConfigContent({ searchParams }: ConfigProps) {
           <AdminKpi
             label="Fee model (new polls)"
             sw="Modeli ya ada"
-            value={config.feeModel === "loser-share" ? "Loser-share" : "Capped"}
+            value={config.feeModel === "loser-share" ? "Loser-share" : config.feeModel === "stake-share" ? "Stake-share" : "Capped"}
             delta={
               config.feeModel === "loser-share"
                 ? `${((config.platformFeeRate + config.operatorFeeRate) * 100).toFixed(0)}% of losing pool · players see ${(1 + config.estimatedWinningsRate).toFixed(1)}× estimate`
-                : "min(commission, ceiling) · outcome-neutral"
+                : config.feeModel === "stake-share"
+                  ? `${Number(((config.platformFeeRate + config.operatorFeeRate) * 100).toFixed(2))}% of every stake · ${config.winningsTaxRate === undefined ? "no winnings tax saved" : `${Number((config.winningsTaxRate * 100).toFixed(2))}% winnings tax`}`
+                  : "min(commission, ceiling) · outcome-neutral"
             }
           />
           <AdminKpi label="Commission"        sw="Faida"   value={`${(config.commissionRate * 100).toFixed(1)}%`} delta="of the whole pool" />
@@ -102,7 +105,10 @@ async function AdminConfigContent({ searchParams }: ConfigProps) {
             label="Worst winner ratio"
             sw="Kiwango cha chini"
             value={`${worst.ratio.toFixed(3)}×`}
-            delta={worst.ratio >= 1 ? "never below 1.00× — a correct call cannot lose" : "⚠ BELOW STAKE — winners lose money"}
+            delta={worst.ratio >= 1
+              ? "never below 1.00× — a correct call cannot lose"
+              // FEE-TAX-2026-10 · under stake-share a winner below their stake on a lopsided market IS the law (ruling 1). R2c.
+              : config.feeModel === "stake-share" ? "below 1.00× on a lopsided market — the stake-share law" : "⚠ BELOW STAKE — winners lose money"}
             deltaDir={worst.ratio >= 1 ? "up" : "down"}
           />
           <AdminKpi label="Cash-out fee"      sw="Ada ya kuuza" value={`${(config.cashOutFeeRate * 100).toFixed(1)}%`} delta={`free for ${config.freeExitGraceMinutes} min`} />
@@ -138,20 +144,39 @@ async function AdminConfigContent({ searchParams }: ConfigProps) {
             </div>
           </AdminCard>
         ) : null}
+        {/* FEE-TAX-2026-10 · the stake-share law, stated as the loser-share one is — reachable only once `fee-law-gate.ts`
+            is open and an admin has saved it. R2c: rebuilt as the Fees & taxes card. */}
+        {config.feeModel === "stake-share" ? (
+          <AdminCard className="border-warning-border bg-warning-bg">
+            <div className="flex items-start gap-3">
+              <I.warning s={18} className="text-warning shrink-0 mt-0.5" />
+              <div className="text-caption text-text-secondary space-y-1.5">
+                <p className="text-text font-bold">Stake-share model active — new polls</p>
+                <p>
+                  New polls charge {Number(((config.platformFeeRate + config.operatorFeeRate) * 100).toFixed(2))}% of every
+                  stake, on both sides, and withhold{" "}
+                  {config.winningsTaxRate === undefined ? "a winnings tax (none saved yet)" : `${Number((config.winningsTaxRate * 100).toFixed(2))}%`}{" "}
+                  of the losing side&apos;s net stakes as the winnings tax, for TRA. A winner on a lopsided market can be paid
+                  back less than their stake. It applies to <strong>future polls only</strong>; existing polls keep the model they froze.
+                </p>
+              </div>
+            </div>
+          </AdminCard>
+        ) : null}
         <AdminCard className="border-info-border bg-info-bg">
           <div className="flex items-start gap-3">
             <I.settings s={18} className="text-info shrink-0 mt-0.5" />
             <div className="text-caption text-text-secondary space-y-1.5">
-              <p className="text-text font-bold">Capped-fee pari-mutuel {config.feeModel === "loser-share" ? "(legacy / existing polls)" : ""}</p>
+              <p className="text-text font-bold">Capped-fee pari-mutuel {config.feeModel !== "capped-commission" ? "(legacy / existing polls)" : ""}</p>
               {/* ⚫ F3 · SAY IT IN A SENTENCE, NOT ONLY IN A PARENTHESIS. Everything below is
                   written in the present tense and describes `capped-commission` — including
                   the "no cliff" crossover, which does not exist under loser-share at all. A
                   suffix on the heading is easy to skim past; an officer reading the formula
                   needs to know before they read it that it prices NO new market. */}
-              {config.feeModel === "loser-share" && (
+              {config.feeModel !== "capped-commission" && (
                 <p className="text-warning-fg">
                   ⚠️ <strong className="text-text">This model prices no new market.</strong> New polls freeze
-                  loser-share (above). Everything below describes how the {" "}
+                  {config.feeModel === "stake-share" ? " stake-share" : " loser-share"} (above). Everything below describes how the {" "}
                   <strong className="text-text">already-frozen</strong> markets settle, and is kept because they
                   settle by it forever.
                 </p>

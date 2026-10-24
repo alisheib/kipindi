@@ -27,6 +27,12 @@
  *   thin — warning tone. "Your upside is thin — the other side is small."
  *   fair — hidden.
  *
+ * ⭐ AND A THIRD, FOR ONE MODEL ONLY — `below` (FEE-TAX-2026-10, ruling 1). Under `stake-share` the fee comes out of every
+ * stake, so a correct call on a lopsided market IS paid less than its stake. Everything above stays true for the two older
+ * models, where `below` cannot occur; for `below` this renders the warning's title alone and NEVER the thin-upside note,
+ * whose second sentence ("You will never be paid less than you staked") would then be false. R2c: the below-stake words,
+ * in three languages, replace this minimal arm.
+ *
  * D3 (license review 2026-05) still applies: no payout FIGURE before a bet is
  * placed. The exact number is disclosed the moment betting closes and the pools
  * freeze — see notifySelectionClosedMarkets.
@@ -40,11 +46,12 @@ export function HouseLeanWarning({ level }: { level: LeanLevel }) {
   const { t } = useT();
   if (level === "fair") return null;
 
+  // FEE-TAX-2026-10 · `below`: the title alone — the thin-upside note's promise is false under stake-share. R2c.
   return (
     /* R4-I (2026-10-09, tiles 035 039 068 072 076) · neither line ends on one word ("mdogo.", "small.") and no line opens
        on the title's dash (`keepText`); the words are unchanged. */
     <Callout tone="warning" className="mt-3" title={keepText(t.market.crowdedWarning)}>
-      <p className="mt-1 text-body-sm leading-snug text-text-muted">{keepText(t.market.thinUpsideNote)}</p>
+      {level === "below" ? null : <p className="mt-1 text-body-sm leading-snug text-text-muted">{keepText(t.market.thinUpsideNote)}</p>}
     </Callout>
   );
 }

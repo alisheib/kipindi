@@ -38,9 +38,13 @@ function parseRatio(raw: string | null): number | undefined {
   return Number.isFinite(n) ? n : undefined;
 }
 
-/** A <select> for the fee model. Only the two known values are accepted. */
+/**
+ * A <select> for the fee model. Only the known poll models are passed on.
+ * ⭐ `stake-share` (FEE-TAX-2026-10) is passed on too, so `validate` REFUSES it in words while `fee-law-gate.ts` is shut —
+ * dropping it here would turn the officer's choice into a silent no-op, the defect this file's F3 note records.
+ */
 function parseFeeModel(raw: string | null): RateConfig["feeModel"] | undefined {
-  if (raw === "capped-commission" || raw === "loser-share") return raw;
+  if (raw === "capped-commission" || raw === "loser-share" || raw === "stake-share") return raw;
   return undefined;
 }
 
@@ -77,6 +81,9 @@ export async function updateGlobalConfigAction(formData: FormData) {
     const platform = parseRate(String(formData.get("platformFeeRate") ?? ""));
     const operator = parseRate(String(formData.get("operatorFeeRate") ?? ""));
     const estRate = parseRate(String(formData.get("estimatedWinningsRate") ?? ""));
+    // FEE-TAX-2026-10 · the winnings tax, a percentage like every rate here, read only when the form posts it — and
+    // `validate` refuses it while `fee-law-gate.ts` is shut. R2c: the Fees & taxes card brings the field.
+    const winTax = formData.has("winningsTaxRate") ? parseRate(String(formData.get("winningsTaxRate") ?? "")) : undefined;
     // Checkbox: the form always posts this key (hidden companion), so its absence
     // is impossible; a genuinely-absent key means "form didn't include it" → skip.
     const showEst = formData.has("feeModel") ? parseBool(formData.get("showEstimatedWinnings") as string | null) : undefined;
@@ -98,6 +105,7 @@ export async function updateGlobalConfigAction(formData: FormData) {
     if (platform !== undefined) updates.platformFeeRate = platform;
     if (operator !== undefined) updates.operatorFeeRate = operator;
     if (estRate !== undefined) updates.estimatedWinningsRate = estRate;
+    if (winTax !== undefined) updates.winningsTaxRate = winTax;
     if (showEst !== undefined) updates.showEstimatedWinnings = showEst;
     // setGlobalConfig REFUSES a config under which a winner could be paid below
     // their stake (the winner-floor guardrail in validate()), and may return a
@@ -153,9 +161,10 @@ export async function clearMarketOverrideAction(formData: FormData) {
   const marketId = String(formData.get("marketId") ?? "").trim();
   if (!marketId) return { ok: false as const, error: "Missing market id." };
   try {
-    await clearMarketOverride(marketId, s.userId);
+    // The writer reads the row fresh and swaps it by compare-and-swap (FEE-TAX-2026-10), so it can say it failed: say so.
+    const r = await clearMarketOverride(marketId, s.userId);
     revalidatePath("/admin/config");
-    return { ok: true as const };
+    return r.ok ? { ok: true as const } : { ok: false as const, error: r.error };
   } catch (err) {
     return { ok: false as const, error: safeError(err, "Clear override failed") };
   }

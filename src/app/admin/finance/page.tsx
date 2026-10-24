@@ -211,7 +211,10 @@ async function AdminFinanceContent({ searchParams }: { searchParams: Promise<Fin
   const feeBaseHref = buildBaseHref("/admin/finance", { range: sp.range, from: sp.from, to: sp.to, tab: sp.tab }, "feepage");
   const tabHref = (t: (typeof FIN_TABS)[number]) =>
     buildBaseHref("/admin/finance", { range: sp.range, from: sp.from, to: sp.to, tab: t === "ledger" ? undefined : t }, "feepage") as Route;
-  const feeModelLabel = rates?.feeModel === "loser-share" ? "loser-share (new polls)" : "capped-fee (new polls)";
+  // FEE-TAX-2026-10 · every model named — a stake-share platform must never read "capped-fee". R2c: the finance tiles.
+  const feeModelLabel = rates?.feeModel === "loser-share" ? "loser-share (new polls)"
+    : rates?.feeModel === "stake-share" ? "stake-share (new polls)"
+    : "capped-fee (new polls)";
   /**
    * 🔴 THIS TILE HAS NOW BEEN WRONG TWICE, IN OPPOSITE DIRECTIONS, AND BOTH TIMES BECAUSE IT
    * COMPUTED A TAX INSTEAD OF READING ONE.
@@ -464,6 +467,8 @@ async function AdminFinanceContent({ searchParams }: { searchParams: Promise<Fin
                 loser-share {pollFees.byModel["loser-share"].count} · {formatTzsCompact(pollFees.byModel["loser-share"].fee)} — capped {pollFees.byModel["capped-commission"].count} · {formatTzsCompact(pollFees.byModel["capped-commission"].fee)}
                 {/* ⭐ MASWALI-BUILD S6 — Millionea's weeks, once a period holds one that paid; every other period reads as before. */}
                 {pollFees.byModel["jackpot-payout"].count > 0 && <> — jackpot {pollFees.byModel["jackpot-payout"].count} · {formatTzsCompact(pollFees.byModel["jackpot-payout"].fee)}</>}
+                {/* FEE-TAX-2026-10 — stake-share markets, once a period holds one: our fee only, never the winnings tax. R2c. */}
+                {pollFees.byModel["stake-share"].count > 0 && <> — stake-share {pollFees.byModel["stake-share"].count} · {formatTzsCompact(pollFees.byModel["stake-share"].fee)}</>}
               </span>
             ) : null
           }
@@ -518,7 +523,7 @@ async function AdminFinanceContent({ searchParams }: { searchParams: Promise<Fin
                               r.feeModel === "loser-share" ? "bg-brand-500/15 text-brand-300" : "bg-bg-inset text-text-muted"
                             }`}
                           >
-                            {r.feeModel === "loser-share" ? "Loser-share" : r.feeModel === "jackpot-payout" ? "Jackpot" : "Capped"}
+                            {r.feeModel === "loser-share" ? "Loser-share" : r.feeModel === "jackpot-payout" ? "Jackpot" : r.feeModel === "stake-share" ? "Stake-share" : "Capped"}
                           </span>
                         </td>
                         <td className="text-left">{r.outcome === "JACKPOT" ? "Jackpot paid" : r.outcome}</td>

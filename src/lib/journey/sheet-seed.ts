@@ -18,6 +18,8 @@ export function parseSheetSeed(raw: unknown): SheetSeed | null {
   if (s.rates !== null) {
     if (!s.rates || typeof s.rates !== "object") return null;
     const r = s.rates as Record<string, unknown>;
+    // FEE-TAX-2026-10 · a stake-share seed is NOT read — deliberately: the sheet speaks the two older laws only, so the
+    // link navigates to the market page instead of opening a sheet that would misstate the fee. R2c: the sheet's arm.
     if (r.feeModel !== "loser-share" && r.feeModel !== "capped-commission") return null;
     for (const k of ["platformFeeRate", "operatorFeeRate", "commissionRate", "feeCeilingRate"]) {
       if (r[k] !== undefined && (!nonnegative(r[k]) || (r[k] as number) > 1)) return null;

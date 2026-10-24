@@ -463,15 +463,20 @@ export function reconcile(booked: number, computed: number): Reconciliation {
  */
 export type RateProvenance = {
   commissionRate: number;
-  /** `jackpot-payout` is a Millionea week's (MASWALI-BUILD S3): its fee is a share of the jackpot, frozen per week. */
-  feeModel: "loser-share" | "capped-commission" | "jackpot-payout";
+  /**
+   * `jackpot-payout` is a Millionea week's (MASWALI-BUILD S3): its fee is a share of the jackpot, frozen per week.
+   * `stake-share` (FEE-TAX-2026-10) is a share of EVERY stake, frozen per market — and the winnings tax withheld beside it
+   * is NOT this fee and not house revenue. ⛔ Never absent from this union: a snapshot that froze it must be named as
+   * itself, or the page would present a stake-share game under a law it never charged.
+   */
+  feeModel: "loser-share" | "capped-commission" | "jackpot-payout" | "stake-share";
   /** `"snapshot"` = the game's own frozen rates. `"fallback"` = legacy, reconstructed. */
   origin: "snapshot" | "fallback";
 };
 
 export function rateProvenance(input: {
   /** The game's `feeSnapshot`, already parsed. `null` when it has none. */
-  snapshot: { commissionRate: number; feeModel: "loser-share" | "capped-commission" | "jackpot-payout" } | null;
+  snapshot: { commissionRate: number; feeModel: "loser-share" | "capped-commission" | "jackpot-payout" | "stake-share" } | null;
   legacy: { commissionRate: number; feeModel: "loser-share" | "capped-commission" };
 }): RateProvenance {
   if (input.snapshot) return { ...input.snapshot, origin: "snapshot" };

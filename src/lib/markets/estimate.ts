@@ -145,6 +145,8 @@ export function estimateFor(input: EstimateInput): Estimate | null {
   if (opp === 0) return none("oneSidedRefund");
 
   const card = input.stake === 0;
+  // FEE-TAX-2026-10 · a stake-share market is `hidden` here — deliberately, never priced through the loser-share card
+  // arithmetic below (SJ-1 reads `loserShareRate`, which is null for it). R2c: its own estimate, with the below-stake words.
   const hidden = !rates || resolveFeeModel(rates) !== "loser-share" || rates.showEstimatedWinnings === false;
   const stakeOk = card || (
     Number.isSafeInteger(input.stake) && input.stake > 0

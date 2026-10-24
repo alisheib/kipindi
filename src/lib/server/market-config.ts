@@ -21,9 +21,21 @@
  *
  * Every set/clear is HMAC-audited so the GBT inspector trail is intact.
  * Persists across hot-reloads via `globalThis.__50PICK_MARKET_CONFIG`.
+ *
+ * ⭐ EVERY WRITE IS READ-MODIFY-WRITE AGAINST THE ROW, WITH COMPARE-AND-SWAP (FEE-TAX-2026-10) — `writeMarketConfig`.
+ * The writers used to merge onto THIS container's cache and write the whole cache back, so a container that booted before
+ * another one's save wrote its stale copy over it — every field, the fee model and the tax included. Now a save reads the
+ * row fresh, changes only what it was asked to, swaps it in only while the row still holds what was read, and reads it
+ * back before it says "saved". And a market is stamped from a FRESH read that refuses when it fails
+ * (`readMarketConfigFresh`), never from whatever this container booted with.
+ * ⭐ AND A STALE FORM IS STOPPED TOO (FEE-TAX R2 review): a save may carry the values its form was rendered with
+ * (`ConfigSaveOptions.baseline`) — then only what the officer changed is written, and a field another officer moved since
+ * the page opened is refused rather than overwritten.
  */
 import { audit } from "./audit";
-import { configChanges, loadConfigResult, saveConfig } from "./config-store";
+import { configChanges, createConfigIfAbsent, loadConfigResult, replaceConfigIfValue } from "./config-store";
+import { hasDatabase } from "./prisma";
+import { feeLawLive, newFeeLawRefusal } from "../fee-law-gate";
 import {
   DEFAULT_COMMISSION_RATE,
   DEFAULT_FEE_CEILING_RATE,
@@ -47,6 +59,12 @@ import {
   DEFAULT_SHOW_ESTIMATED_WINNINGS,
   MAX_LOSER_SHARE_RATE,
   MAX_ESTIMATED_WINNINGS_RATE,
+  MAX_STAKE_FEE_RATE,
+  MAX_WINNINGS_TAX_RATE,
+  isWholeBasisPoints,
+  rateBp,
+  stakeShareBreakEvenShare,
+  winningsTaxBp,
   worstCaseWinnerRatio,
   payoutFor,
   settledPayoutFor,
@@ -184,6 +202,9 @@ export type RateConfig = {
    * Which fee formula NEW polls use.
    *  - `capped-commission`: fee = min(commissionRate·pool, feeCeilingRate·smaller).
    *  - `loser-share` (default): fee = (platformFeeRate+operatorFeeRate)·losingPool.
+   *  - `stake-share` (FEE-TAX-2026-10 — decided, NOT in force: `validate` refuses it while `fee-law-gate.ts` is shut):
+   *    fee = (platformFeeRate+operatorFeeRate) of EVERY stake, and `winningsTaxRate` of the losers' net stakes withheld
+   *    for TRA (`payout.ts → stakeShareSplit`).
    * loser-share is outcome-DEPENDENT (the fee depends on which side loses) — an
    * explicit owner override of the licence's outcome-neutral posture.
    */
@@ -198,6 +219,14 @@ export type RateConfig = {
    * `maswali.config` when it opens, and it freezes into that week's snapshot.
    */
   jackpotFeeRate?: number;
+  /**
+   * stake-share only (FEE-TAX-2026-10): the WINNINGS TAX withheld from a market's prize fund for TRA (0.15 = 15%), frozen
+   * onto every stake-share poll and Up & Down round at creation — a round's comes from HERE, never from its chain's
+   * profile (a profile may not carry one). ⛔ NO CODE DEFAULT: absent from `DEFAULT_GLOBAL_CONFIG` on purpose, it enters
+   * force only by an admin's audited save — refused while `fee-law-gate.ts` is shut — and a stake-share market is never
+   * stamped without it (`snapshotFromConfig` refuses). Inert under every other model. Never on a per-market override.
+   */
+  winningsTaxRate?: number;
   /** loser-share DISPLAY only: the fixed pre-bet "possible winnings" a player is
    *  shown = stake × (1 + this). default 0.5 → a 1.5× headline. NOT the pari-mutuel
    *  payout — the disclaimer beside it says so. */
@@ -271,6 +300,8 @@ export const DEFAULT_GLOBAL_CONFIG: RateConfig = {
   feeModel: DEFAULT_FEE_MODEL,                          // "loser-share"
   platformFeeRate: DEFAULT_PLATFORM_FEE_RATE,           // 0.03
   operatorFeeRate: DEFAULT_OPERATOR_FEE_RATE,           // 0.10
+  // ⛔ `winningsTaxRate` is ABSENT, and that is the control (FEE-TAX-2026-10). The 15% of Ali's ruling 3 enters force by
+  // an admin's audited save only, after release R5; a cold start must never invent a tax nobody saved.
   estimatedWinningsRate: DEFAULT_ESTIMATED_WINNINGS_RATE, // 0.5 → 1.5× headline
   showEstimatedWinnings: DEFAULT_SHOW_ESTIMATED_WINNINGS,  // true
 };
@@ -285,8 +316,19 @@ export const DEFAULT_GLOBAL_CONFIG: RateConfig = {
  *
  * Only the rates that price a POSITION belong here. Stake bounds are entry-time
  * checks and the objection window is procedural, so both correctly stay live.
+ *
+ * ⛔ A `stake-share` MARKET IS STAMPED COMPLETE OR NOT AT ALL (FEE-TAX-2026-10). Its two fee rates and its winnings tax are
+ * required on the snapshot and `payout.readRates` refuses one without them, so stamping an incomplete one would create a
+ * market nobody could price or settle — it is refused HERE, before the market exists, with `RatesRefused`. And while
+ * `fee-law-gate.ts` is shut it is refused whatever the rates: this is the last door every product passes through (a
+ * poll, a round through its chain's profile, a week), so a hand-edited row cannot put the new law into force either.
+ * Only a stake-share snapshot carries `winningsTaxRate` and only it is `v: 3`; every other model stamps what it always did.
  */
 export function snapshotFromConfig(cfg: RateConfig): FeeSnapshot {
+  if (cfg.feeModel === "stake-share") {
+    const why = stakeShareStampProblem(cfg);
+    if (why) throw new RatesRefused(`A stake-share market cannot be created: ${why}`);
+  }
   return {
     commissionRate: cfg.commissionRate,
     feeCeilingRate: cfg.feeCeilingRate,
@@ -303,11 +345,57 @@ export function snapshotFromConfig(cfg: RateConfig): FeeSnapshot {
     operatorFeeRate: cfg.operatorFeeRate,
     // A Millionea week freezes its jackpot share beside the model (S1); a poll never carries the field.
     ...(cfg.feeModel === "jackpot-payout" ? { jackpotFeeRate: cfg.jackpotFeeRate } : {}),
+    // A stake-share market freezes its winnings tax beside the model (FEE-TAX-2026-10); no other model carries the field.
+    ...(cfg.feeModel === "stake-share" ? { winningsTaxRate: cfg.winningsTaxRate } : {}),
     estimatedWinningsRate: cfg.estimatedWinningsRate,
     showEstimatedWinnings: cfg.showEstimatedWinnings,
-    v: 2,
+    v: cfg.feeModel === "stake-share" ? 3 : 2,
     stampedAt: new Date().toISOString(),
   };
+}
+
+/**
+ * A market could not be given its rates, so it was not created — the stamping refusal (`snapshotFromConfig`) and the
+ * failed fresh read (`createMarket` → `readMarketConfigFresh`). It carries `code` so a caller that must refuse SOFTLY —
+ * `updown-service.ts → openRound`, where a throw is a recorded outage (FAILURE-INVENTORY §7.4) — can tell it from a bug
+ * without depending on `instanceof` across module copies.
+ */
+export class RatesRefused extends Error {
+  readonly code = "RATES_REFUSED" as const;
+  constructor(message: string) {
+    super(message);
+    this.name = "RatesRefused";
+  }
+}
+
+/** True for a `RatesRefused` from any copy of this module. */
+export function isRatesRefused(e: unknown): e is RatesRefused {
+  return (e as { code?: unknown } | null)?.code === "RATES_REFUSED";
+}
+
+/**
+ * Why a stake-share rate set cannot be STAMPED, in an officer's words — or null when it can. The gate first (nothing
+ * stamps the new law before R5), then the rates exactly as `payout.readRates` will price them: the fee rates through
+ * the same read (refused when missing or out of range), and the winnings tax REQUIRED.
+ * ⛔ EACH RATE A WHOLE NUMBER OF BASIS POINTS, checked here in so many words (FEE-TAX R2 review) — not left to the read
+ * below to discover: a hand-edited 0.03125 or 0.12345 would be frozen as one rate and charged as another (`rateBp`), and
+ * a snapshot is never rewritten, so the stamp is the last moment it can be stopped.
+ */
+function stakeShareStampProblem(cfg: Partial<RateConfig>): string | null {
+  const shut = newFeeLawRefusal();
+  if (shut) return shut;
+  const named: Array<[string, unknown]> = [["platform fee", cfg.platformFeeRate], ["operator fee", cfg.operatorFeeRate], ["winnings tax", cfg.winningsTaxRate]];
+  for (const [what, v] of named) {
+    if (typeof v === "number" && !isWholeBasisPoints(v)) {
+      return `the ${what} rate (${v}) is not a whole number of basis points (0.01%), so it would be frozen as one rate and charged as another. Save it again as a whole number of basis points.`;
+    }
+  }
+  try {
+    if (winningsTaxBp(cfg) === null) return "no winnings tax rate is saved. Save it at /admin/config first.";
+  } catch (e) {
+    return (e as Error)?.message ?? String(e);
+  }
+  return null;
 }
 
 /**
@@ -337,6 +425,17 @@ function safeRate(v: unknown, fallback: number, hi = 1): number {
 }
 
 /**
+ * A stake-share rate as a door must accept it (FEE-TAX-2026-10): finite, within [0, hi], and a WHOLE number of basis points
+ * — the unit `payout.ts` charges in (`rateBp`). A rate between two basis points would be rounded by the arithmetic, so the
+ * figure an officer saved would not be the figure players are charged; it is refused instead.
+ * ⛔ ONE predicate for the save, the stamp and the pricing read (`payout.ts → isWholeBasisPoints`, FEE-TAX R2 review). This
+ * used its own 1e-6 tolerance, so a rate the save accepted could still be one the read refuses — saved, then unstampable.
+ */
+function isWholeBpRate(v: unknown, hi: number): v is number {
+  return typeof v === "number" && Number.isFinite(v) && v >= 0 && v <= hi && isWholeBasisPoints(v);
+}
+
+/**
  * ⭐ DOES THIS MARKET HAVE ITS OWN FROZEN RATES? — the ONLY honest discriminator.
  *
  * ⛔ **DO NOT ASK `stampedAt === "legacy"` INSTEAD.** `snapshotOrLegacy` produces that string
@@ -355,10 +454,14 @@ function safeRate(v: unknown, fallback: number, hi = 1): number {
  * ⚠️ Measured on production 2026-09-05: every market carrying a `feeSnapshot` also carries a
  * `stampedAt`, so the mislabelled population is currently EMPTY — 44 markets have no snapshot at
  * all and are genuine fallbacks. This closes the hole before a restore or a race opens it.
+ *
+ * ⭐ A snapshot that NAMES `stake-share` is its own snapshot whatever else it holds (FEE-TAX-2026-10): only
+ * `snapshotFromConfig` writes that name, and reading one as "no snapshot" would hand it to the legacy fallback below —
+ * `capped-commission` at 9%, a law it never froze. Its legacy fields are inert under its model, so they cannot decide it.
  */
 export function hasOwnSnapshot(raw: unknown): boolean {
   const s = raw as Partial<FeeSnapshot> | null | undefined;
-  return !!s && Number.isFinite(s.commissionRate) && Number.isFinite(s.feeCeilingRate);
+  return !!s && ((Number.isFinite(s.commissionRate) && Number.isFinite(s.feeCeilingRate)) || s.feeModel === "stake-share");
 }
 
 export function snapshotOrLegacy(raw: unknown): FeeSnapshot {
@@ -374,6 +477,12 @@ export function snapshotOrLegacy(raw: unknown): FeeSnapshot {
     // A Millionea week froze `jackpot-payout` and its rate (S1). Passed through as frozen — never folded into the
     // legacy model. A jackpot snapshot without a rate is left without one, and `payout.readRates` refuses it loudly.
     const isJackpot = s.feeModel === "jackpot-payout";
+    // ⛔ A STAKE-SHARE SNAPSHOT IS PASSED THROUGH WITH EXACTLY WHAT IT FROZE (FEE-TAX-2026-10). This line used to send every
+    // model it did not name to `capped-commission` — for this one that is a 13%-of-every-stake market silently settled
+    // by a retired formula. Its two fee rates and its tax are NEVER `safeRate`d and never defaulted: a missing or
+    // corrupt one reaches `payout.readRates` as it is, and pricing refuses it there, loudly. Nothing here throws —
+    // display readers call this for every market; the refusal belongs to pricing.
+    const isStakeShare = s.feeModel === "stake-share";
     return {
       commissionRate: safeRate(s.commissionRate, DEFAULT_COMMISSION_RATE),
       feeCeilingRate: safeRate(s.feeCeilingRate, DEFAULT_FEE_CEILING_RATE, MAX_FEE_CEILING_RATE),
@@ -383,10 +492,11 @@ export function snapshotOrLegacy(raw: unknown): FeeSnapshot {
       traTaxOnCommissionRate: safeRate(s.traTaxOnCommissionRate, DEFAULT_TRA_TAX_ON_COMMISSION_RATE),
       gbtLevyOnCommissionRate: safeRate(s.gbtLevyOnCommissionRate, DEFAULT_GBT_LEVY_ON_COMMISSION_RATE),
       thinProfitRatio: Number.isFinite(s.thinProfitRatio) ? (s.thinProfitRatio as number) : THIN_PROFIT_RATIO,
-      feeModel: isLoserShare ? "loser-share" : isJackpot ? "jackpot-payout" : "capped-commission",
-      platformFeeRate: safeRate(s.platformFeeRate, DEFAULT_PLATFORM_FEE_RATE),
-      operatorFeeRate: safeRate(s.operatorFeeRate, DEFAULT_OPERATOR_FEE_RATE),
+      feeModel: isLoserShare ? "loser-share" : isJackpot ? "jackpot-payout" : isStakeShare ? "stake-share" : "capped-commission",
+      platformFeeRate: isStakeShare ? (s.platformFeeRate as number) : safeRate(s.platformFeeRate, DEFAULT_PLATFORM_FEE_RATE),
+      operatorFeeRate: isStakeShare ? (s.operatorFeeRate as number) : safeRate(s.operatorFeeRate, DEFAULT_OPERATOR_FEE_RATE),
       ...(isJackpot && typeof s.jackpotFeeRate === "number" ? { jackpotFeeRate: s.jackpotFeeRate } : {}),
+      ...(isStakeShare && s.winningsTaxRate !== undefined ? { winningsTaxRate: s.winningsTaxRate } : {}),
       // DISPLAY-ONLY, and MODEL-INDEPENDENT.
       //
       // These two never touch the maths — they drive the pre-bet "possible winnings"
@@ -404,7 +514,8 @@ export function snapshotOrLegacy(raw: unknown): FeeSnapshot {
       showEstimatedWinnings: s.showEstimatedWinnings === true,
       // v2 = "carries the fee-model + display fields". A poll that froze either the
       // loser-share model or a display estimate is v2; a bare legacy snapshot is v1.
-      v: isLoserShare || isJackpot || s.showEstimatedWinnings === true ? 2 : 1,
+      // v3 = a stake-share snapshot (FEE-TAX-2026-10) — and only it.
+      v: isStakeShare ? 3 : isLoserShare || isJackpot || s.showEstimatedWinnings === true ? 2 : 1,
       stampedAt: s.stampedAt ?? "legacy",
     };
   }
@@ -443,6 +554,12 @@ const store =
     perMarket: new Map<string, Partial<RateConfig>>(),
   });
 
+/**
+ * ⭐ Moves on every change THIS process makes to the cache (a save, a hydration, a fresh read), so a read that started
+ * before one cannot land after it and put the older value back (`readMarketConfigFresh`). Process-local on purpose.
+ */
+let cacheGen = 0;
+
 // ── Durable persistence (SystemConfig) ──────────────────────────────────────
 // The globalThis cache above is now a write-through cache over the SystemConfig
 // table, so admin retunes of fee/tax/stake config survive deploys instead of
@@ -454,7 +571,8 @@ const MARKET_CONFIG_KEY = "market.config";
  *  v2 (2026-07-27): stake bounds default 100/100,000 → 1,000/1,000,000.
  *  v3 (2026-08-14): minStake 500 → 1,000. Production was measured on **500** on
  *      2026-08-14 while this file's default had read 1,000 since 2026-07-26, because
- *      `persist()` writes the WHOLE snapshot — so an unrelated config save on
+ *      `persist()` wrote the WHOLE snapshot (it did until FEE-TAX-2026-10; every save
+ *      is now read-modify-write against the row — `writeMarketConfig`) — so an unrelated config save on
  *      2026-08-10 re-froze the old floor. v2's reconcile could not see it: it bumps a
  *      minStake sitting on exactly 100. ⛔ A CODE DEFAULT IS NOT A LIVE SETTING, and
  *      a green `config-persist.test.mts` asserting the constant would have passed with
@@ -476,7 +594,7 @@ declare global {
 
 /**
  * Forward-reconcile a config persisted under an older CONFIG_VERSION. Because `persist()`
- * writes the WHOLE global snapshot, a value that was merely the OLD default freezes in the
+ * wrote the WHOLE global snapshot (until FEE-TAX-2026-10), a value that was merely the OLD default froze in the
  * DB and shadows a new code default. This bumps ONLY values still sitting on a known
  * legacy default, so a deliberate admin choice is never touched. Pure + exported so the
  * migration is unit-tested directly (config-persist.test.mts).
@@ -515,8 +633,9 @@ export function reconcileConfigDefaults(global: RateConfig, fromVersion: number)
  *   · a market created in that window FREEZES those defaults into its immutable
  *     `feeSnapshot` and settles by them for ever (⛔ RULES.md §2.1: a snapshot is
  *     never rewritten), so the poll charges a rate the operator never chose;
- *   · `persist()` writes the WHOLE snapshot, so the next unrelated admin save
- *     overwrites the officer's live row with those defaults.
+ *   · `persist()` wrote the WHOLE snapshot, so the next unrelated admin save
+ *     overwrote the officer's live row with those defaults. (Since FEE-TAX-2026-10 a save
+ *     reads the row fresh and swaps it by compare-and-swap — `writeMarketConfig`.)
  * That is the trap RULES.md §2.3 already records from the other direction ("a code
  * default is not a live setting") — here the live setting silently becomes the code
  * default. A concurrent caller arriving during the read hit the same thing without
@@ -540,32 +659,233 @@ async function hydrateNow(): Promise<void> {
   // landed — pinning this container on DEFAULT_GLOBAL_CONFIG for its entire life with no
   // retry, which is precisely what the docblock above says cannot happen any more. A market
   // created in that window freezes those defaults into its immutable feeSnapshot (RULES
-  // §2.1), and the next unrelated admin save calls `persist()`, which writes the WHOLE
+  // §2.1), and the next unrelated admin save called `persist()`, which wrote the WHOLE
   // snapshot — including `perMarket: []`, silently destroying every per-market override an
-  // officer had set. That half needs no rate to diverge at all.
+  // officer had set. That half needs no rate to diverge at all. (`persist()` is gone since
+  // FEE-TAX-2026-10: every save is read-modify-write against the row, `writeMarketConfig`.)
   // ⚠️ `ok: true, value: null` still closes the gate: a fresh install legitimately has no
   // row, and gating on a VALUE would leave every caller waiting for ever.
   const res = await loadConfigResult<PersistedMarketConfig>(MARKET_CONFIG_KEY);
   if (!res.ok) return; // gate stays DOWN — the next read retries
   const stored = res.value;
   if (stored) {
-    // Merge over defaults so a newly-added field gets its default, not undefined.
-    store.global = { ...DEFAULT_GLOBAL_CONFIG, ...stored.global };
-    store.perMarket = new Map(stored.perMarket ?? []);
-    // One-time forward migration for legacy defaults; self-heals on first read after deploy.
-    const storedVersion = stored.v ?? 1;
-    if (storedVersion < CONFIG_VERSION) {
-      store.global = reconcileConfigDefaults(store.global, storedVersion).global;
-      persist(); // re-write with the new version + any migrated values
+    // Merge over defaults so a newly-added field gets its default, not undefined; one-time forward migration for
+    // legacy defaults (`fromRow`), self-healing on the first read after a deploy.
+    const row = fromRow(stored);
+    store.global = row.global;
+    store.perMarket = row.perMarket;
+    cacheGen++;
+    // Re-write it at the new version — by COMPARE-AND-SWAP against the row just read (FEE-TAX-2026-10): this used to be
+    // `persist()`, the whole cache written blind, which could land over a save another container made in between. If
+    // the row moved, that container wrote it at its own version; the reconcile re-runs on the next boot, unchanged.
+    if (row.migrated) {
+      void replaceConfigIfValue(MARKET_CONFIG_KEY, stored, toRow(row))
+        .catch((err) => console.error("[market-config] reconcile write-back failed:", (err as Error)?.message ?? err));
     }
   }
   // ⛔ LAST, not first: only a read that actually landed may close the gate.
   globalThis.__50PICK_MARKET_CONFIG_HYDRATED = true;
 }
 
-/** Write the whole config through to the DB (fire-and-forget; never throws). */
-function persist(): void {
-  void saveConfig(MARKET_CONFIG_KEY, { global: store.global, perMarket: Array.from(store.perMarket.entries()), v: CONFIG_VERSION });
+/** The cache's own state, as the row stores it and every writer reads it. */
+type ConfigState = { global: RateConfig; perMarket: Map<string, Partial<RateConfig>> };
+
+/** The four store calls the writer and the fresh read make. */
+type MarketConfigStoreDeps = {
+  hasDatabase: typeof hasDatabase;
+  loadConfigResult: typeof loadConfigResult;
+  replaceConfigIfValue: typeof replaceConfigIfValue;
+  createConfigIfAbsent: typeof createConfigIfAbsent;
+};
+const REAL_STORE: MarketConfigStoreDeps = { hasDatabase, loadConfigResult, replaceConfigIfValue, createConfigIfAbsent };
+let storeDeps: MarketConfigStoreDeps = REAL_STORE;
+
+/**
+ * ⚠️ TEST SEAM ONLY — `test:config` swaps the store `writeMarketConfig` and `readMarketConfigFresh` talk to, so the
+ * compare-and-swap is driven against a row that moves, a read that fails and a stale cache without a database (every
+ * suite runs without one). `null` restores the real store. ⛔ Refused in production; never called from application code.
+ */
+export function __setMarketConfigStoreForTest(deps: Partial<MarketConfigStoreDeps> | null): void {
+  if (process.env.NODE_ENV === "production") throw new Error("market-config: the store seam is refused in production");
+  storeDeps = deps ? { ...REAL_STORE, ...deps } : REAL_STORE;
+}
+
+/** A stored row, as the cache holds it: merged over the defaults and reconciled to `CONFIG_VERSION`. */
+function fromRow(stored: PersistedMarketConfig): ConfigState & { migrated: boolean } {
+  const merged: RateConfig = { ...DEFAULT_GLOBAL_CONFIG, ...stored.global };
+  const storedVersion = stored.v ?? 1;
+  const migrated = storedVersion < CONFIG_VERSION;
+  return {
+    global: migrated ? reconcileConfigDefaults(merged, storedVersion).global : merged,
+    perMarket: new Map(stored.perMarket ?? []),
+    migrated,
+  };
+}
+
+/** The row a state is stored as. */
+function toRow(state: ConfigState): PersistedMarketConfig {
+  return { global: state.global, perMarket: Array.from(state.perMarket.entries()), v: CONFIG_VERSION };
+}
+
+/** Two stored values compared by VALUE, key order ignored (a jsonb round trip does not keep it). */
+function sameStored(a: unknown, b: unknown): boolean {
+  const canon = (v: unknown): string =>
+    v && typeof v === "object" && !Array.isArray(v)
+      ? `{${Object.keys(v as object).sort().map((k) => `${JSON.stringify(k)}:${canon((v as Record<string, unknown>)[k])}`).join(",")}}`
+      : Array.isArray(v) ? `[${v.map(canon).join(",")}]` : JSON.stringify(v ?? null);
+  return canon(a) === canon(b);
+}
+
+/**
+ * ⭐ THE RATES, READ FRESH FROM THE ROW — for the one moment they matter: a market or a round being STAMPED
+ * (`market-service.ts → createMarket`, which refuses to create anything when this fails). The cache this container
+ * hydrated at boot may be minutes or days behind a save another container made; a market that froze it would settle by
+ * a law nobody chose for ever (RULES §2.1). So: the row is read, merged and reconciled exactly as hydration would, and it
+ * REPLACES the cache, so the stamping that follows reads it.
+ * ⛔ FAILS CLOSED: a read that could not ask answers `ok: false` and leaves the cache as it was — the caller refuses.
+ * ⚠️ An ABSENT row answers the defaults, as a container booting now would hold them (the hydration gate's own rule —
+ * a fresh install has no row); with no database the cache IS the store and is answered without a read.
+ * ⭐ `stored` SAYS WHICH (FEE-TAX R2 review): true only when a saved row stands behind the answer — false when the database
+ * has none (the answer is the code defaults) and always with no database (the process cache is then the only store).
+ * A STAMPING read (`purpose`, the default — `createMarket`'s call) that finds no row with a database configured raises
+ * ONE alert per container and stamps today's way (`noteStampingRead` says why it is not refused: availability). A
+ * `"check"` read — an officer's act validating against the platform (`applyFeeProfileToEveryChain`) — stamps nothing,
+ * so it raises nothing.
+ * ⚠️ A save THIS process made while the read was in flight cannot be ordered against it: the read answers only when
+ * the two agree, and otherwise refuses rather than guess (the `define-config` `reload()` rule).
+ */
+export async function readMarketConfigFresh(opts?: { purpose?: "stamping" | "check" }):
+  Promise<{ ok: true; config: RateConfig; stored: boolean } | { ok: false; error: string }> {
+  await ensureHydrated();
+  if (!storeDeps.hasDatabase()) return { ok: true, config: floorStakeBounds({ ...store.global }), stored: false };
+  const genAtStart = cacheGen;
+  const res = await storeDeps.loadConfigResult<PersistedMarketConfig>(MARKET_CONFIG_KEY);
+  if (!res.ok) return { ok: false, error: res.error };
+  const stored = !!res.value;
+  const next: ConfigState = res.value ? fromRow(res.value) : { global: { ...DEFAULT_GLOBAL_CONFIG }, perMarket: new Map() };
+  if (cacheGen !== genAtStart) {
+    if (!sameStored(toRow(next), toRow(store))) return { ok: false, error: "The rates changed while they were being read. Try again." };
+  } else {
+    store.global = next.global;
+    store.perMarket = next.perMarket;
+    cacheGen++;
+  }
+  if ((opts?.purpose ?? "stamping") === "stamping") {
+    noteStampingRead(MARKET_CONFIG_KEY, { stored, database: true }, "a market or an Up & Down round was stamped");
+  }
+  return { ok: true, config: floorStakeBounds({ ...store.global }), stored };
+}
+
+declare global {
+  // eslint-disable-next-line no-var
+  var __50PICK_STAMPED_FROM_DEFAULTS: Set<string> | undefined;
+}
+
+/**
+ * ⚠️ RATES STAMPED FROM CODE DEFAULTS — ONE ALERT PER CONTAINER, PER ROW (FEE-TAX-2026-10 R2 review). Called by every
+ * stamping read: `readMarketConfigFresh` for `market.config`, `updown-config.ts → rateProfileForStamping` for
+ * `updown.config` (a round whose chain inherits the product default).
+ *
+ * A database is configured but the row the stamp reads does not exist, so the market or round is frozen at the CODE
+ * DEFAULTS — rates no officer saved, for the life of that market (a snapshot is never rewritten, RULES §2.1).
+ * ⛔ IT IS NOT REFUSED, ON PURPOSE — AVAILABILITY. No row is the state of every fresh install, and if production ever lacked
+ * one, refusing would stop EVERY new market and EVERY new Up & Down round — a product that opens a round every few
+ * minutes, down until somebody noticed — to protect rates that are, in that state, exactly the defaults. And the new law
+ * cannot slip in this way: the defaults carry no winnings tax and are not `stake-share`, and a stake-share stamp without
+ * a saved tax is refused (`snapshotFromConfig`). The switch writes the row: release R5's audited saves go through
+ * `setGlobalConfig` and `applyFeeProfileToEveryChain`, which create it when it is absent (`writeMarketConfig`,
+ * `chainStore.applyProfileToChains`), as does the first ordinary save at /admin/config or /admin/updown.
+ * So the stamp goes ahead today's way and the absence is made LOUD instead: one COMPLIANCE audit row
+ * (`config.stamped_from_defaults`) and one error line per container per row — re-armed when the row is read again, so a
+ * row that goes missing a second time alerts again. An alert that fires on every round is an alert people mute.
+ */
+export function noteStampingRead(key: string, read: { stored: boolean; database: boolean }, context: string): void {
+  const latch = (globalThis.__50PICK_STAMPED_FROM_DEFAULTS ??= new Set<string>());
+  if (read.stored) {
+    latch.delete(key);
+    return;
+  }
+  if (!read.database || latch.has(key)) return;
+  latch.add(key);
+  console.error(`[market-config] rates stamped from code defaults — no stored row for "${key}" (${context})`);
+  void audit({
+    category: "COMPLIANCE",
+    action: "config.stamped_from_defaults",
+    actorId: null,
+    targetType: "SystemConfig",
+    targetId: key,
+    payload: {
+      key,
+      context,
+      note: "Rates stamped from code defaults — no stored row. The stamp went ahead: refusing it would stop every new market and round. One save of these settings writes the row.",
+    },
+  });
+}
+
+/**
+ * ⭐ THE ONE WRITER — read-modify-write against a FRESH row, by COMPARE-AND-SWAP, read back before it reports "saved"
+ * (FEE-TAX-2026-10). `change` is handed the row as stored now (never this container's cache) and returns the whole next
+ * state, or a refusal; `record` writes the audit row once the write has landed.
+ *
+ * 🔴 WHAT IT REPLACED. `persist()` wrote THIS container's whole cache, fire-and-forget: a container that booted before
+ * another one's save wrote its stale copy over the newer row on its next unrelated save — every field, the fee model and,
+ * from this release, the winnings tax — and the audit row it wrote claimed a change it described against the wrong
+ * "before". During a deploy two containers run side by side for a minute, so this was never hypothetical.
+ *   1. read the row (a read that fails changes nothing);
+ *   2. `change` validates against THAT row and builds the next state from it;
+ *   3. swap it in ONLY while the row still holds exactly what was read (`replaceConfigIfValue`), or create it only if
+ *      there is still none (`createConfigIfAbsent`); a row that moved in between is read again (three tries);
+ *   4. once the swap lands the change IS stored — the audit row is written then, never before;
+ *   5. read it back: only a row that holds what was written is reported "saved". One that already holds something else
+ *      (another save landed straight after) is reported, never claimed.
+ * ⚠️ With no database the cache IS the store (every suite and local dev): `change` runs against it and it is replaced.
+ */
+async function writeMarketConfig<R>(
+  change: (fresh: ConfigState) => { ok: true; next: ConfigState; result: R } | { ok: false; error: string },
+  record: (before: ConfigState, next: ConfigState, result: R) => void,
+): Promise<{ ok: true; next: ConfigState; result: R } | { ok: false; error: string }> {
+  await ensureHydrated();
+  if (!storeDeps.hasDatabase()) {
+    const before: ConfigState = { global: { ...store.global }, perMarket: new Map(store.perMarket) };
+    const c = change(before);
+    if (!c.ok) return c;
+    store.global = c.next.global;
+    store.perMarket = c.next.perMarket;
+    cacheGen++;
+    record(before, c.next, c.result);
+    return c;
+  }
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const res = await storeDeps.loadConfigResult<PersistedMarketConfig>(MARKET_CONFIG_KEY);
+    if (!res.ok) return { ok: false, error: "The current settings could not be read, so nothing was changed. Please try again." };
+    const fresh: ConfigState = res.value ? fromRow(res.value) : { global: { ...DEFAULT_GLOBAL_CONFIG }, perMarket: new Map() };
+    const c = change({ global: { ...fresh.global }, perMarket: new Map(fresh.perMarket) });
+    if (!c.ok) return c;
+    const row = toRow(c.next);
+    let landed: boolean;
+    try {
+      landed = res.value
+        ? await storeDeps.replaceConfigIfValue(MARKET_CONFIG_KEY, res.value, row)
+        : (await storeDeps.createConfigIfAbsent(MARKET_CONFIG_KEY, row)) === "created";
+    } catch (err) {
+      console.error("[market-config] save failed:", (err as Error)?.message ?? err);
+      return { ok: false, error: "The save could not be completed, so it is not reported as saved. Reload the page and check the settings before trying again." };
+    }
+    if (!landed) continue; // another save moved the row between the read and the swap — read it again
+    store.global = c.next.global;
+    store.perMarket = c.next.perMarket;
+    cacheGen++;
+    record(fresh, c.next, c.result);
+    const back = await storeDeps.loadConfigResult<PersistedMarketConfig>(MARKET_CONFIG_KEY);
+    if (!back.ok) {
+      return { ok: false, error: "The change was written but could not be read back to confirm it. Reload the page and check the settings before saving again." };
+    }
+    if (!back.value || !sameStored(back.value, row)) {
+      return { ok: false, error: "The change was written, but another save changed the settings straight after. Reload the page to see what is in force now." };
+    }
+    return c;
+  }
+  return { ok: false, error: "The settings kept changing while this save was being made, so nothing was changed. Please try again." };
 }
 
 /**
@@ -575,7 +895,7 @@ function persist(): void {
  * code said 1,000, and a per-market override is never reconciled at all. So every READ floors the copy it returns: the
  * rules pages, the dial, the board, the house engine and `buyPosition` can never meet a stake bound under the rule,
  * whatever a row says. The max is lifted to at least the min.
- * ⛔ The STORE is never mutated here and `persist()` writes it raw; the admin form shows "stored X · enforced Y" when
+ * ⛔ The STORE is never mutated here and the writers store it raw (`writeMarketConfig`); the admin form shows "stored X · enforced Y" when
  * the two differ (`getStoredStakeBounds`), so an officer can see — and save away — a legacy value.
  * ⚠️ A FLOOR NEVER LOWERS. When the minimum itself goes DOWN (2026-10-12: 1,000 → 500) a stored value above the new
  * floor stays enforced; that is the reconcile's job (v4), never this function's.
@@ -631,8 +951,26 @@ export async function listMarketOverrides(): Promise<Array<{ marketId: string; o
  * protects a player: THE WINNER-FLOOR GUARDRAIL at the bottom of this function,
  * which refuses any config under which a winner could be paid below his stake.
  * The old check could not have caught the reported bug — 9% passed it easily.
+ *
+ * ⭐ `base` is the config the updates land on, and every cross-check reads IT (FEE-TAX-2026-10): the writers pass the row
+ * as stored NOW (`writeMarketConfig`), never this container's cache, so a check can no longer pass against a value that
+ * another container has already changed. `scope` says which door is asking:
+ *   · "global"   — `/admin/config`'s save;
+ *   · "override" — a per-market override: it may never carry a fee model or a winnings tax (both are platform-wide and
+ *                  frozen onto a market when it is created);
+ *   · "profile"  — an Up & Down fee profile (`validateRateConfig`): it may never carry a winnings tax — a round's tax
+ *                  comes from `market.config` when it is stamped — so a stake-share profile needs one already saved here.
+ * ⛔ THE NEW LAW IS GATED. While `fee-law-gate.ts` is shut, `stake-share` and any `winningsTaxRate` are refused at every
+ * scope. Once open, `stake-share` needs its winnings tax and a fee on every stake within `MAX_STAKE_FEE_RATE`, in whole
+ * basis points (the unit the arithmetic charges); and its winner-floor sweep is a WARNING naming the worst ratio and the
+ * break-even lean — never a refusal, because a winner paid below their stake on a lopsided market is the ruling
+ * (ruling 1), not a defect. Every older model keeps today's refusal, unchanged.
  */
-function validate(updates: Partial<RateConfig>): { ok: true; warn?: string } | { ok: false; reason: string } {
+function validate(
+  updates: Partial<RateConfig>,
+  base: RateConfig = store.global,
+  scope: "global" | "override" | "profile" = "global",
+): { ok: true; warn?: string } | { ok: false; reason: string } {
   if (updates.commissionRate !== undefined) {
     if (Number.isNaN(updates.commissionRate) || updates.commissionRate < 0 || updates.commissionRate > MAX_COMMISSION_RATE) {
       return { ok: false, reason: `Commission rate must be 0-${(MAX_COMMISSION_RATE * 100).toFixed(0)}%.` };
@@ -678,8 +1016,8 @@ function validate(updates: Partial<RateConfig>): { ok: true; warn?: string } | {
   // we would be paying the gateway more than we charged the player and taking a
   // loss on every withdrawal.
   {
-    const wf = updates.withdrawalFeeRate ?? store.global.withdrawalFeeRate;
-    const gs = updates.withdrawalGatewayShareRate ?? store.global.withdrawalGatewayShareRate;
+    const wf = updates.withdrawalFeeRate ?? base.withdrawalFeeRate;
+    const gs = updates.withdrawalGatewayShareRate ?? base.withdrawalGatewayShareRate;
     if (gs > wf) {
       return { ok: false, reason: "Gateway share cannot exceed the withdrawal fee — it is paid out of it." };
     }
@@ -733,8 +1071,8 @@ function validate(updates: Partial<RateConfig>): { ok: true; warn?: string } | {
   // Cross-check: max must not fall below min, or every stake is rejected and
   // betting is silently bricked (buyPosition bounds-checks stake against both).
   {
-    const min = updates.minStake ?? store.global.minStake;
-    const max = updates.maxStake ?? store.global.maxStake;
+    const min = updates.minStake ?? base.minStake;
+    const max = updates.maxStake ?? base.maxStake;
     if (max < min) return { ok: false, reason: "Max stake must be greater than or equal to min stake." };
   }
   if (updates.thinProfitRatio !== undefined) {
@@ -760,17 +1098,41 @@ function validate(updates: Partial<RateConfig>): { ok: true; warn?: string } | {
   // The levies come OUT of our fee. If they summed above 100% we would owe more
   // tax than we earned commission and the operator's take would go negative.
   {
-    const tra = updates.traTaxOnCommissionRate ?? store.global.traTaxOnCommissionRate;
-    const gbt = updates.gbtLevyOnCommissionRate ?? store.global.gbtLevyOnCommissionRate;
+    const tra = updates.traTaxOnCommissionRate ?? base.traTaxOnCommissionRate;
+    const gbt = updates.gbtLevyOnCommissionRate ?? base.gbtLevyOnCommissionRate;
     if (tra + gbt > 1) {
       return { ok: false, reason: "TRA + GBT levies cannot exceed 100% of the commission — they are paid out of it." };
     }
   }
 
+  // ── THE NEW LAW'S DOORS (FEE-TAX-2026-10) — which scope may carry what, and the gate ─────────
+  if (scope === "override" && (updates.feeModel !== undefined || updates.winningsTaxRate !== undefined)) {
+    return { ok: false, reason: "A per-market override cannot set a fee model or a winnings tax. Both are platform-wide, and frozen onto a market when it is created." };
+  }
+  if (scope === "profile" && updates.winningsTaxRate !== undefined) {
+    return { ok: false, reason: "An Up & Down fee profile cannot carry a winnings tax. The tax is the platform's (/admin/config), frozen onto each round when it opens." };
+  }
+  if (updates.winningsTaxRate !== undefined) {
+    const shut = newFeeLawRefusal();
+    if (shut) return { ok: false, reason: shut };
+    if (!isWholeBpRate(updates.winningsTaxRate, MAX_WINNINGS_TAX_RATE)) {
+      return { ok: false, reason: `Winnings tax must be 0-${(MAX_WINNINGS_TAX_RATE * 100).toFixed(0)}% of the prize fund, in whole basis points (0.01%).` };
+    }
+  }
+
   // ── Fee-model fields (loser-share) ───────────────────────────────────
   if (updates.feeModel !== undefined) {
-    if (updates.feeModel !== "capped-commission" && updates.feeModel !== "loser-share") {
-      return { ok: false, reason: "Fee model must be 'capped-commission' or 'loser-share'." };
+    if (updates.feeModel === "stake-share") {
+      // ⛔ Decided, not in force: refused at every door until release R5 flips `fee-law-gate.ts`.
+      const shut = newFeeLawRefusal();
+      if (shut) return { ok: false, reason: shut };
+    } else if (updates.feeModel !== "capped-commission" && updates.feeModel !== "loser-share") {
+      return {
+        ok: false,
+        reason: feeLawLive()
+          ? "Fee model must be 'capped-commission', 'loser-share' or 'stake-share'."
+          : "Fee model must be 'capped-commission' or 'loser-share'.",
+      };
     }
   }
   if (updates.platformFeeRate !== undefined) {
@@ -786,8 +1148,8 @@ function validate(updates: Partial<RateConfig>): { ok: true; warn?: string } | {
   // The loser-share fee is the SUM of the two slices, charged on the losing pool.
   // It must stay <= 100% or netPool goes negative and a winner is paid below stake.
   {
-    const pf = updates.platformFeeRate ?? store.global.platformFeeRate;
-    const of = updates.operatorFeeRate ?? store.global.operatorFeeRate;
+    const pf = updates.platformFeeRate ?? base.platformFeeRate;
+    const of = updates.operatorFeeRate ?? base.operatorFeeRate;
     if (pf + of > MAX_LOSER_SHARE_RATE) {
       return { ok: false, reason: "Platform + Operator fee cannot exceed 100% of the losing pool — a winner would be paid below their stake." };
     }
@@ -807,14 +1169,55 @@ function validate(updates: Partial<RateConfig>): { ok: true; warn?: string } | {
   // to the fee maths ever reintroduces a way to underpay a winner, an admin save
   // fails loudly rather than a player quietly losing money on a correct call.
   {
-    const c = updates.commissionRate ?? store.global.commissionRate;
-    const k = updates.feeCeilingRate ?? store.global.feeCeilingRate;
+    const c = updates.commissionRate ?? base.commissionRate;
+    const k = updates.feeCeilingRate ?? base.feeCeilingRate;
     // Sweep under the EFFECTIVE model — for loser-share, worstCaseWinnerRatio
     // evaluates both outcomes (its fee depends on the loser). The winner floor
     // must hold whichever model + rates are about to be saved.
-    const fm = updates.feeModel ?? store.global.feeModel;
-    const pf = updates.platformFeeRate ?? store.global.platformFeeRate;
-    const of = updates.operatorFeeRate ?? store.global.operatorFeeRate;
+    const fm = updates.feeModel ?? base.feeModel;
+    const pf = updates.platformFeeRate ?? base.platformFeeRate;
+    const of = updates.operatorFeeRate ?? base.operatorFeeRate;
+    // ⭐ STAKE-SHARE (FEE-TAX-2026-10): complete rates or nothing, then a WARNING — never this guard's refusal. Its fee
+    // comes out of every stake, so a winner on a lopsided market IS paid below their stake (ruling 1); refusing that
+    // would refuse the law itself. The officer is told the worst case and the lean where it starts, in the audit too.
+    if (fm === "stake-share") {
+      // A stored stake-share model with the gate shut can only be a hand-edited row: no save goes through on it.
+      const shut = newFeeLawRefusal();
+      if (shut) return { ok: false, reason: shut };
+      if (!isWholeBpRate(pf, MAX_STAKE_FEE_RATE) || !isWholeBpRate(of, MAX_STAKE_FEE_RATE) || rateBp(pf + of) > rateBp(MAX_STAKE_FEE_RATE)) {
+        return {
+          ok: false,
+          reason: `Under stake-share, Platform + Operator is a fee on EVERY stake and may be at most ${(MAX_STAKE_FEE_RATE * 100).toFixed(0)}% together, each in whole basis points (0.01%).`,
+        };
+      }
+      // A profile never carries the tax: its rounds take the platform's, so the platform's must already be saved.
+      const t = scope === "profile" ? base.winningsTaxRate : (updates.winningsTaxRate ?? base.winningsTaxRate);
+      if (t === undefined || !isWholeBpRate(t, MAX_WINNINGS_TAX_RATE)) {
+        return {
+          ok: false,
+          reason: scope === "profile"
+            ? "This fee profile is stake-share, and the platform has no winnings tax saved. Save the winnings tax at /admin/config first — every round freezes it when it opens."
+            : "Stake-share needs a winnings tax rate. Enter it in the same save, or save it first.",
+        };
+      }
+      const rates = { commissionRate: c, feeCeilingRate: k, feeModel: fm, platformFeeRate: pf, operatorFeeRate: of, winningsTaxRate: t };
+      const worst = worstCaseWinnerRatio(rates);
+      const breakEven = stakeShareBreakEvenShare(rates) ?? 0;
+      // The worst case's pool, to ONE DECIMAL (FEE-TAX R2 review). The sweep's most lopsided pool is 99.9/0.1, and rounded
+      // to whole percents it printed "100/0" — a ONE-SIDED pool, which is refunded in full and pays no winner anything.
+      const bigShare = (Math.max(worst.atYes, worst.atNo) / (worst.atYes + worst.atNo)) * 100;
+      const worstCase =
+        `Under stake-share the fee is taken from every stake, the winners' included: at a ` +
+        `${bigShare.toFixed(1)}/${(100 - bigShare).toFixed(1)} pool a winner on the bigger side gets back ` +
+        `${(worst.ratio * 100).toFixed(1)}% of their stake.`;
+      // …and the below-stake sentence only when it is TRUE: with no fee at all (0% + 0%) no winner is ever paid below
+      // their stake, and the break-even lean it would quote does not exist.
+      const belowStake = worst.ratio < 1
+        ? ` A winner on the bigger side is paid back less than they staked (ruling 1) whenever the smaller side holds under ` +
+          `${(breakEven * 100).toFixed(2)}% of the pool. Players are warned on the bet screen before they bet.`
+        : "";
+      return { ok: true, warn: worstCase + belowStake };
+    }
     const worst = worstCaseWinnerRatio({ commissionRate: c, feeCeilingRate: k, feeModel: fm, platformFeeRate: pf, operatorFeeRate: of });
     if (worst.ratio < 1) {
       return {
@@ -851,65 +1254,191 @@ function validate(updates: Partial<RateConfig>): { ok: true; warn?: string } | {
  * Writing a second validator for the second product is how two definitions of one
  * truth start, and the one that drifts is always the one nobody is looking at. There
  * is one validator; this is it.
+ *
+ * ⭐ `scope: "profile"` (FEE-TAX-2026-10) — every Up & Down caller passes it: a profile may be `stake-share` once the gate
+ * is open, may never carry a winnings tax, and a stake-share one needs the platform's tax already saved (`validate`).
+ * ⭐ `base` — the platform config the cross-checks read (FEE-TAX R2 review). An act that moves every chain at once
+ * (`applyFeeProfileToEveryChain`) passes the row read FRESH (`readMarketConfigFresh`), so it cannot pass against a tax or
+ * a rate another container has already moved; absent, the cross-checks read this container's cache, as they always did.
  */
-export function validateRateConfig(updates: Partial<RateConfig>): { ok: true; warn?: string } | { ok: false; reason: string } {
-  return validate(updates);
+export function validateRateConfig(
+  updates: Partial<RateConfig>,
+  opts?: { scope?: "global" | "profile"; base?: RateConfig },
+): { ok: true; warn?: string } | { ok: false; reason: string } {
+  return validate(updates, opts?.base ?? store.global, opts?.scope ?? "global");
 }
 
-export async function setGlobalConfig(updates: Partial<RateConfig>, officerId: string):
-  Promise<{ ok: true; config: RateConfig; warn?: string } | { ok: false; error: string }> {
-  await ensureHydrated();
-  const v = validate(updates);
-  if (!v.ok) return { ok: false, error: v.reason };
-  const before = { ...store.global };
-  store.global = { ...store.global, ...updates };
-  persist();
-  audit({
-    category: "ADMIN",
-    action: "config.global.updated",
-    actorId: officerId,
-    targetType: "MarketConfig",
-    targetId: "global",
-    // The audit trail records the winner-floor warning too — if an officer sets a
-    // ceiling above 50%, the fact that they were told is part of the record.
-    payload: { before, after: store.global, changes: configChanges(before, store.global), warn: v.warn ?? null },
-  });
-  return { ok: true, config: { ...store.global }, warn: v.warn };
+// ── A FORM'S BASELINE (FEE-TAX-2026-10 R2 review) ─────────────────────────────────────────────────────────────────────
+/**
+ * ⭐ A SAVE SAYS WHAT ITS FORM WAS RENDERED WITH, AND WRITES ONLY WHAT THE OFFICER CHANGED.
+ *
+ * 🔴 THE DEFECT. Compare-and-swap (`writeMarketConfig`) stops a stale CONTAINER writing its old copy back — not a stale
+ * FORM. An admin form is seeded from the whole config when the page renders and posts all of it, so an officer who opened
+ * /admin/config at 09:00 and saved one field at 09:20 wrote back, field by field, everything another officer had saved at
+ * 09:10 — the fee model and the winnings tax included — onto a perfectly fresh row, with a clean audit row saying so.
+ *
+ * THE CONTRACT — `opts.baseline` on `setGlobalConfig`, `setMarketOverride` and `updown-config.ts → setUpDownConfig`:
+ *   · `baseline` is the values the form was RENDERED with, as the page read them:
+ *       - the platform save: `getGlobalConfig()` (its stake bounds floored; the stored values, `getStoredStakeBounds()`,
+ *         are accepted too — and a baseline carrying them lets a re-save of the enforced figure write it over a legacy
+ *         stored one, which a floored baseline would call "unchanged");
+ *       - a per-market override: that market's STORED override (`listMarketOverrides()`), never its effective config — a
+ *         field the override does not hold was rendered as absent;
+ *       - the Up & Down save: `getUpDownConfig()` (its default stake bounds floored; the stored values accepted too).
+ *     A field absent from the baseline was rendered as absent. Values compare deeply, key order ignored, and `undefined`
+ *     is absent (a jsonb row keeps neither).
+ *   · Only the posted fields that DIFFER from the baseline are written. A field posted unchanged is never written, so it
+ *     can never carry an old value over a newer save. Nothing differs → nothing is written or audited (`unchanged: true`).
+ *   · INSIDE the compare-and-swap step — against the row as stored at that instant, on every retry — a changed field whose
+ *     stored value no longer equals its baseline is REFUSED ("Another officer changed … since this page was opened"):
+ *     this officer chose their value against one that no longer stands. Nothing is written.
+ *   · No baseline: every posted field is written, as before (scripts, tests, the one-field saves of the AI toolkit).
+ * Lane R2c renders the forms fresh and posts the baseline beside the values.
+ */
+export type ConfigSaveOptions<T> = { baseline?: Partial<T> };
+
+/**
+ * `v` with every `undefined` member removed from its plain objects, at every depth — exactly what a jsonb round trip keeps.
+ * ⛔ WHY (FEE-TAX R2 review): a writer merged `{ x: undefined }` over the row, jsonb dropped the key, and the stored x was
+ * gone — the field fell back to its code default — while the read-back, comparing the row with what was written, reported
+ * a save that HAD landed as "another save changed the settings straight after". Every writer strips its input first.
+ */
+export function withoutUndefined<T>(v: T): T {
+  if (Array.isArray(v)) return v.map((x) => withoutUndefined(x)) as T;
+  if (v && typeof v === "object") {
+    const proto = Object.getPrototypeOf(v);
+    if (proto !== Object.prototype && proto !== null) return v;
+    const out: Record<string, unknown> = {};
+    for (const [k, x] of Object.entries(v as Record<string, unknown>)) if (x !== undefined) out[k] = withoutUndefined(x);
+    return out as T;
+  }
+  return v;
 }
 
-export async function setMarketOverride(marketId: string, updates: Partial<RateConfig>, officerId: string):
-  Promise<{ ok: true; config: RateConfig } | { ok: false; error: string }> {
-  await ensureHydrated();
-  const v = validate(updates);
-  if (!v.ok) return { ok: false, error: v.reason };
-  const before = store.perMarket.get(marketId) ?? {};
-  const merged = { ...before, ...updates };
-  store.perMarket.set(marketId, merged);
-  persist();
-  audit({
-    category: "ADMIN",
-    action: "config.market.override",
-    actorId: officerId,
-    targetType: "MarketConfig",
-    targetId: marketId,
-    payload: { before, after: merged, changes: configChanges(before, merged) },
-  });
+/** The posted fields whose value DIFFERS from the baseline — the only ones a baselined save writes (deep, key order ignored). */
+export function changedFromBaseline<T extends object>(posted: Partial<T>, baseline: Partial<T>): Partial<T> {
+  const out: Partial<T> = {};
+  for (const k of Object.keys(posted) as Array<keyof T>) {
+    if (!sameStored(posted[k], baseline[k])) out[k] = posted[k];
+  }
+  return out;
+}
+
+/**
+ * The changed fields another officer has moved since the form was rendered: those whose stored value equals the baseline
+ * in NONE of `views` (the row as stored, and the floored copy a page reads, where the two can differ).
+ */
+export function staleFields(changed: object, baseline: object, views: ReadonlyArray<object>): string[] {
+  const b = baseline as Record<string, unknown>;
+  return Object.keys(changed).filter((k) => !views.some((v) => sameStored((v as Record<string, unknown>)[k], b[k])));
+}
+
+/** The refusal, in an officer's words — "Another officer changed the min stake since this page was opened — …". */
+export function staleBaselineRefusal(fields: string[]): string {
+  const names = fields.map((k) => `the ${k.replace(/([a-z0-9])([A-Z])/g, "$1 $2").toLowerCase().replace(/\btra\b/g, "TRA").replace(/\bgbt\b/g, "GBT")}`);
+  const list = names.length <= 1 ? names.join("") : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+  return `Another officer changed ${list} since this page was opened — reload and try again. Nothing was saved.`;
+}
+
+/**
+ * Save the platform's rates (`/admin/config`). Read-modify-write against the row, by compare-and-swap, read back before
+ * "saved" (`writeMarketConfig`), and validated against the row as stored NOW — so a stale container can neither save
+ * its old fee model or winnings tax back over a newer one, nor pass a check against a value that has already moved.
+ * ⭐ `opts.baseline` — the values the form was rendered with: only the fields the officer changed are written, and one
+ * another officer moved meanwhile is refused (`ConfigSaveOptions`, the contract). `undefined` members are never written.
+ */
+export async function setGlobalConfig(updates: Partial<RateConfig>, officerId: string, opts?: ConfigSaveOptions<RateConfig>):
+  Promise<{ ok: true; config: RateConfig; warn?: string; unchanged?: true } | { ok: false; error: string }> {
+  const posted = withoutUndefined(updates);
+  const baseline = opts?.baseline === undefined ? undefined : withoutUndefined(opts.baseline);
+  const toWrite = baseline ? changedFromBaseline(posted, baseline) : posted;
+  if (baseline && Object.keys(toWrite).length === 0) return { ok: true, config: await getGlobalConfig(), unchanged: true };
+  const w = await writeMarketConfig<string | undefined>(
+    (fresh) => {
+      if (baseline) {
+        const stale = staleFields(toWrite, baseline, [fresh.global, floorStakeBounds({ ...fresh.global })]);
+        if (stale.length > 0) return { ok: false, error: staleBaselineRefusal(stale) };
+      }
+      const v = validate(toWrite, fresh.global, "global");
+      if (!v.ok) return { ok: false, error: v.reason };
+      return { ok: true, next: { global: { ...fresh.global, ...toWrite }, perMarket: fresh.perMarket }, result: v.warn };
+    },
+    (before, next, warn) => audit({
+      category: "ADMIN",
+      action: "config.global.updated",
+      actorId: officerId,
+      targetType: "MarketConfig",
+      targetId: "global",
+      // The audit trail records the winner-floor warning too — if an officer sets a
+      // ceiling above 50%, the fact that they were told is part of the record.
+      payload: { before: before.global, after: next.global, changes: configChanges(before.global, next.global), warn: warn ?? null },
+    }),
+  );
+  if (!w.ok) return { ok: false, error: w.error };
+  return { ok: true, config: { ...w.next.global }, warn: w.result };
+}
+
+/**
+ * Set a per-market override (stake bounds only, in practice — `setMarketOverrideAction`). Same writer as the global
+ * save; ⛔ never a fee model or a winnings tax (`validate`'s "override" scope).
+ * ⭐ `opts.baseline` — the market's STORED override as the form rendered it (`listMarketOverrides()`), never its effective
+ * config: only the changed fields are written, and one another officer moved meanwhile is refused (`ConfigSaveOptions`).
+ * ⚠️ Validated against the market's EFFECTIVE config — the platform row with this market's own override over it — because
+ * that is what the change lands on: checked against the platform row alone, a new maximum below the market's own minimum
+ * passed, and the market's stake window silently collapsed to that minimum alone (the read lifts max to min).
+ */
+export async function setMarketOverride(marketId: string, updates: Partial<RateConfig>, officerId: string, opts?: ConfigSaveOptions<RateConfig>):
+  Promise<{ ok: true; config: RateConfig; unchanged?: true } | { ok: false; error: string }> {
+  const posted = withoutUndefined(updates);
+  const baseline = opts?.baseline === undefined ? undefined : withoutUndefined(opts.baseline);
+  const toWrite = baseline ? changedFromBaseline(posted, baseline) : posted;
+  if (baseline && Object.keys(toWrite).length === 0) return { ok: true, config: await getEffectiveConfig(marketId), unchanged: true };
+  const w = await writeMarketConfig<{ before: Partial<RateConfig>; merged: Partial<RateConfig> }>(
+    (fresh) => {
+      const before = fresh.perMarket.get(marketId) ?? {};
+      if (baseline) {
+        const stale = staleFields(toWrite, baseline, [before]);
+        if (stale.length > 0) return { ok: false, error: staleBaselineRefusal(stale) };
+      }
+      const v = validate(toWrite, { ...fresh.global, ...before }, "override");
+      if (!v.ok) return { ok: false, error: v.reason };
+      const merged = { ...before, ...toWrite };
+      const perMarket = new Map(fresh.perMarket);
+      perMarket.set(marketId, merged);
+      return { ok: true, next: { global: fresh.global, perMarket }, result: { before, merged } };
+    },
+    (_before, _next, r) => audit({
+      category: "ADMIN",
+      action: "config.market.override",
+      actorId: officerId,
+      targetType: "MarketConfig",
+      targetId: marketId,
+      payload: { before: r.before, after: r.merged, changes: configChanges(r.before, r.merged) },
+    }),
+  );
+  if (!w.ok) return { ok: false, error: w.error };
   return { ok: true, config: await getEffectiveConfig(marketId) };
 }
 
-export async function clearMarketOverride(marketId: string, officerId: string): Promise<{ ok: true }> {
-  await ensureHydrated();
-  const before = store.perMarket.get(marketId);
-  store.perMarket.delete(marketId);
-  persist();
-  audit({
-    category: "ADMIN",
-    action: "config.market.cleared",
-    actorId: officerId,
-    targetType: "MarketConfig",
-    targetId: marketId,
-    payload: { before },
-  });
+/** Remove a per-market override. Same writer; it can now say it failed, so the caller must read `ok`. */
+export async function clearMarketOverride(marketId: string, officerId: string): Promise<{ ok: true } | { ok: false; error: string }> {
+  const w = await writeMarketConfig<Partial<RateConfig> | undefined>(
+    (fresh) => {
+      const perMarket = new Map(fresh.perMarket);
+      const before = perMarket.get(marketId);
+      perMarket.delete(marketId);
+      return { ok: true, next: { global: fresh.global, perMarket }, result: before };
+    },
+    (_before, _next, before) => audit({
+      category: "ADMIN",
+      action: "config.market.cleared",
+      actorId: officerId,
+      targetType: "MarketConfig",
+      targetId: marketId,
+      payload: { before },
+    }),
+  );
+  if (!w.ok) return { ok: false, error: w.error };
   return { ok: true };
 }
 

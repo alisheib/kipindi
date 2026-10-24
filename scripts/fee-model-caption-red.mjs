@@ -71,14 +71,17 @@ const MUTATIONS = [
     name: "reducer-ignores-the-chains",
     why: "the reducer reads only the default, so a chain stranded on capped-commission is invisible — exactly what A2 had to be driven out of by hand",
     file: UD,
-    from: "  const models = [...new Set([...profiles, cfg.defaultRateProfile].map(resolveFeeModel))];",
-    to: "  const models = [...new Set([cfg.defaultRateProfile].map(resolveFeeModel))];",
+    // ⚠️ RE-ANCHORED 2026-10-24 (FEE-TAX R2 review): the reducer reads every profile — the default included — as what its
+    // rounds will freeze (`stampedFeeTermsOf`), so the default is `byDefault` now; the defect is the same line, unchanged.
+    from: "  const models = [...new Set([...profiles, byDefault].map(resolveFeeModel))];",
+    to: "  const models = [...new Set([byDefault].map(resolveFeeModel))];",
   },
   {
     name: "reducer-ignores-the-default",
     why: "the mirror: chains migrated, default left behind. The NEXT chain an operator creates freezes the retired model and nothing says so",
     file: UD,
-    from: "  const models = [...new Set([...profiles, cfg.defaultRateProfile].map(resolveFeeModel))];",
+    // ⚠️ RE-ANCHORED 2026-10-24 (FEE-TAX R2 review) — see the plant above.
+    from: "  const models = [...new Set([...profiles, byDefault].map(resolveFeeModel))];",
     to: "  const models = [...new Set([...profiles].map(resolveFeeModel))];",
   },
   {

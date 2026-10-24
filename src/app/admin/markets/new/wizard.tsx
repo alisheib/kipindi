@@ -44,7 +44,9 @@ const COMPETITION_OPTIONS = [
 
 type FeeInfo =
   | { model: "loser-share"; feePct: string; estMult: string; showEstimate: boolean }
-  | { model: "capped-commission"; commissionPct: string; ceilingPct: string };
+  | { model: "capped-commission"; commissionPct: string; ceilingPct: string }
+  // FEE-TAX-2026-10 · `taxPct` null = no winnings tax saved (such a market could not be created: stamping refuses it).
+  | { model: "stake-share"; feePct: string; taxPct: string | null };
 
 export function NewMarketWizard({ feeInfo, platformTz }: { feeInfo: FeeInfo; platformTz: string }) {
   const [step, setStep] = useState(0);
@@ -221,6 +223,14 @@ export function NewMarketWizard({ feeInfo, platformTz }: { feeInfo: FeeInfo; pla
             {feeInfo.showEstimate
               ? <> Players see a fixed <strong className="text-text">{feeInfo.estMult}×</strong> &ldquo;possible winnings&rdquo; estimate before betting.</>
               : <> The pre-bet estimate is hidden.</>}
+          </p>
+        ) : feeInfo.model === "stake-share" ? (
+          /* FEE-TAX-2026-10 · its own sentence, never the capped one. R2c. */
+          <p className="mt-1">
+            <strong className="text-text">Stake-share</strong> — fee = <strong className="text-text">{feeInfo.feePct}%</strong> of every stake,
+            {feeInfo.taxPct === null
+              ? <> and no winnings tax is saved yet, so a market cannot be created until one is.</>
+              : <> and <strong className="text-text">{feeInfo.taxPct}%</strong> of the losing side&apos;s net stakes is withheld as winnings tax. A winner on a lopsided market can be paid back less than their stake.</>}
           </p>
         ) : (
           <p className="mt-1">

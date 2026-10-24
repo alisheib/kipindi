@@ -17,6 +17,7 @@ import {
 import type { RateConfig } from "@/lib/server/market-config";
 import { formatTzs } from "@/lib/utils";
 import { PLATFORM_MIN_STAKE, PLATFORM_MAX_STAKE } from "@/lib/payout";
+import { feeLawLive } from "@/lib/fee-law-gate";
 import { useMayAct, useActDisabledReason } from "@/components/admin/act-gate";
 
 /** `storedStake` — the global bounds as stored. The form shows the ENFORCED ones (floored on read, 2026-10-07); when a
@@ -264,6 +265,11 @@ export function GlobalConfigForm({ config, storedStake = null }: { config: RateC
               options={[
                 { value: "loser-share", label: "Loser-share — % of the losing pool" },
                 { value: "capped-commission", label: "Capped commission — % of the pool, capped" },
+                // FEE-TAX-2026-10 · offered only once `fee-law-gate.ts` is open — or when it is what is stored, so the
+                // select can never show one law while posting another. R2c: the Fees & taxes card replaces this select.
+                ...(feeLawLive() || config.feeModel === "stake-share"
+                  ? [{ value: "stake-share", label: "Stake-share — % of every stake" }]
+                  : []),
               ]}
             />
           </Field>
@@ -280,7 +286,15 @@ export function GlobalConfigForm({ config, storedStake = null }: { config: RateC
         {/* What the selected model does — updates on every change so the officer
             always sees exactly what new polls will apply. */}
         <div className="rounded-md border border-border/70 bg-bg-base/40 px-3 py-2 text-body-sm leading-relaxed text-text-muted">
-          {feeModel === "loser-share" ? (
+          {feeModel === "stake-share" ? (
+            /* FEE-TAX-2026-10 · never the capped wording below. R2c: the Fees & taxes card brings its rate fields. */
+            <>
+              <strong className="text-text">Stake-share.</strong> When a poll resolves, the fee is a fixed percentage of
+              <strong> every</strong> stake, on both sides (Platform + Operator), and a winnings tax is withheld from the
+              losing side&apos;s net stakes for TRA. Winners get their stake less its fee, plus a share of the rest. On a
+              lopsided poll a winner can be paid back less than their stake.
+            </>
+          ) : feeModel === "loser-share" ? (
             <>
               <strong className="text-text">Loser-share.</strong> When a poll resolves, the fee is a fixed
               percentage of the <strong>losing</strong> side&apos;s pool (Platform + Operator, set below). Winners get
@@ -382,7 +396,9 @@ export function GlobalConfigForm({ config, storedStake = null }: { config: RateC
         body={
           feeModel === "loser-share"
             ? "New polls will use the loser-share model: the fee is a percentage of the LOSING pool, and players see a fixed “possible winnings” estimate before betting. This changes the model for FUTURE polls only — every existing poll keeps its current rule. Continue?"
-            : "New polls will use the capped-commission model (min of a commission and a ceiling), and no pre-bet estimate is shown. This affects FUTURE polls only — existing polls keep their current rule. Continue?"
+            : feeModel === "stake-share"
+              ? "New polls will use the stake-share model: the fee is a percentage of EVERY stake and a winnings tax is withheld from the losing side's net stakes, so a winner on a lopsided poll can be paid back less than their stake. This affects FUTURE polls only — existing polls keep their current rule. Continue?"
+              : "New polls will use the capped-commission model (min of a commission and a ceiling), and no pre-bet estimate is shown. This affects FUTURE polls only — existing polls keep their current rule. Continue?"
         }
         confirmLabel="Save fee model"
         tone="warning"

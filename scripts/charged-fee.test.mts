@@ -129,5 +129,40 @@ ok("control · …and on a capped-commission VOID (a fee for a market that charg
 ok("control · …and AGREES on every two-sided win (the guard is not merely rejecting poolFee)",
   !disagreements.some((d) => /two-sided (?:YES|NO) wins/.test(d)));
 
+// ── FEE-TAX-2026-10 · stake-share — `fee` is OUR fee ONLY, and the tax stands beside it ─────────────────────────────────
+// No market can freeze stake-share before release R5 (`fee-law-gate.ts`), and settlement learns its split in R2b — which
+// then pins this reader to the REAL settlement as the loops above do. Until then the reader is pinned to the ONE
+// arithmetic settlement will pay by (`stakeShareSplit`), over the same six shapes: the refund branches unchanged, and on a
+// two-sided win  staked − paid back = fee + winningsTax  — so "paid back = pool − fee" no longer holds for this model.
+{
+  console.log("\n── stake-share (the reader against `stakeShareSplit`)");
+  const { stakeShareSplit } = await import("../src/lib/payout.ts");
+  const SS = { feeModel: "stake-share" as const, platformFeeRate: 0.03, operatorFeeRate: 0.10, winningsTaxRate: 0.15, commissionRate: 0.10, feeCeilingRate: 1 / 3 };
+  for (const c of CASES) {
+    const yesPool = c.yes.reduce((a, s) => a + s, 0), noPool = c.no.reduce((a, s) => a + s, 0);
+    const charged = chargedFee({ yesPool, noPool, resolvedOutcome: c.outcome }, SS);
+    const refund = c.outcome === "VOID" || yesPool === 0 || noPool === 0;
+    if (refund) {
+      ok(`stake-share · ${c.name} · refunded in full at no fee and no tax (ruling 2, as today)`,
+        charged.refunded && charged.fee === 0 && charged.winningsTax === undefined && charged.netPool === yesPool + noPool, JSON.stringify(charged));
+      continue;
+    }
+    const outcome = c.outcome as "YES" | "NO";
+    const ids = (side: string, xs: number[]) => xs.map((stake, i) => ({ id: `${side}${i}`, stake }));
+    const split = stakeShareSplit({
+      yesPool, noPool, outcome,
+      winners: ids(outcome, outcome === "YES" ? c.yes : c.no),
+      losers: ids(outcome === "YES" ? "NO" : "YES", outcome === "YES" ? c.no : c.yes),
+    }, SS);
+    const paidBack = [...split.perWinner.values()].reduce((a, w) => a + w.payout, 0);
+    ok(`stake-share · ${c.name} · fee === the split's fee (our fee only) and the tax stands beside it`,
+      !charged.refunded && charged.fee === split.fee && charged.winningsTax === split.winningsTax && charged.prizeFund === split.prizeFund,
+      `fee ${charged.fee}/${split.fee} · tax ${charged.winningsTax}/${split.winningsTax}`);
+    ok(`stake-share · ${c.name} · ★ staked − paid back = fee + winningsTax (${split.fee} + ${split.winningsTax})`,
+      yesPool + noPool - paidBack === charged.fee + (charged.winningsTax ?? 0) && charged.netPool === paidBack, `paid back ${paidBack}`);
+    ok(`stake-share · ${c.name} · ⛔ and so NOT pool − fee: the tax is withheld too`, charged.netPool !== yesPool + noPool - charged.fee);
+  }
+}
+
 console.log(`\ncharged-fee: ${pass} passed, ${fail} failed`);
 process.exit(fail === 0 ? 0 : 1);
